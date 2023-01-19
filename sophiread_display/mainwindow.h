@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QElapsedTimer>
 #include "hit_worker.h"
+#include <qwt_interval.h>
 #include <qwt_matrix_raster_data.h>
 #include <qwt_plot_spectrogram.h>
 #include <qwt_math.h>

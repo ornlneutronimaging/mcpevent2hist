@@ -1,0 +1,6 @@
+name: sophiread
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - qwt
