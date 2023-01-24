@@ -1,5 +1,6 @@
 #include <fstream>
 #include <vector>
+#include <string>
 
 /**
  * @brief Class to store the data of a single hit of a charged particle 
@@ -25,9 +26,12 @@ class Hit {
         int getSPIDERTIME() const {return m_spidertime;};
         unsigned int getTOF() const {return m_tof;};
 
-        double getTOF_ns() const {return m_tof * m_scale_to_ns;};
-        double getTOA_ns() const {return m_toa * m_scale_to_ns;};
-        double getTOT_ns() const {return m_tot * m_scale_to_ns;};
+        double getTOF_ns() const {return m_tof * m_scale_to_ns_40mhz;};
+        double getTOA_ns() const {return m_toa * m_scale_to_ns_40mhz;};
+        double getTOT_ns() const {return m_tot * m_scale_to_ns_40mhz;};
+        double getFTOA_ns() const {return m_ftoa * m_scale_to_ns_640mhz;};
+
+        std::string toString() const;
 
     private:
         // raw packet directly read from tpx3.
@@ -39,8 +43,8 @@ class Hit {
         const int m_spidertime; // time from the spider board
 
         // scale factor that converts time to ns
-        // NOTE: 40 MHz clock is used for the timepix3, hence 25 ns per tick.
-        double m_scale_to_ns = 25.0;
+        const double m_scale_to_ns_40mhz = 25.0;          // 40 MHz clock is used for the coarse time of arrival.
+        const double m_scale_to_ns_640mhz = 25.0 / 16.0;  // 640 MHz clock is used for the fine time of arrival.
 };
 
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);

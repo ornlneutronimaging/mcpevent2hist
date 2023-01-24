@@ -1,14 +1,22 @@
 #include <iostream>
+#include <sstream>
 #include "tpx3.h"
 
 Hit::Hit(const int x, const int y, const int tot, const int toa, const int ftoa, const unsigned int tof, const int spidertime) :
     m_x(x), m_y(y), m_tot(tot), m_toa(toa), m_ftoa(ftoa), m_tof(tof), m_spidertime(spidertime) {}
 
+std::string Hit::toString() const {
+    std::stringstream ss;
+    ss << "Hit: x=" << m_x << ", y=" << m_y << ", tot=" << m_tot << ", toa=" << m_toa << ", ftoa=" << m_ftoa << ", tof=" << m_tof << ", spidertime=" << m_spidertime;
+    return ss.str();
+}
+
 std::vector<Hit> readTimepix3RawData(const std::string& filepath) {
     int chip_layout_type = 0;
     int data_packet_size = 0;
     int data_packet_num = 0;
-    unsigned long *tdclast,mytdc;
+    unsigned long *tdclast;
+    unsigned long mytdc = 0;
     unsigned  short pixaddr, dcol, spix, pix;
     unsigned short *spider_time;
     unsigned short *nTOT; //bytes 2,3, raw time over threshold

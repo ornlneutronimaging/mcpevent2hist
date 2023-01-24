@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
                         }
 
 						//uncomment below to save the chip data into the text file;
-						xy_file << setprecision(15) << global_timestamp / 1E9 << "  " << TOTns << "  " << x << "  " << y << endl;   //toa, tot, x and y data can be saved into txt data
+						xy_file << setprecision(15) << x << "  " << y <<  "  " << global_timestamp / 1E9 << "  " << TOTns << endl;   //x, y, toa, tot data can be saved into txt data
                         cout<< "Chip-ToA: " << setprecision(15) << global_timestamp / 1E9 << "  ToT: " << TOTns << " x: " << x << " y: " << y << endl;
 
                         break;
