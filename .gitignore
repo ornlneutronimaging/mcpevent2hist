@@ -13,6 +13,7 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+build
 
 ### CMake Patch ###
 # External projects
@@ -268,7 +269,6 @@ CMakeLists.txt.user*
 
 ### VisualStudioCode ###
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -310,3 +310,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# direnv
+.envrc
