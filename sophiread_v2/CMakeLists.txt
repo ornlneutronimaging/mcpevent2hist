@@ -59,3 +59,15 @@ set(TESTS_ClUSTER
 add_executable(SophireadTests_CLUSTER ${TESTS_ClUSTER})
 target_link_libraries(SophireadTests_CLUSTER GTest::GTest GTest::Main)
 gtest_discover_tests(SophireadTests_CLUSTER)
+
+# Peakfitting Tests
+set(TESTS_PEAKFITTING
+    include/centroid.h
+    src/centroid.cpp
+    include/fastgaussian.h
+    src/fastgaussian.cpp
+    tests/test_peakfitting.cpp
+)
+add_executable(SophireadTests_PEAKFITTING ${TESTS_PEAKFITTING})
+target_link_libraries(SophireadTests_PEAKFITTING GTest::GTest GTest::Main)
+gtest_discover_tests(SophireadTests_PEAKFITTING)
