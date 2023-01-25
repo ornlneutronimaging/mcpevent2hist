@@ -6,8 +6,17 @@ set(CMAKE_CXX_STANDARD 14)
 # copy test data directory
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 
-# Add include directories
-include_directories(include)
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
+
+# Add include&linking directories
+include_directories(
+    include
+    $ENV{CONDA_PREFIX}/include
+)
+link_directories(
+    $ENV{CONDA_PREFIX}/lib
+)
+
 
 # Add compiler flags
 add_compile_options(-O3 -std=c++11 -Wall -Wextra)
@@ -28,8 +37,14 @@ add_executable(Sophiread
 target_link_libraries(Sophiread SophireadLib)
 
 # ------------------ GUI APPLICATION ------------------ #
-
-
+qt5_wrap_ui(SophireadDisplayUI
+    ui/mainwindow.ui
+)
+add_executable(SophireadDisplay
+    sophiread_display.cpp
+    ${SophireadDisplayUI}
+)
+target_link_libraries(SophireadDisplay SophireadLib)
 
 
 # ----------------- TESTS ----------------- #
