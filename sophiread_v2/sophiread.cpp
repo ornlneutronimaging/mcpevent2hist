@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
       verbose = true;
       break;
     default:
-      std::cerr << "Usage: " << argv[0] << " [-i input_tpx3] [-o output_image] [-h output_hits] [-v]" << std::endl;
+      std::cerr << "Usage: " << argv[0] << " [-i input_tpx3] [-o output_hits] [-v]" << std::endl;
       return 1;
     }
   }
