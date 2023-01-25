@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
+
 #include "tpx3.h"
 
 // Test the readTimepix3RawData function
 TEST(FileHandlingTest, ReadTPX3RawData) {
   // read the testing raw data
-  auto hits = readTimepix3RawData("data/frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3");
+  auto hits =
+      readTimepix3RawData("data/frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3");
   // check the number of hits
   EXPECT_EQ(hits.size(), 9933804);
   // // check the first hit

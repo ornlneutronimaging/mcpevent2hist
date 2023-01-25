@@ -10,11 +10,16 @@ file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 # Add source files
 set(SOURCES
     main.cpp
+    src/ars.cpp
+    src/dbscan.cpp
     src/tpx3.cpp
 )
 
 # Add header files
 set(HEADERS
+    include/ars.h
+    include/clustering.h
+    include/dbscan.h
     include/tpx3.h
 )
 
@@ -31,19 +36,38 @@ add_executable(Sophiread ${SOURCES} ${HEADERS})
 # ----------------- TESTS ----------------- #
 enable_testing()
 find_package(GTest REQUIRED)
+include(GoogleTest)
 
-# Add test files
-set(TESTS
+# IO Tests
+set(TESTS_IO
     include/tpx3.h
     src/tpx3.cpp
     tests/test_tpx3.cpp
 )
+add_executable(SophireadTests_IO ${TESTS_IO})
+target_link_libraries(SophireadTests_IO GTest::GTest GTest::Main)
+gtest_discover_tests(SophireadTests_IO)
 
-# Add the executable for the test project
-add_executable(SophireadTests ${TESTS})
+# Clustering Tests
+set(TESTS_ClUSTER
+    include/ars.h
+    src/ars.cpp
+    include/dbscan.h
+    src/dbscan.cpp
+    tests/test_clustering.cpp
+)
+add_executable(SophireadTests_CLUSTER ${TESTS_ClUSTER})
+target_link_libraries(SophireadTests_CLUSTER GTest::GTest GTest::Main)
+gtest_discover_tests(SophireadTests_CLUSTER)
 
-# Link the test project with Google Test
-target_link_libraries(SophireadTests GTest::GTest GTest::Main)
-
-include(GoogleTest)
-gtest_discover_tests(SophireadTests)
+# Peakfitting Tests
+set(TESTS_PEAKFITTING
+    include/centroid.h
+    src/centroid.cpp
+    include/fastgaussian.h
+    src/fastgaussian.cpp
+    tests/test_peakfitting.cpp
+)
+add_executable(SophireadTests_PEAKFITTING ${TESTS_PEAKFITTING})
+target_link_libraries(SophireadTests_PEAKFITTING GTest::GTest GTest::Main)
+gtest_discover_tests(SophireadTests_PEAKFITTING)
