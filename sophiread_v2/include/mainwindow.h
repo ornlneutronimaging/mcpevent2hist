@@ -1,20 +1,29 @@
-#include <qwt_interval.h>
-#include <qwt_math.h>
-#include <qwt_matrix_raster_data.h>
-#include <qwt_plot_spectrogram.h>
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
-#include <QElapsedTimer>
-#include <QLabel>
 #include <QMainWindow>
 #include <QTimer>
+#include <QLabel>
+#include <QElapsedTimer>
+#include <qwt_interval.h>
+#include <qwt_matrix_raster_data.h>
+#include <qwt_plot_spectrogram.h>
+#include <qwt_math.h>
 
-class MainWindow : public QMainWindow {
-  Q_OBJECT
+namespace Ui {
+class MainWindow;
+}
 
- public:
-  explicit MainWindow(QWidget *parent = 0);
-  ~MainWindow();
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
 
- private:
-  Ui::MainWindow *ui;
+public:
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
+
+private:
+    Ui::MainWindow *ui;
 };
+
+#endif // MAINWINDOW_H

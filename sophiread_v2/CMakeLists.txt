@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Sophiread)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_AUTOMOC ON)
 
 # copy test data directory
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
@@ -40,11 +41,14 @@ target_link_libraries(Sophiread SophireadLib)
 qt5_wrap_ui(SophireadDisplayUI
     ui/mainwindow.ui
 )
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_executable(SophireadDisplay
     sophiread_display.cpp
+    include/mainwindow.h
+    src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
-target_link_libraries(SophireadDisplay SophireadLib)
+target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt)
 
 
 # ----------------- TESTS ----------------- #
