@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Sophiread)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 
 # copy test data directory
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
