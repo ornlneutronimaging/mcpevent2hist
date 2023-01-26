@@ -10,6 +10,7 @@
 
 #include <QFile>
 #include <QFileDialog>
+#include <iostream>
 
 #include "abs.h"
 #include "ui_mainwindow.h"
@@ -131,6 +132,7 @@ void MainWindow::handlereadfile() {
 
   auto hits = readTimepix3RawData(filename.toStdString());
   m_total_hits = hits.size();
+  std::cout << "Total hits: " << m_total_hits << std::endl;
 
   // Perform clustering
   clustering_alg->fit(hits);
@@ -138,6 +140,7 @@ void MainWindow::handlereadfile() {
   // Generate neutron events from clustering results
   m_events = clustering_alg->get_events(hits);
   m_total_events = m_events.size();
+  std::cout << "Total events: " << m_total_events << std::endl;
 
   // Convert neutron events to 2D histogram data
   const double mycos = cos(ROTANGLE);
@@ -164,6 +167,8 @@ void MainWindow::handlereadfile() {
 
   // Stop the timer
   mytimer->stop();
+
+  std::cout << "Done" << std::endl;
 }
 
 /**
