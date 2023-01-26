@@ -78,20 +78,16 @@ MainWindow::~MainWindow() { delete ui; }
  *
  */
 void MainWindow::handletimer() {
-  QString qs;
   // update percentage of data processed
   // TODO: need to find a way to adapte the percentage number
   //
   // update time used to process data
   auto elapsed = myelapsedtime.elapsed();
-  qs.asprintf("%lld ms", elapsed);
-  ui->elapsed_time->setText(qs);
+  ui->elapsed_time->setText(QString::number(elapsed));
   // update total number of hits
-  qs.asprintf("%u", m_total_hits);
-  ui->totalhits->setText(qs);
+  ui->totalhits->setText(QString::number(m_total_hits));
   // update number of clusters (neutron events) found
-  qs.asprintf("%u", m_total_events);
-  ui->totalclusters->setText(qs);
+  ui->totalclusters->setText(QString::number(m_total_events));
 }
 
 /**
@@ -132,6 +128,7 @@ void MainWindow::handlereadfile() {
 
   auto hits = readTimepix3RawData(filename.toStdString());
   m_total_hits = hits.size();
+  ui->totalhits->setText(QString::number(m_total_hits));
   std::cout << "Total hits: " << m_total_hits << std::endl;
 
   // Perform clustering
@@ -140,6 +137,7 @@ void MainWindow::handlereadfile() {
   // Generate neutron events from clustering results
   m_events = clustering_alg->get_events(hits);
   m_total_events = m_events.size();
+  ui->totalclusters->setText(QString::number(m_total_events));
   std::cout << "Total events: " << m_total_events << std::endl;
 
   // Convert neutron events to 2D histogram data
