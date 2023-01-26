@@ -7,12 +7,15 @@ set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 # copy test data directory
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 
+find_package(OpenMP REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(HDF5 REQUIRED)
 
 # Add include&linking directories
 include_directories(
     include
     $ENV{CONDA_PREFIX}/include
+    ${HDF5_INCLUDE_DIRS}
 )
 link_directories(
     $ENV{CONDA_PREFIX}/lib
@@ -20,11 +23,11 @@ link_directories(
 
 
 # Add compiler flags
-add_compile_options(-O3 -std=c++11 -Wall -Wextra)
+add_compile_options(-O3 -std=c++11 -Wall -Wextra ${OpenMP_CXX_FLAGS})
 
 # ----------------- LIBRARY ----------------- #
 add_library(SophireadLib
-    src/ars.cpp
+    src/abs.cpp
     src/dbscan.cpp
     src/tpx3.cpp
     src/centroid.cpp
@@ -35,7 +38,7 @@ add_library(SophireadLib
 add_executable(Sophiread
     sophiread.cpp
 )
-target_link_libraries(Sophiread SophireadLib)
+target_link_libraries(Sophiread SophireadLib OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
 qt5_wrap_ui(SophireadDisplayUI
@@ -48,7 +51,7 @@ add_executable(SophireadDisplay
     src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
-target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt)
+target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt ${HDF5_LIBRARIES} OpenMP::OpenMP_CXX)
 
 
 # ----------------- TESTS ----------------- #
