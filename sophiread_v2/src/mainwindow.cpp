@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 
-// #include <H5Cpp.h>
+#include <H5Cpp.h>
 #include <QtConcurrent/qtconcurrentrun.h>
 #include <math.h>
 #include <omp.h>
@@ -201,7 +201,7 @@ void MainWindow::handlesavedata() {
   // Save 2D histogram
   double *swaphisto = NULL;
   QString filename = QFileDialog::getSaveFileName(
-      this, "Save to File Name", QDir::currentPath(),
+      this, "Save 2D hist as binary", QDir::currentPath(),
       "All files (*.*) ;; Pic Binary (*.dat)");
   if (!filename.isNull()) {
     FILE *outfile;
@@ -223,42 +223,42 @@ void MainWindow::handlesavedata() {
   }
 
   // Save neutron events to HDF5 archive
-  // filename = QFileDialog::getSaveFileName(this, "Save to File Name",
-  //                                         QDir::currentPath(),
-  //                                         "All files (*.*) ;; HDF5
-  //                                         (*.hdf5)");
-  // if (!filename.isNull()) {
-  //   // create HDF5 archive
-  //   H5::H5File events_file(filename.toStdString(), H5F_ACC_TRUNC);
+  filename = QFileDialog::getSaveFileName(this, "Save events to HDF5",
+                                          QDir::currentPath(),
+                                          "All files (*.*) ;; HDF5 (*.hdf5)");
+  if (!filename.isNull()) {
+    // create HDF5 archive
+    H5::H5File events_file(filename.toStdString(), H5F_ACC_TRUNC);
 
-  //   hsize_t dims[1] = {m_events.size()};
-  //   H5::DataSpace dataspace(1, dims);
-  //   H5::IntType datatype(H5::PredType::NATIVE_UINT);
+    hsize_t dims[1] = {m_events.size()};
+    H5::DataSpace dataspace(1, dims);
+    H5::IntType datatype(H5::PredType::NATIVE_UINT);
 
-  //   H5::Group group = events_file.createGroup("events");
+    H5::Group group = events_file.createGroup("events");
 
-  //   // write out X
-  //   std::vector<int> x(m_events.size());
-  //   std::transform(m_events.begin(), m_events.end(), x.begin(),
-  //                  [](const NeutronEvent &e) { return e.getX(); });
-  //   H5::DataSet dataset = group.createDataSet("X", datatype, dataspace);
-  //   dataset.write(&x[0], H5::PredType::NATIVE_UINT);
+    // write out X
+    std::vector<int> x(m_events.size());
+    std::transform(m_events.begin(), m_events.end(), x.begin(),
+                   [](const NeutronEvent &e) { return e.getX(); });
+    H5::DataSet dataset = group.createDataSet("X", datatype, dataspace);
+    dataset.write(&x[0], H5::PredType::NATIVE_UINT);
 
-  //   // write out Y
-  //   std::vector<int> y(m_events.size());
-  //   std::transform(m_events.begin(), m_events.end(), y.begin(),
-  //                  [](const NeutronEvent &e) { return e.getY(); });
-  //   dataset = group.createDataSet("Y", datatype, dataspace);
-  //   dataset.write(&y[0], H5::PredType::NATIVE_UINT);
+    // write out Y
+    std::vector<int> y(m_events.size());
+    std::transform(m_events.begin(), m_events.end(), y.begin(),
+                   [](const NeutronEvent &e) { return e.getY(); });
+    dataset = group.createDataSet("Y", datatype, dataspace);
+    dataset.write(&y[0], H5::PredType::NATIVE_UINT);
 
-  //   // write out TOF
-  //   std::vector<unsigned int> tof(m_events.size());
-  //   std::transform(m_events.begin(), m_events.end(), tof.begin(),
-  //                  [](const NeutronEvent &e) { return (int)e.getTOF(); });
-  //   dataset = group.createDataSet("TOF", datatype, dataspace);
-  //   dataset.write(&tof[0], H5::PredType::NATIVE_UINT);
+    // write out TOF
+    std::vector<unsigned int> tof(m_events.size());
+    std::transform(m_events.begin(), m_events.end(), tof.begin(),
+                   [](const NeutronEvent &e) { return (int)e.getTOF(); });
+    dataset = group.createDataSet("TOF", datatype, dataspace);
+    dataset.write(&tof[0], H5::PredType::NATIVE_UINT);
 
-  // // close file
-  // events_file.close();
-  // }
+    // close file
+    events_file.close();
+    std::cout << "Saved events to " << filename.toStdString() << std::endl;
+  }
 }

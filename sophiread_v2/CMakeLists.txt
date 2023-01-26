@@ -51,7 +51,7 @@ add_executable(SophireadDisplay
     src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
-target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt ${HDF5_LIBRARIES} OpenMP::OpenMP_CXX)
+target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 
 # ----------------- TESTS ----------------- #
