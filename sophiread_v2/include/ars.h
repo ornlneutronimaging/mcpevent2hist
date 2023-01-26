@@ -15,9 +15,9 @@ class ARS : public ClusteringAlgorithm {
   ~ARS() = default;
 
  private:
-  double minRadius_;   // The minimum radius
-  double maxRadius_;   // The maximum radius
-  double radiusStep_;  // The step size for increasing the radius
+  double minRadius_;                // The minimum radius
+  double maxRadius_;                // The maximum radius
+  double radiusStep_;               // The step size for increasing the radius
   std::vector<int> clusterLabels_;  // The cluster labels for each hit
   ClusteringAlgorithm* peakFittingAlgorithm_;  // The clustering algorithm
 };
