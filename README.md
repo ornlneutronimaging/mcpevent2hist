@@ -60,3 +60,11 @@ micromamba create -f environment.yml
 2. On MacOSX (m1 pro), you might see some warning about SDK version issue (depending on how fast Qt plans to support the latest Apple SDK). This warning can be safely ignored as the application will be built without any issue.
 
 3. Currently, the testing data does not seem to have a `tdc` packet, so the `tof` and `spidertime` always match.  This might be a bug in how the `tof` is calculated, and future investigation is needed.
+
+4. If seeing the following error, install `mesa-common-dev` and `libglu1-mesa-dev` to the host system (cannot provide them with conda).
+
+```bash
+CMake Error at /home/user/micromamba/envs/sophiread/lib/cmake/Qt5Gui/Qt5GuiConfigExtras.cmake:9 (message):
+  Failed to find "GL/gl.h" in
+  ...
+```
