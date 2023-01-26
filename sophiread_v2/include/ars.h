@@ -11,7 +11,7 @@ class ARS : public ClusteringAlgorithm {
       : minRadius_(minRadius), maxRadius_(maxRadius), radiusStep_(radiusStep){};
   void initialize(std::string method = "centroid");
   void fit(const std::vector<Hit>& data);
-  std::vector<NeutronEvent> predict(const std::vector<Hit>& data);
+  std::vector<NeutronEvent> get_events(const std::vector<Hit>& data);
   ~ARS() = default;
 
  private:

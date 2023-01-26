@@ -21,7 +21,7 @@ void ARS::fit(const std::vector<Hit>& data) {
  * @param data
  * @return std::vector<int>
  */
-std::vector<NeutronEvent> ARS::predict(const std::vector<Hit>& data) {
+std::vector<NeutronEvent> ARS::get_events(const std::vector<Hit>& data) {
   std::cout << "ARS to be implemented." << std::endl;
   return std::vector<NeutronEvent>();
 }

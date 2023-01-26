@@ -6,7 +6,7 @@ class DBSCAN : public ClusteringAlgorithm {
       : m_eps(eps), m_min_samples(min_samples){};
   void initialize(std::string method = "centroid");
   void fit(const std::vector<Hit>& hits);
-  std::vector<NeutronEvent> predict(const std::vector<Hit>& hits);
+  std::vector<NeutronEvent> get_event(const std::vector<Hit>& hits);
   ~DBSCAN() = default;
 
  private:
