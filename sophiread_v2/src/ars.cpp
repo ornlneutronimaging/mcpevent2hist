@@ -2,14 +2,16 @@
 
 #include <iostream>
 
-void ARS::initialize() { std::cout << "ARS to be implemented." << std::endl; }
+void ARS::initialize(std::string method) {
+  std::cout << "ARS to be implemented." << std::endl;
+}
 
 /**
  * @brief Fit the ARS algorithm to the data
  *
  * @param data
  */
-void ARS::fit(const std::vector<std::vector<double>>& data) {
+void ARS::fit(const std::vector<Hit>& data) {
   std::cout << "ARS to be implemented." << std::endl;
 }
 
@@ -19,7 +21,7 @@ void ARS::fit(const std::vector<std::vector<double>>& data) {
  * @param data
  * @return std::vector<int>
  */
-std::vector<int> ARS::predict(const std::vector<std::vector<double>>& data) {
+std::vector<NeutronEvent> ARS::predict(const std::vector<Hit>& data) {
   std::cout << "ARS to be implemented." << std::endl;
-  return std::vector<int>();
+  return std::vector<NeutronEvent>();
 }

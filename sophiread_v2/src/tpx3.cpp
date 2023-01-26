@@ -21,6 +21,13 @@ std::string Hit::toString() const {
   return ss.str();
 }
 
+std::string NeutronEvent::toString() const {
+  std::stringstream ss;
+  ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof
+     << ", nHits=" << m_nHits;
+  return ss.str();
+}
+
 std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   int chip_layout_type = 0;
   int data_packet_size = 0;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <fstream>
 #include <string>
 #include <vector>
@@ -41,6 +43,27 @@ class Hit {
       25.0;  // 40 MHz clock is used for the coarse time of arrival.
   const double m_scale_to_ns_640mhz =
       25.0 / 16.0;  // 640 MHz clock is used for the fine time of arrival.
+};
+
+class NeutronEvent {
+ public:
+  NeutronEvent(const int x, const int y, const unsigned int tof,
+               const int nHits)
+      : m_x(x), m_y(y), m_tof(tof), m_nHits(nHits){};
+  int getX() const { return m_x; };
+  int getY() const { return m_y; };
+  unsigned int getTOF() const { return m_tof; };
+  double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
+  int getNHits() const { return m_nHits; };
+
+  std::string toString() const;
+
+ private:
+  const int m_x, m_y;        // pixel coordinates
+  const unsigned int m_tof;  // time of flight
+  const int m_nHits;         // number of hits in the event (cluster size)
+  const double m_scale_to_ns_40mhz =
+      25.0;  // 40 MHz clock is used for the coarse time of arrival.
 };
 
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
