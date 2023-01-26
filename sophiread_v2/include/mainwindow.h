@@ -11,10 +11,12 @@
 #include <QMainWindow>
 #include <QTimer>
 
+#include "clustering.h"
 #include "tpx3.h"
 
 #define HSIZEM1 4095
 #define DSCALE 8.0
+#define ROTANGLE -1.0
 
 namespace Ui {
 class MainWindow;
@@ -27,7 +29,10 @@ class MainWindow : public QMainWindow {
   explicit MainWindow(QWidget *parent = 0);
   ~MainWindow();
 
-  QElapsedTimer myelapsedtime;
+  QVector<double> vhisto;
+  double *my2dhisto;
+
+  QElapsedTimer myelapsedtime;  // track time used to process data
   QwtMatrixRasterData *histo_data;
   QwtPlotSpectrogram *histo;
 
@@ -40,8 +45,12 @@ class MainWindow : public QMainWindow {
  private:
   Ui::MainWindow *ui;
   QTimer *mytimer;
-  double rangemax;
-  double rangemin;
+  double range_max;
+  double range_min;
+  std::vector<NeutronEvent> m_events;
+  int m_total_hits;
+  int m_total_events;
+  ClusteringAlgorithm *clustering_alg;
 };
 
 #endif  // MAINWINDOW_H

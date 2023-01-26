@@ -191,9 +191,9 @@ MainWindow::MainWindow(QWidget *parent) :
     myinfo.totalClusters=0;
     myinfo.fileparsedone=0;
     myinfo.clusterparsedone=0;
-    rangemax=100.0;
-    rangemin=0.0;
-//    int i,j;
+    range_max = 100.0;
+    range_min = 0.0;
+    //    int i,j;
     int ii,jj;
     ii=(int)(DSCALE*512);
     vhisto.resize(ii*ii);
