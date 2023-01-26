@@ -2,10 +2,6 @@
 
 #include <iostream>
 
-void DBSCAN::initialize(std::string method) {
-  std::cout << "DBSCAN to be implemented." << std::endl;
-}
-
 /**
  * @brief Fit the DBSCAN algorithm to the data
  *

@@ -1,17 +1,13 @@
-#include "ars.h"
+#include "abs.h"
 
 #include <iostream>
-
-void ARS::initialize(std::string method) {
-  std::cout << "ARS to be implemented." << std::endl;
-}
 
 /**
  * @brief Fit the ARS algorithm to the data
  *
  * @param data
  */
-void ARS::fit(const std::vector<Hit>& data) {
+void ABS::fit(const std::vector<Hit>& data) {
   std::cout << "ARS to be implemented." << std::endl;
 }
 
@@ -21,7 +17,7 @@ void ARS::fit(const std::vector<Hit>& data) {
  * @param data
  * @return std::vector<int>
  */
-std::vector<NeutronEvent> ARS::get_events(const std::vector<Hit>& data) {
+std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
   std::cout << "ARS to be implemented." << std::endl;
   return std::vector<NeutronEvent>();
 }
