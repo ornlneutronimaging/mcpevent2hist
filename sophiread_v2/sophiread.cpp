@@ -10,8 +10,6 @@
 #include "tpx3.h"
 
 int main(int argc, char *argv[]) {
-  auto input_tpx3 = std::string(argv[1]);
-
   // processing command line arguments
   std::string in_tpx3;
   std::string out_hits;

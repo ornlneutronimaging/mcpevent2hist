@@ -2,11 +2,11 @@
 
 #include <iostream>
 
-#include "ars.h"
+#include "abs.h"
 #include "dbscan.h"
 
-TEST(Clustering, ArsAlgorithm) {
-  std::cout << "ARS to be implemented." << std::endl;
+TEST(Clustering, ABSAlgorithm) {
+  std::cout << "ABS to be implemented." << std::endl;
 }
 
 TEST(Clustering, DBSCANAlgorithm) {

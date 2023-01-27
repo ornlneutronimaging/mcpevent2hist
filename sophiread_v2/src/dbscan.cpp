@@ -2,10 +2,6 @@
 
 #include <iostream>
 
-void DBSCAN::initialize() {
-  std::cout << "DBSCAN to be implemented." << std::endl;
-}
-
 /**
  * @brief Fit the DBSCAN algorithm to the data
  *
@@ -21,7 +17,7 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
  * @param hits
  * @return std::vector<int>
  */
-std::vector<int> DBSCAN::predict(const std::vector<Hit>& hits) {
+std::vector<NeutronEvent> DBSCAN::get_events(const std::vector<Hit>& hits) {
   std::cout << "DBSCAN to be implemented." << std::endl;
-  return std::vector<int>();
+  return std::vector<NeutronEvent>();
 }
