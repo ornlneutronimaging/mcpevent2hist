@@ -1,37 +1,20 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
-#include <random>
 
 #include "centroid.h"
 #include "fastgaussian.h"
 
-std::mt19937 random_engine(1960);  // seed the random engine
-std::uniform_int_distribution<int> distribution(0, 4096);  // 4k detector
 const double absolute_error = 0.01;
-
-Hit generateRandomHit() {
-  int x = distribution(random_engine);
-  int y = distribution(random_engine);
-  int tot = distribution(random_engine);
-  int toa = distribution(random_engine);
-  int ftoa = distribution(random_engine);
-  int tof = distribution(random_engine);
-  int spidertime = distribution(random_engine);
-  return Hit(x, y, tot, toa, ftoa, tof, spidertime);
-}
 
 TEST(PeakFitting, CentroidAlgorithm) {
   // Create a random vector of hits
+  // NOTE: random number generator do not generate the same number across
+  // multiple platforms.
   std::vector<Hit> hits;
-  for (int i = 0; i < 3; i++) {
-    hits.push_back(generateRandomHit());
-  }
-
-  // print out the hits
-  for (const auto& hit : hits) {
-    std::cout << hit.toString() << std::endl;
-  }
+  hits.push_back(Hit(1750, 2038, 2445, 1428, 3989, 3026, 740));
+  hits.push_back(Hit(3015, 2073, 3212, 718, 2842, 428, 422));
+  hits.push_back(Hit(772, 3912, 3133, 2664, 236, 3334, 3134));
 
   // Create a centroid algorithm
   // CASE_1: weighted by tot
