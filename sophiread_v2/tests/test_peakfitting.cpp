@@ -34,6 +34,7 @@ TEST(PeakFitting, CentroidAlgorithm) {
   }
 
   // Create a centroid algorithm
+  // CASE_1: weighted by tot
   Centroid centroid;
   NeutronEvent event = centroid.fit(hits);
 
@@ -43,6 +44,18 @@ TEST(PeakFitting, CentroidAlgorithm) {
   EXPECT_NEAR(event.getY(), 2718.74, absolute_error)
       << "Centroid y is not correct.";
   EXPECT_NEAR(event.getTOF(), 2262.67, absolute_error)
+      << "Centroid tof is not correct.";
+
+  // CASE_2: not weighted by tot
+  Centroid centroid2(false);
+  NeutronEvent event2 = centroid2.fit(hits);
+
+  // Check that the event is correct
+  EXPECT_NEAR(event2.getX(), 1845.67, absolute_error)
+      << "Centroid x is not correct.";
+  EXPECT_NEAR(event2.getY(), 2674.33, absolute_error)
+      << "Centroid y is not correct.";
+  EXPECT_NEAR(event2.getTOF(), 2262.67, absolute_error)
       << "Centroid tof is not correct.";
 }
 
