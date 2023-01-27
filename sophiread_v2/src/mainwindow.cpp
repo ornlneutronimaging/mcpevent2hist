@@ -141,14 +141,16 @@ void MainWindow::handlereadfile() {
   std::cout << "Total events: " << m_total_events << std::endl;
 
   // Convert neutron events to 2D histogram data
-  const double mycos = cos(ROTANGLE);
-  const double mysin = sin(ROTANGLE);
+  const double mycos = cos(ROTANGLE * M_PI / 180.0);
+  const double mysin = sin(ROTANGLE * M_PI / 180.0);
   const int isize = (int)(DSCALE * 512);
 #pragma omp parallel for
   for (auto e : m_events) {
     auto x = e.getX();
     auto y = e.getY();
     // correction for detector mounting angle
+    // NOTE: this rotation correction is still being investigated
+    //       might not be needed in the future.
     if (ROTANGLE != 0.0) {
       auto x1 = x * mycos - y * mysin;
       auto y1 = x * mysin + y * mycos;
