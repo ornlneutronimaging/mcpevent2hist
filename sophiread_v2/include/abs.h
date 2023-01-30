@@ -3,7 +3,7 @@
 
 struct Cluster {
   int x_min, y_min, x_max, y_max;
-  int spidertime_min, spidertime_max;
+  int spidertime;
   int label, size;
 };
 

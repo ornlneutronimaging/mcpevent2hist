@@ -21,7 +21,7 @@ void ABS::fit(const std::vector<Hit>& data) {
   // make a vector of clusters
   std::vector<Cluster> clusters;
   for (int i = 0; i < numClusters_; i++) {
-    clusters.push_back(Cluster{0, 0, 0, 0, 0, 0, i, 0});
+    clusters.push_back(Cluster{0, 0, 0, 0, 0, i, 0});
   }
 
   // loop over all hits
@@ -49,8 +49,7 @@ void ABS::fit(const std::vector<Hit>& data) {
         cluster.x_max = hit.getX();
         cluster.y_min = hit.getY();
         cluster.y_max = hit.getY();
-        cluster.spidertime_min = hit.getSPIDERTIME();
-        cluster.spidertime_max = hit.getSPIDERTIME();
+        cluster.spidertime = hit.getSPIDERTIME();
         //
         label = cluster.label;
         break;
@@ -63,17 +62,13 @@ void ABS::fit(const std::vector<Hit>& data) {
             hit.getX() <= cluster.x_max + m_feature &&
             hit.getY() >= cluster.y_min - m_feature &&
             hit.getY() <= cluster.y_max + m_feature &&
-            hit.getSPIDERTIME() >= cluster.spidertime_min - spiderTimeRange_ &&
-            hit.getSPIDERTIME() <= cluster.spidertime_max + spiderTimeRange_) {
+            std::abs(hit.getSPIDERTIME() - cluster.spidertime) <=
+                spiderTimeRange_) {
           cluster.size++;
           cluster.x_min = std::min(cluster.x_min, hit.getX());
           cluster.x_max = std::max(cluster.x_max, hit.getX());
           cluster.y_min = std::min(cluster.y_min, hit.getY());
           cluster.y_max = std::max(cluster.y_max, hit.getY());
-          cluster.spidertime_min =
-              std::min(cluster.spidertime_min, hit.getSPIDERTIME());
-          cluster.spidertime_max =
-              std::max(cluster.spidertime_max, hit.getSPIDERTIME());
           //
           label = cluster.label;
           break;
@@ -96,8 +91,7 @@ void ABS::fit(const std::vector<Hit>& data) {
           cluster.x_max = 0;
           cluster.y_min = 0;
           cluster.y_max = 0;
-          cluster.spidertime_min = 0;
-          cluster.spidertime_max = 0;
+          cluster.spidertime = 0;
           cluster.label = max_label;
           max_label++;
         }
