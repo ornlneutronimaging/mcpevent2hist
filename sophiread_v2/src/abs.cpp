@@ -21,7 +21,7 @@ void ABS::fit(const std::vector<Hit>& data) {
   // make a vector of clusters
   std::vector<Cluster> clusters;
   for (int i = 0; i < numClusters_; i++) {
-    clusters.push_back(Cluster{0, 0, 0, 0, i, 0});
+    clusters.push_back(Cluster{0, 0, 0, 0, 0, 0, i, 0});
   }
 
   // loop over all hits
@@ -32,9 +32,16 @@ void ABS::fit(const std::vector<Hit>& data) {
   for (size_t i = 0; i < data.size(); i++) {
     auto& hit = data[i];
     int label = -1;  // assume it is a noise
+    int full_clusters = 0;
 
     // loop over all clusters
     for (auto& cluster : clusters) {
+      // quick check if current cluster is full
+      if (cluster.size == maxClusterSize_) {
+        full_clusters++;
+        continue;
+      }
+
       // case_0: cluster is empty, add hit to cluster and update cluster bounds
       if (cluster.size == 0) {
         cluster.size++;
@@ -42,6 +49,8 @@ void ABS::fit(const std::vector<Hit>& data) {
         cluster.x_max = hit.getX();
         cluster.y_min = hit.getY();
         cluster.y_max = hit.getY();
+        cluster.spidertime_min = hit.getSPIDERTIME();
+        cluster.spidertime_max = hit.getSPIDERTIME();
         //
         label = cluster.label;
         break;
@@ -53,12 +62,18 @@ void ABS::fit(const std::vector<Hit>& data) {
         if (hit.getX() >= cluster.x_min - m_feature &&
             hit.getX() <= cluster.x_max + m_feature &&
             hit.getY() >= cluster.y_min - m_feature &&
-            hit.getY() <= cluster.y_max + m_feature) {
+            hit.getY() <= cluster.y_max + m_feature &&
+            hit.getSPIDERTIME() >= cluster.spidertime_min - spiderTimeRange_ &&
+            hit.getSPIDERTIME() <= cluster.spidertime_max + spiderTimeRange_) {
           cluster.size++;
           cluster.x_min = std::min(cluster.x_min, hit.getX());
           cluster.x_max = std::max(cluster.x_max, hit.getX());
           cluster.y_min = std::min(cluster.y_min, hit.getY());
           cluster.y_max = std::max(cluster.y_max, hit.getY());
+          cluster.spidertime_min =
+              std::min(cluster.spidertime_min, hit.getSPIDERTIME());
+          cluster.spidertime_max =
+              std::max(cluster.spidertime_max, hit.getSPIDERTIME());
           //
           label = cluster.label;
           break;
@@ -67,8 +82,28 @@ void ABS::fit(const std::vector<Hit>& data) {
         }
       }
     }
-    //
+
+    // update label
     clusterLabels_[i] = label;
+
+    // if half of the clusters are full, start reset the full clusters
+
+    if (full_clusters > numClusters_ / 2) {
+      for (auto& cluster : clusters) {
+        if (cluster.size == maxClusterSize_) {
+          cluster.size = 0;
+          cluster.x_min = 0;
+          cluster.x_max = 0;
+          cluster.y_min = 0;
+          cluster.y_max = 0;
+          cluster.spidertime_min = 0;
+          cluster.spidertime_max = 0;
+          cluster.label = max_label;
+          max_label++;
+        }
+      }
+    }
+    //
   }
 }
 
@@ -91,7 +126,8 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
   auto max_label_it =
       std::max_element(clusterLabels_.begin(), clusterLabels_.end());
   int max_label = *max_label_it;
-  // #pragma omp parallel for
+  // loop over all labels
+#pragma omp parallel for
   for (int label = 0; label <= max_label; label++) {
     std::vector<Hit> cluster;
     for (size_t i = 0; i < data.size(); i++) {
@@ -110,7 +146,7 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     }
     auto event = alg->fit(cluster);
     // Add the event to the list
-    // #pragma omp critical
+#pragma omp critical
     events.push_back(event);
   }
 

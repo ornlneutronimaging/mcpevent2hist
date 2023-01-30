@@ -2,7 +2,9 @@
 #include "peakfitting.h"
 
 struct Cluster {
-  int x_min, y_min, x_max, y_max, label, size;
+  int x_min, y_min, x_max, y_max;
+  int spidertime_min, spidertime_max;
+  int label, size;
 };
 
 /**
@@ -23,6 +25,7 @@ class ABS : public ClusteringAlgorithm {
   std::string m_method{"centroid"};  // method for centroid
   std::vector<int> clusterLabels_;   // The cluster labels for each hit
   const int numClusters_ = 128;      // The number of clusters use in runtime
-  const int maxClusterSize_ = 20;    // The maximum cluster size
+  const int maxClusterSize_ = 10;    // The maximum cluster size
+  const int spiderTimeRange_ = 3;    // The spider time range
   PeakFittingAlgorithm* peakFittingAlgorithm_;  // The clustering algorithm
 };
