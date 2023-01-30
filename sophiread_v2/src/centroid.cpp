@@ -2,17 +2,36 @@
 
 #include <iostream>
 
-void Centroid::initialize() {
-  std::cout << "Centroid to be implemented." << std::endl;
-}
+NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
+  double x = 0;
+  double y = 0;
+  double tof = 0;
+  double tot = 0;
 
-void Centroid::fit(const std::vector<Hit>& data) {
-  std::cout << "Centroid to be implemented." << std::endl;
-}
+  if (data.size() == 0) {
+    return NeutronEvent(0, 0, 0, 0);
+  }
 
-std::vector<std::tuple<double, double, double>> Centroid::predict(
-    const std::vector<Hit>& data) {
-  std::vector<std::tuple<double, double, double>> predictions = {};
-  std::cout << "Centroid to be implemented." << std::endl;
-  return predictions;
+  if (weighted_by_tot) {
+    for (const auto& hit : data) {
+      x += hit.getX() * hit.getTOT();
+      y += hit.getY() * hit.getTOT();
+      tof += hit.getTOF();
+      tot += hit.getTOT();
+    }
+    x /= tot;
+    y /= tot;
+  } else {
+    for (const auto& hit : data) {
+      x += hit.getX();
+      y += hit.getY();
+      tof += hit.getTOF();
+    }
+    x /= data.size();
+    y /= data.size();
+  }
+
+  tof /= data.size();
+
+  return NeutronEvent(x, y, tof, data.size());
 }
