@@ -3,10 +3,12 @@
  * files and a tiff image (for visual inspection).
  *
  */
-#include <fstream>
-#include <iostream>
 #include <unistd.h>
 
+#include <fstream>
+#include <iostream>
+
+#include "abs.h"
 #include "tpx3.h"
 
 int main(int argc, char *argv[]) {
@@ -45,6 +47,18 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   auto hits = readTimepix3RawData(in_tpx3);
+
+  // clustering
+  ClusteringAlgorithm *alg = new ABS(5.0);
+  alg->fit(hits);
+  auto events = alg->get_events(hits);
+  // print out events
+  if (verbose) {
+    std::cout << "Found " << events.size() << " events." << std::endl;
+    for (auto event : events) {
+    std::cout << event.toString() << std::endl;
+    }
+  }
 
   // write hits to file
   // TODO: convert to output neutron events (x, y, tof) onces clustering and
