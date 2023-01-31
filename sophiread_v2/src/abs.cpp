@@ -129,7 +129,6 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
   auto max_label_it =
       std::max_element(clusterLabels_.begin(), clusterLabels_.end());
   int max_label = *max_label_it;
-  std::cout << "max label: " << max_label << std::endl;
 
 // loop over all clusterIndices_
 #pragma omp parallel for
