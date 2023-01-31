@@ -25,6 +25,9 @@ class Hit {
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   double getTOA_ns() const { return m_toa * m_scale_to_ns_40mhz; };
   double getTOT_ns() const { return m_tot * m_scale_to_ns_40mhz; };
+  double getSPIDERTIME_ns() const {
+    return m_spidertime * m_scale_to_ns_40mhz;
+  };
   double getFTOA_ns() const { return m_ftoa * m_scale_to_ns_640mhz; };
 
   std::string toString() const;
@@ -36,7 +39,7 @@ class Hit {
   const int m_toa;     // time of arrival (40MHz clock, 14 bit)
   const int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
   const unsigned int m_tof;
-  const int m_spidertime;  // time from the spider board
+  const int m_spidertime;  // time from the spider board (in the unit of 25ns)
 
   // scale factor that converts time to ns
   const double m_scale_to_ns_40mhz =
