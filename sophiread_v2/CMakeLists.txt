@@ -7,6 +7,7 @@ set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 # copy test data directory
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 
+find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(HDF5 REQUIRED)
@@ -16,7 +17,9 @@ include_directories(
     include
     $ENV{CONDA_PREFIX}/include
     ${HDF5_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
 )
+
 link_directories(
     $ENV{CONDA_PREFIX}/lib
 )

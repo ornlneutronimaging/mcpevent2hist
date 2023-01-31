@@ -8,12 +8,12 @@
 
 std::random_device rd;
 std::mt19937 gen(rd());
-std::uniform_real_distribution<> pos(-2, 2);
-std::uniform_real_distribution<> tot(0, 100);
-std::uniform_real_distribution<> toa(0, 1000);
-std::uniform_real_distribution<> ftoa(0, 255);
-std::uniform_real_distribution<> tof(0, 100);
-std::uniform_real_distribution<> spidertime(-1, 1);
+std::normal_distribution<> pos(0, 2);
+std::normal_distribution<> tot(20, 5);
+std::normal_distribution<> toa(1000, 200);
+std::normal_distribution<> ftoa(16, 8);
+std::normal_distribution<> tof(500, 200);
+std::normal_distribution<> spidertime(0, 10);
 
 TEST(PeakFitting, CentroidAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
@@ -63,7 +63,13 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
     int y = 50 + pos(gen);
     int mytof = 1000 + tof(gen);
     int stime = 10 + spidertime(gen);
-    hits.push_back(Hit(x, y, tot(gen), toa(gen), ftoa(gen), mytof, stime));
+    hits.push_back(
+        Hit(x, y, 1 + tot(gen), 1 + toa(gen), ftoa(gen), mytof, stime));
+  }
+
+  // print out the hits
+  for (auto hit : hits) {
+    std::cout << hit.toString() << std::endl;
   }
 
   // Create a fast gaussian algorithm
