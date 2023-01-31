@@ -100,14 +100,6 @@ void ABS::fit(const std::vector<Hit>& data) {
 
     // update label
     clusterLabels_[i] = label;
-
-    // print hit and label every 1000 hits
-    if (i % 1000 == 0) {
-      std::cout << hit.getX() << " " << hit.getY() << " "
-                << hit.getSPIDERTIME_ns() << " " << label << "@" << i
-                << std::endl;
-    }
-    //
   }
   // convert clusterLabels_ to a 2D list of index
   clusterIndices_.clear();
@@ -159,9 +151,6 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     // Add the event to the list
 #pragma omp critical
     events.push_back(event);
-
-    // print event
-    // std::cout << event.toString() << " " << label << std::endl;
   }
 
   return events;
