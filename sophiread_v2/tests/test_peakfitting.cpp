@@ -1,13 +1,23 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <random>
 
 #include "centroid.h"
 #include "fastgaussian.h"
 
-const double absolute_error = 0.01;
+std::random_device rd;
+std::mt19937 gen(rd());
+std::normal_distribution<> pos(0, 2);
+std::normal_distribution<> tot(20, 5);
+std::normal_distribution<> toa(1000, 200);
+std::normal_distribution<> ftoa(16, 8);
+std::normal_distribution<> tof(0, 2);
+std::normal_distribution<> spidertime(0, 10);
 
 TEST(PeakFitting, CentroidAlgorithm) {
+  // set tolerance for the absolute position error to half a pixel
+  const double absolute_error = 0.01;
   // Create a random vector of hits
   // NOTE: random number generator do not generate the same number across
   // multiple platforms.
@@ -18,8 +28,8 @@ TEST(PeakFitting, CentroidAlgorithm) {
 
   // Create a centroid algorithm
   // CASE_1: weighted by tot
-  Centroid centroid;
-  NeutronEvent event = centroid.fit(hits);
+  Centroid alg;
+  NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
   EXPECT_NEAR(event.getX(), 1863.66, absolute_error)
@@ -30,8 +40,8 @@ TEST(PeakFitting, CentroidAlgorithm) {
       << "Centroid tof is not correct.";
 
   // CASE_2: not weighted by tot
-  Centroid centroid2(false);
-  NeutronEvent event2 = centroid2.fit(hits);
+  Centroid alg2(false);
+  NeutronEvent event2 = alg2.fit(hits);
 
   // Check that the event is correct
   EXPECT_NEAR(event2.getX(), 1845.67, absolute_error)
@@ -43,5 +53,29 @@ TEST(PeakFitting, CentroidAlgorithm) {
 }
 
 TEST(PeakFitting, FastGaussianAlgorithm) {
-  std::cout << "FastGaussian to be implemented." << std::endl;
+  // set tolerance for the absolute position error to half a pixel
+  const double absolute_error = 1.0;
+
+  // Create a cluster of 300 hits
+  std::vector<Hit> hits;
+  for (int i = 0; i < 300; i++) {
+    int x = 50 + pos(gen);
+    int y = 50 + pos(gen);
+    int mytof = 1000 + tof(gen);
+    int stime = 10 + spidertime(gen);
+    hits.push_back(
+        Hit(x, y, 1 + tot(gen), 1 + toa(gen), ftoa(gen), mytof, stime));
+  }
+
+  // Create a fast gaussian algorithm
+  FastGaussian alg;
+  NeutronEvent event = alg.fit(hits);
+
+  // Check that the event is correct
+  EXPECT_NEAR(event.getX(), 50, absolute_error)
+      << "FastGaussian x is not correct.";
+  EXPECT_NEAR(event.getY(), 50, absolute_error)
+      << "FastGaussian y is not correct.";
+  EXPECT_NEAR(event.getTOF(), 1000, absolute_error)
+      << "FastGaussian tof is not correct.";
 }

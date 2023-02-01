@@ -141,7 +141,7 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     PeakFittingAlgorithm* alg;
     if (m_method == "centroid") {
       alg = new Centroid(true);
-    } else if (m_method == "gaussian") {
+    } else if (m_method == "fast_gaussian") {
       alg = new FastGaussian();
     } else {
       throw std::runtime_error("ERROR: peak fitting method not supported!");
@@ -149,7 +149,10 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     auto event = alg->fit(cluster);
     // Add the event to the list
 #pragma omp critical
-    events.push_back(event);
+    if (event.getX() >= 0 && event.getY() >= 0) {
+      // x, y = -1 means a failed fit
+      events.push_back(event);
+    }
   }
 
   return events;

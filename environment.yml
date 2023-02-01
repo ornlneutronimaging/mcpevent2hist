@@ -9,6 +9,7 @@ dependencies:
   - qt
   - gtest
   - qwt
+  - eigen
 
   # Not Windows, OpenGL implementation:
   - mesalib>=18.0.0

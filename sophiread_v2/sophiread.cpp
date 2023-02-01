@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
 
   // clustering
   ClusteringAlgorithm *alg = new ABS(5.0);
+  alg->set_method("fast_gaussian");
   alg->fit(hits);
   auto events = alg->get_events(hits);
   // print out events
