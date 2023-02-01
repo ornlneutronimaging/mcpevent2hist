@@ -141,7 +141,7 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     PeakFittingAlgorithm* alg;
     if (m_method == "centroid") {
       alg = new Centroid(true);
-    } else if (m_method == "gaussian") {
+    } else if (m_method == "fast_gaussian") {
       alg = new FastGaussian();
     } else {
       throw std::runtime_error("ERROR: peak fitting method not supported!");

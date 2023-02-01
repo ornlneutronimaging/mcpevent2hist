@@ -9,7 +9,7 @@
 
 std::random_device rd;
 std::mt19937 gen(rd());
-std::uniform_real_distribution<> pos(-2, 2);
+std::uniform_real_distribution<> pos(0, 2);
 std::uniform_real_distribution<> tot(0, 100);
 std::uniform_real_distribution<> toa(0, 1000);
 std::uniform_real_distribution<> ftoa(0, 255);

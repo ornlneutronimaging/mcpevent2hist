@@ -1,6 +1,13 @@
 /**
  * @brief The implemented method is based on
  * https://link.springer.com/chapter/10.1007/978-3-030-96498-6_22
+ *
+ * @note
+ * The algorithm here is an approximation for the gaussian peak fitting, and its
+ * accuracy drops for clusters with fewer hits.
+ * Generally speaking, for a cluster with larger than 10 hits, it should provide
+ * a result (x,y) that is within 1 pixel of the actual centroid.
+ * However, fewer data would leads to a larger error.
  */
 #include "fastgaussian.h"
 
@@ -37,15 +44,10 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   std::vector<double> tof;
   std::vector<double> tot;
   for (const auto& hit : data) {
-    x.push_back(hit.getX());
-    y.push_back(hit.getY());
-    tof.push_back(hit.getTOF());
-    tot.push_back(hit.getTOT());
-  }
-
-  // print x, y, tot
-  for (size_t i = 0; i < x.size(); ++i) {
-    std::cout << x[i] << " " << y[i] << " " << tot[i] << std::endl;
+    x.push_back((double)hit.getX());
+    y.push_back((double)hit.getY());
+    tof.push_back((double)hit.getTOF());
+    tot.push_back((double)hit.getTOT());
   }
 
   // calculate the median of tot
@@ -62,11 +64,23 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   std::vector<double> tof_filtered;
   std::vector<double> tot_filtered;
   for (size_t i = 0; i < tot.size(); ++i) {
-    if (tot[i] >= 0) {
+    if (tot[i] > 0) {
       x_filtered.push_back(x[i]);
       y_filtered.push_back(y[i]);
       tof_filtered.push_back(tof[i]);
       tot_filtered.push_back(tot[i]);
+    }
+  }
+
+  // weight = tot^2
+  if (weighted_by_tot) {
+    for (auto& t : tot_filtered) {
+      t = t * t;
+    }
+  } else {
+    // weight = 1
+    for (auto& t : tot_filtered) {
+      t = 1.0;
     }
   }
 
@@ -75,11 +89,6 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   for (size_t i = 0; i < x_filtered.size(); ++i) {
     b(i) = (x_filtered[i] * x_filtered[i] + y_filtered[i] * y_filtered[i]) *
            tot_filtered[i] * tot_filtered[i];
-  }
-
-  // print b
-  for (size_t i = 0; i < b.size(); ++i) {
-    std::cout << b(i) << std::endl;
   }
 
   // matrix A = [tot*x, tot*y, tot*log(tot), tot]
@@ -91,23 +100,12 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
     A(i, 3) = tot_filtered[i];
   }
 
-  // print A
-  for (size_t i = 0; i < A.rows(); ++i) {
-    for (size_t j = 0; j < A.cols(); ++j) {
-      std::cout << A(i, j) << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  // solve the linear equation Ax = b
+  // solve the linear equation Ax = b with QR decomposition
+  // ref: https://docs.w3cub.com/eigen3/group__leastsquares.html
   Eigen::VectorXd x_sol = A.colPivHouseholderQr().solve(b);
+
   double x_event = x_sol(0) / 2.0;
   double y_event = x_sol(1) / 2.0;
-
-  // print x_sol
-  for (size_t i = 0; i < x_sol.size(); ++i) {
-    std::cout << x_sol(i) << std::endl;
-  }
 
   // calculate the tof as the average of the tof of the filtered hits
   double tof_event =

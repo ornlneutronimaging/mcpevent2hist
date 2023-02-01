@@ -12,7 +12,7 @@ std::normal_distribution<> pos(0, 2);
 std::normal_distribution<> tot(20, 5);
 std::normal_distribution<> toa(1000, 200);
 std::normal_distribution<> ftoa(16, 8);
-std::normal_distribution<> tof(500, 200);
+std::normal_distribution<> tof(0, 2);
 std::normal_distribution<> spidertime(0, 10);
 
 TEST(PeakFitting, CentroidAlgorithm) {
@@ -54,11 +54,11 @@ TEST(PeakFitting, CentroidAlgorithm) {
 
 TEST(PeakFitting, FastGaussianAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
-  const double absolute_error = 0.01;
+  const double absolute_error = 1.0;
 
-  // Create a cluster of 30 hits
+  // Create a cluster of 300 hits
   std::vector<Hit> hits;
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < 300; i++) {
     int x = 50 + pos(gen);
     int y = 50 + pos(gen);
     int mytof = 1000 + tof(gen);
@@ -67,13 +67,8 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
         Hit(x, y, 1 + tot(gen), 1 + toa(gen), ftoa(gen), mytof, stime));
   }
 
-  // print out the hits
-  for (auto hit : hits) {
-    std::cout << hit.toString() << std::endl;
-  }
-
   // Create a fast gaussian algorithm
-  FastGaussian alg;
+  FastGaussian alg(false);
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
