@@ -62,7 +62,8 @@ MainWindow::MainWindow(QWidget *parent)
   // NOTE: use adaptive search box with a feature of 5.0 pixels
   //       use weighted centroid for approximating neutron event
   clustering_alg = new ABS(5.0);
-  clustering_alg->set_method("centroid");
+  // clustering_alg->set_method("centroid");
+  clustering_alg->set_method("fast_gaussian");
 
   // Connect signals and slots
   connect(mytimer, SIGNAL(timeout()), this, SLOT(handletimer()));
@@ -232,30 +233,30 @@ void MainWindow::handlesavedata() {
 
     hsize_t dims[1] = {m_events.size()};
     H5::DataSpace dataspace(1, dims);
-    H5::IntType datatype(H5::PredType::NATIVE_UINT);
+    H5::FloatType datatype(H5::PredType::NATIVE_FLOAT);
 
     H5::Group group = events_file.createGroup("events");
 
     // write out X
-    std::vector<int> x(m_events.size());
+    std::vector<float> x(m_events.size());
     std::transform(m_events.begin(), m_events.end(), x.begin(),
-                   [](const NeutronEvent &e) { return e.getX(); });
+                   [](const NeutronEvent &e) { return (float)e.getX(); });
     H5::DataSet dataset = group.createDataSet("X", datatype, dataspace);
-    dataset.write(&x[0], H5::PredType::NATIVE_UINT);
+    dataset.write(&x[0], H5::PredType::NATIVE_FLOAT);
 
     // write out Y
-    std::vector<int> y(m_events.size());
+    std::vector<float> y(m_events.size());
     std::transform(m_events.begin(), m_events.end(), y.begin(),
-                   [](const NeutronEvent &e) { return e.getY(); });
+                   [](const NeutronEvent &e) { return (float)e.getY(); });
     dataset = group.createDataSet("Y", datatype, dataspace);
-    dataset.write(&y[0], H5::PredType::NATIVE_UINT);
+    dataset.write(&y[0], H5::PredType::NATIVE_FLOAT);
 
     // write out TOF
-    std::vector<unsigned int> tof(m_events.size());
+    std::vector<float> tof(m_events.size());
     std::transform(m_events.begin(), m_events.end(), tof.begin(),
-                   [](const NeutronEvent &e) { return (int)e.getTOF(); });
+                   [](const NeutronEvent &e) { return (float)e.getTOF(); });
     dataset = group.createDataSet("TOF", datatype, dataspace);
-    dataset.write(&tof[0], H5::PredType::NATIVE_UINT);
+    dataset.write(&tof[0], H5::PredType::NATIVE_FLOAT);
 
     // close file
     events_file.close();

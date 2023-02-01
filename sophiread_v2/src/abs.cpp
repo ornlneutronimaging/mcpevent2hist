@@ -149,7 +149,10 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     auto event = alg->fit(cluster);
     // Add the event to the list
 #pragma omp critical
-    events.push_back(event);
+    if (event.getX() > 0 && event.getY() > 0) {
+      // x, y = -1 means a failed fit
+      events.push_back(event);
+    }
   }
 
   return events;

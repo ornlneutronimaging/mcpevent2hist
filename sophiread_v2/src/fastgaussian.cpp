@@ -72,32 +72,19 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
     }
   }
 
-  // weight = tot^2
-  if (weighted_by_tot) {
-    for (auto& t : tot_filtered) {
-      t = t * t;
-    }
-  } else {
-    // weight = 1
-    for (auto& t : tot_filtered) {
-      t = 1.0;
-    }
-  }
-
   // vector b = (x^2 + y^2) * tot^2
   Eigen::VectorXd b(x_filtered.size());
   for (size_t i = 0; i < x_filtered.size(); ++i) {
-    b(i) = (x_filtered[i] * x_filtered[i] + y_filtered[i] * y_filtered[i]) *
-           tot_filtered[i] * tot_filtered[i];
+    b(i) = (x_filtered[i] * x_filtered[i] + y_filtered[i] * y_filtered[i]);
   }
 
   // matrix A = [tot*x, tot*y, tot*log(tot), tot]
   Eigen::MatrixXd A(x_filtered.size(), 4);
   for (size_t i = 0; i < x_filtered.size(); ++i) {
-    A(i, 0) = tot_filtered[i] * x_filtered[i];
-    A(i, 1) = tot_filtered[i] * y_filtered[i];
-    A(i, 2) = tot_filtered[i] * std::log(tot_filtered[i]);
-    A(i, 3) = tot_filtered[i];
+    A(i, 0) = 1.0 * x_filtered[i];
+    A(i, 1) = 1.0 * y_filtered[i];
+    A(i, 2) = 1.0 * std::log(tot_filtered[i]);
+    A(i, 3) = 1.0;
   }
 
   // solve the linear equation Ax = b with QR decomposition

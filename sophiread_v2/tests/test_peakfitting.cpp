@@ -68,7 +68,7 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
   }
 
   // Create a fast gaussian algorithm
-  FastGaussian alg(false);
+  FastGaussian alg;
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
