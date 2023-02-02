@@ -1,6 +1,9 @@
 #pragma once
 
+#include <condition_variable>
 #include <fstream>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -69,7 +72,17 @@ class NeutronEvent {
       25.0;  // 40 MHz clock is used for the coarse time of arrival.
 };
 
+// static file processing
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
+// dynamic/concurrent file processing
+void streamTimepix3RawData(const std::string& filepath, std::queue<Hit>& hits,
+                           std::unique_lock<std::mutex>& lock,
+                           std::condition_variable& cv, bool& done);
+std::vector<NeutronEvent> clusterStreamTimepix3RawData(
+    std::queue<Hit>& hits, const std::string cluster_method,
+    std::unique_lock<std::mutex>& lock, std::condition_variable& cv,
+    const bool& done, const int buffer_size);
+//
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit> &hits,
                     const std::vector<int> &labels);
