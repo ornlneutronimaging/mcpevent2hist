@@ -219,6 +219,8 @@ void saveHitsToHDF5(const std::string out_file_name,
   H5::DataSet labels_dataset =
       group.createDataSet("labels", int_type, dataspace);
   labels_dataset.write(labels.data(), int_type);
+  // -- close file
+  out_file.close();
 }
 
 /**
@@ -228,4 +230,46 @@ void saveHitsToHDF5(const std::string out_file_name,
  * @param events
  */
 void saveEventsToHDF5(const std::string out_file_name,
-                      const std::vector<NeutronEvent> &events) {}
+                      const std::vector<NeutronEvent> &events) {
+  // sanity check
+  if (events.size() == 0) {
+    throw std::runtime_error("No events to save");
+  }
+
+  // write to HDF5 file
+  // -- preparation
+  H5::H5File out_file(out_file_name, H5F_ACC_TRUNC);
+  hsize_t dims[1] = {events.size()};
+  H5::DataSpace dataspace(1, dims);
+  H5::IntType int_type(H5::PredType::NATIVE_INT);
+  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
+  // -- make events as a group
+  H5::Group group = out_file.createGroup("events");
+  // -- write x
+  std::vector<double> x(events.size());
+  std::transform(events.begin(), events.end(), x.begin(),
+                 [](const NeutronEvent &event) { return event.getX(); });
+  H5::DataSet x_dataset = group.createDataSet("x", float_type, dataspace);
+  x_dataset.write(x.data(), float_type);
+  // -- write y
+  std::vector<double> y(events.size());
+  std::transform(events.begin(), events.end(), y.begin(),
+                 [](const NeutronEvent &event) { return event.getY(); });
+  H5::DataSet y_dataset = group.createDataSet("y", float_type, dataspace);
+  y_dataset.write(y.data(), float_type);
+  // -- write TOF_ns
+  std::vector<double> tof_ns(events.size());
+  std::transform(events.begin(), events.end(), tof_ns.begin(),
+                 [](const NeutronEvent &event) { return event.getTOF_ns(); });
+  H5::DataSet tof_ns_dataset =
+      group.createDataSet("tof_ns", float_type, dataspace);
+  tof_ns_dataset.write(tof_ns.data(), float_type);
+  // -- write Nhits
+  std::vector<int> nhits(events.size());
+  std::transform(events.begin(), events.end(), nhits.begin(),
+                 [](const NeutronEvent &event) { return event.getNHits(); });
+  H5::DataSet nhits_dataset = group.createDataSet("NHits", int_type, dataspace);
+  nhits_dataset.write(nhits.data(), int_type);
+  // -- close file
+  out_file.close();
+}
