@@ -43,6 +43,12 @@ add_executable(Sophiread
 )
 target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
+# ------------------ CLI STREAM DEMO ------------------ #
+add_executable(SophireadStreamDemo
+    sophiread_stream.cpp
+)
+target_link_libraries(SophireadStreamDemo SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
+
 # ------------------ GUI APPLICATION ------------------ #
 qt5_wrap_ui(SophireadDisplayUI
     ui/mainwindow.ui
