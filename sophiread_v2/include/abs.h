@@ -17,6 +17,7 @@ class ABS : public ClusteringAlgorithm {
   void fit(const std::vector<Hit>& data);
   void set_method(std::string method) { m_method = method; };
   void reset() { clusterLabels_.clear(); };
+  std::vector<int> get_cluster_labels() { return clusterLabels_; }
   std::vector<NeutronEvent> get_events(const std::vector<Hit>& data);
   ~ABS() = default;
 

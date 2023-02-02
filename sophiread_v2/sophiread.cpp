@@ -15,63 +15,74 @@ int main(int argc, char *argv[]) {
   // processing command line arguments
   std::string in_tpx3;
   std::string out_hits;
+  std::string out_events;
   bool verbose = false;
-
   int opt;
-  while ((opt = getopt(argc, argv, "i:o:v")) != -1) {
+
+  // help message string
+  std::string help_msg = "Usage: " + std::string(argv[0]) +
+                         " [-i input_tpx3] " + " [-H output_hits_HDF5] " +
+                         " [-E output_event_HDF5] " + " [-v]";
+
+  // parse command line arguments
+  while ((opt = getopt(argc, argv, "i:H:E:v")) != -1) {
     switch (opt) {
-    case 'i':
-      in_tpx3 = optarg;
-      break;
-    case 'o':
-      out_hits = optarg;
-      break;
-    case 'v':
-      verbose = true;
-      break;
-    default:
-      std::cerr << "Usage: " << argv[0] << " [-i input_tpx3] [-o output_hits] [-v]" << std::endl;
-      return 1;
+      case 'i':  // input file
+        in_tpx3 = optarg;
+        break;
+      case 'H':  // output hits file (HDF5)
+        out_hits = optarg;
+        break;
+      case 'E':  // output event file
+        out_events = optarg;
+        break;
+      case 'v':
+        verbose = true;
+        break;
+      default:
+        std::cerr << help_msg << std::endl;
+        return 1;
     }
   }
 
-  // verbose output
+  // recap
   if (verbose) {
     std::cout << "Input file: " << in_tpx3 << std::endl;
-    std::cout << "Output hits: " << out_hits << std::endl;
+    std::cout << "Output hits file: " << out_hits << std::endl;
+    std::cout << "Output events file: " << out_events << std::endl;
   }
 
   // read raw data
   if (in_tpx3.empty()) {
     std::cerr << "Error: no input file specified." << std::endl;
+    std::cerr << help_msg << std::endl;
     return 1;
   }
   auto hits = readTimepix3RawData(in_tpx3);
 
-  // clustering
+  // clustering and fitting
   ClusteringAlgorithm *alg = new ABS(5.0);
   alg->set_method("fast_gaussian");
   alg->fit(hits);
+  auto labels = alg->get_cluster_labels();
+  // print out labeled hits
+  if (verbose) {
+    std::cout << "Found " << labels.size() << " hits." << std::endl;
+  }
+  // Save labeled hits to HDF5 file
+  if (!out_hits.empty()) {
+    saveHitsToHDF5(out_hits, hits, labels);
+  }
+
+  // generate events
   auto events = alg->get_events(hits);
   // print out events
   if (verbose) {
     std::cout << "Found " << events.size() << " events." << std::endl;
-    for (auto event : events) {
-    std::cout << event.toString() << std::endl;
-    }
   }
-
-  // write hits to file
-  // TODO: convert to output neutron events (x, y, tof) onces clustering and
-  //       peak fitting is implemented
-  if (!out_hits.empty()){
-    std::ofstream xy_file(out_hits);
-    for (auto hit : hits) {
-      xy_file << hit.toString() << std::endl;
-    }
+  // save events to HDF5 file
+  if (!out_events.empty()) {
+    saveEventsToHDF5(out_events, events);
   }
-
-  // write image to file
-  // TODO: implement
   return 0;
 }

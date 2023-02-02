@@ -140,3 +140,28 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   // Return the hits
   return hits;
 }
+
+/**
+ * @brief Save labeled hits to HDF5 file
+ *
+ * @param out_file_name
+ * @param hits
+ * @param labels
+ */
+void saveHitsToHDF5(const std::string out_file_name,
+                    const std::vector<Hit> &hits,
+                    const std::vector<int> &labels) {
+  // sanity check
+  if (hits.size() != labels.size()) {
+    throw std::runtime_error("Hits and labels must have the same size");
+  }
+}
+
+/**
+ * @brief Save events to HDF5 file
+ *
+ * @param out_file_name
+ * @param events
+ */
+void saveEventsToHDF5(const std::string out_file_name,
+                      const std::vector<NeutronEvent> &events) {}

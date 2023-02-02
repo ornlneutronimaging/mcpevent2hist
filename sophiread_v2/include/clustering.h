@@ -13,6 +13,12 @@ class ClusteringAlgorithm {
   // set the peak finding method
   virtual void set_method(std::string method) = 0;
 
+  // reset the clustering algorithm
+  virtual void reset() = 0;
+
+  // get the cluster labels for each hit
+  virtual std::vector<int> get_cluster_labels() = 0;
+
   // generate cluster IDs for each hit within given vector
   virtual void fit(const std::vector<Hit>& hits) = 0;
 

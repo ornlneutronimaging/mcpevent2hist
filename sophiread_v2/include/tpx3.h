@@ -67,3 +67,8 @@ class NeutronEvent {
 };
 
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
+void saveHitsToHDF5(const std::string out_file_name,
+                    const std::vector<Hit> &hits,
+                    const std::vector<int> &labels);
+void saveEventsToHDF5(const std::string out_file_name,
+                      const std::vector<NeutronEvent> &events);
