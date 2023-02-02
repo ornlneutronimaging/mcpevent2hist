@@ -304,33 +304,31 @@ std::vector<NeutronEvent> clusterStreamTimepix3RawData(
         cluster_alg->fit(data);
         std::vector<NeutronEvent> new_events = cluster_alg->get_events(data);
         // add the new events to the event vector
-        if (events.size() == 0) {
-          events = new_events;
-        } else {
-          events.insert(events.end(), new_events.begin(), new_events.end());
+        for (auto &hit : new_events) {
+          events.push_back(hit);
         }
         // cleanup
-        // cluster_alg->reset();
-        // clear the front 99% of the data vector
-        // NOTE: use 1% overlap to avoid losing events
-        // data.erase(data.begin(), data.begin() + (int)(data.size() * 0.99));
-      }
-      /**
-      else if (done && data.size() > 0) {
+        cluster_alg->reset();
+        // clear the data vector
+        data.clear();
+      } else if (done && data.size() > 0) {
         // process the last set of data to events
         cluster_alg->fit(data);
-        // std::vector<NeutronEvent> new_events = cluster_alg->get_events(data);
-        // events.insert(events.end(), new_events.begin(), new_events.end());
+        std::vector<NeutronEvent> new_events = cluster_alg->get_events(data);
+        // add the new events to the event vector
+        for (auto &hit : new_events) {
+          events.push_back(hit);
+        }
         // cleanup
         cluster_alg->reset();
       } else {
         // do nothing
       }
-      */
-      //
+
       lock.unlock();
     }
   }
+
   return events;
 }
 
