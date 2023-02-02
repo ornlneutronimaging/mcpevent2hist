@@ -41,7 +41,7 @@ add_library(SophireadLib
 add_executable(Sophiread
     sophiread.cpp
 )
-target_link_libraries(Sophiread SophireadLib OpenMP::OpenMP_CXX)
+target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
 qt5_wrap_ui(SophireadDisplayUI

@@ -1,5 +1,8 @@
 #include "tpx3.h"
 
+#include <H5Cpp.h>
+
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -155,6 +158,67 @@ void saveHitsToHDF5(const std::string out_file_name,
   if (hits.size() != labels.size()) {
     throw std::runtime_error("Hits and labels must have the same size");
   }
+
+  // write to HDF5 file
+  // -- preparation
+  H5::H5File out_file(out_file_name, H5F_ACC_TRUNC);
+  hsize_t dims[1] = {hits.size()};
+  H5::DataSpace dataspace(1, dims);
+  H5::IntType int_type(H5::PredType::NATIVE_INT);
+  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
+  // -- make hits as a group
+  H5::Group group = out_file.createGroup("hits");
+  // -- write x
+  std::vector<int> x(hits.size());
+  std::transform(hits.begin(), hits.end(), x.begin(),
+                 [](const Hit &hit) { return hit.getX(); });
+  H5::DataSet x_dataset = group.createDataSet("x", int_type, dataspace);
+  x_dataset.write(x.data(), int_type);
+  // -- write y
+  std::vector<int> y(hits.size());
+  std::transform(hits.begin(), hits.end(), y.begin(),
+                 [](const Hit &hit) { return hit.getY(); });
+  H5::DataSet y_dataset = group.createDataSet("y", int_type, dataspace);
+  y_dataset.write(y.data(), int_type);
+  // -- write tot_ns
+  std::vector<double> tot_ns(hits.size());
+  std::transform(hits.begin(), hits.end(), tot_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOT_ns(); });
+  H5::DataSet tot_ns_dataset =
+      group.createDataSet("tot_ns", float_type, dataspace);
+  tot_ns_dataset.write(tot_ns.data(), float_type);
+  // -- write toa_ns
+  std::vector<double> toa_ns(hits.size());
+  std::transform(hits.begin(), hits.end(), toa_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOA_ns(); });
+  H5::DataSet toa_ns_dataset =
+      group.createDataSet("toa_ns", float_type, dataspace);
+  toa_ns_dataset.write(toa_ns.data(), float_type);
+  // -- write ftoa_ns
+  std::vector<double> ftoa_ns(hits.size());
+  std::transform(hits.begin(), hits.end(), ftoa_ns.begin(),
+                 [](const Hit &hit) { return hit.getFTOA_ns(); });
+  H5::DataSet ftoa_ns_dataset =
+      group.createDataSet("ftoa_ns", float_type, dataspace);
+  ftoa_ns_dataset.write(ftoa_ns.data(), float_type);
+  // -- write tof_ns
+  std::vector<double> tof_ns(hits.size());
+  std::transform(hits.begin(), hits.end(), tof_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOF_ns(); });
+  H5::DataSet tof_ns_dataset =
+      group.createDataSet("tof_ns", float_type, dataspace);
+  tof_ns_dataset.write(tof_ns.data(), float_type);
+  // -- write spidertime_ns
+  std::vector<double> spidertime_ns(hits.size());
+  std::transform(hits.begin(), hits.end(), spidertime_ns.begin(),
+                 [](const Hit &hit) { return hit.getSPIDERTIME_ns(); });
+  H5::DataSet spidertime_ns_dataset =
+      group.createDataSet("spidertime_ns", float_type, dataspace);
+  spidertime_ns_dataset.write(spidertime_ns.data(), float_type);
+  // -- write labels
+  H5::DataSet labels_dataset =
+      group.createDataSet("labels", int_type, dataspace);
+  labels_dataset.write(labels.data(), int_type);
 }
 
 /**
