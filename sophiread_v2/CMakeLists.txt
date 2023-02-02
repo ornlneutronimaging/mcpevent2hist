@@ -26,7 +26,7 @@ link_directories(
 
 
 # Add compiler flags
-add_compile_options(-O3 -std=c++11 -Wall -Wextra ${OpenMP_CXX_FLAGS})
+add_compile_options(-O3 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
 
 # ----------------- LIBRARY ----------------- #
 add_library(SophireadLib
