@@ -41,7 +41,7 @@ add_library(SophireadLib
 add_executable(Sophiread
     sophiread.cpp
 )
-target_link_libraries(Sophiread SophireadLib OpenMP::OpenMP_CXX)
+target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
 qt5_wrap_ui(SophireadDisplayUI
@@ -64,17 +64,17 @@ include(GoogleTest)
 
 # IO Tests
 add_executable(SophireadTests_IO tests/test_tpx3.cpp)
-target_link_libraries(SophireadTests_IO SophireadLib GTest::GTest GTest::Main OpenMP::OpenMP_CXX)
+target_link_libraries(SophireadTests_IO SophireadLib GTest::GTest GTest::Main hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 gtest_discover_tests(SophireadTests_IO)
 
 # Clustering Tests
 add_executable(SophireadTests_CLUSTER tests/test_clustering.cpp)
-target_link_libraries(SophireadTests_CLUSTER SophireadLib GTest::GTest GTest::Main OpenMP::OpenMP_CXX)
+target_link_libraries(SophireadTests_CLUSTER SophireadLib GTest::GTest GTest::Main hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 gtest_discover_tests(SophireadTests_CLUSTER)
 
 # Peakfitting Tests
 add_executable(SophireadTests_PEAKFITTING tests/test_peakfitting.cpp)
-target_link_libraries(SophireadTests_PEAKFITTING SophireadLib GTest::GTest GTest::Main OpenMP::OpenMP_CXX)
+target_link_libraries(SophireadTests_PEAKFITTING SophireadLib GTest::GTest GTest::Main hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 gtest_discover_tests(SophireadTests_PEAKFITTING)
 
 

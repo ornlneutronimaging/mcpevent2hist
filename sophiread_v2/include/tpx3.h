@@ -56,6 +56,7 @@ class NeutronEvent {
   double getX() const { return m_x; };
   double getY() const { return m_y; };
   double getTOF() const { return m_tof; };
+  double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
 
   std::string toString() const;
@@ -64,6 +65,13 @@ class NeutronEvent {
   const double m_x, m_y;  // pixel coordinates
   const double m_tof;     // time of flight
   const int m_nHits;      // number of hits in the event (cluster size)
+  const double m_scale_to_ns_40mhz =
+      25.0;  // 40 MHz clock is used for the coarse time of arrival.
 };
 
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
+void saveHitsToHDF5(const std::string out_file_name,
+                    const std::vector<Hit> &hits,
+                    const std::vector<int> &labels);
+void saveEventsToHDF5(const std::string out_file_name,
+                      const std::vector<NeutronEvent> &events);

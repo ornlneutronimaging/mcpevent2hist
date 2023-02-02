@@ -228,38 +228,7 @@ void MainWindow::handlesavedata() {
                                           QDir::currentPath(),
                                           "All files (*.*) ;; HDF5 (*.hdf5)");
   if (!filename.isNull()) {
-    // create HDF5 archive
-    H5::H5File events_file(filename.toStdString(), H5F_ACC_TRUNC);
-
-    hsize_t dims[1] = {m_events.size()};
-    H5::DataSpace dataspace(1, dims);
-    H5::FloatType datatype(H5::PredType::NATIVE_FLOAT);
-
-    H5::Group group = events_file.createGroup("events");
-
-    // write out X
-    std::vector<float> x(m_events.size());
-    std::transform(m_events.begin(), m_events.end(), x.begin(),
-                   [](const NeutronEvent &e) { return (float)e.getX(); });
-    H5::DataSet dataset = group.createDataSet("X", datatype, dataspace);
-    dataset.write(&x[0], H5::PredType::NATIVE_FLOAT);
-
-    // write out Y
-    std::vector<float> y(m_events.size());
-    std::transform(m_events.begin(), m_events.end(), y.begin(),
-                   [](const NeutronEvent &e) { return (float)e.getY(); });
-    dataset = group.createDataSet("Y", datatype, dataspace);
-    dataset.write(&y[0], H5::PredType::NATIVE_FLOAT);
-
-    // write out TOF
-    std::vector<float> tof(m_events.size());
-    std::transform(m_events.begin(), m_events.end(), tof.begin(),
-                   [](const NeutronEvent &e) { return (float)e.getTOF(); });
-    dataset = group.createDataSet("TOF", datatype, dataspace);
-    dataset.write(&tof[0], H5::PredType::NATIVE_FLOAT);
-
-    // close file
-    events_file.close();
+    saveEventsToHDF5(filename.toStdString(), m_events);
     std::cout << "Saved events to " << filename.toStdString() << std::endl;
   }
 }

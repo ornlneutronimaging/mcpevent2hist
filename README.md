@@ -51,7 +51,7 @@ micromamba create -f environment.yml
 
 - Run `ctest -V` to run the test.
 
-- Run `Sophiread data/frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3` to parse the sample data into a txt file.
+- `Sophiread` is the CLI interface whereas `SophireadDisplay` is the GUI for processing tpx3 data.
 
 ## Developer notes
 
