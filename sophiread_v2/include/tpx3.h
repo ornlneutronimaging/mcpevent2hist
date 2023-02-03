@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#define DSCALE 8.0
+
 /**
  * @brief Class to store the data of a single hit of a charged particle
  *        hitting the timepix3 sensor.

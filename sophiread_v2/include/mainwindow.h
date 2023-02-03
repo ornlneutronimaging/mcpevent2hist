@@ -15,7 +15,7 @@
 #include "tpx3.h"
 
 #define HSIZEM1 4095
-#define DSCALE 8.0
+// #define DSCALE 8.0
 #define ROTANGLE -1.0
 
 namespace Ui {
