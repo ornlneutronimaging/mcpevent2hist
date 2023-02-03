@@ -10,11 +10,14 @@
  * However, fewer data would leads to a larger error.
  */
 #include "fastgaussian.h"
+#include "tpx3.h"
 
 #include <Eigen/Dense>
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+
+// #define DSCALE 8.0
 
 double getMedian(const std::vector<double>& data) {
   std::vector<double> sorted_data = data;
@@ -44,8 +47,8 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   std::vector<double> tof;
   std::vector<double> tot;
   for (const auto& hit : data) {
-    x.push_back((double)hit.getX());
-    y.push_back((double)hit.getY());
+    x.push_back((double) DSCALE*hit.getX());
+    y.push_back((double) DSCALE*hit.getY());
     tof.push_back((double)hit.getTOF());
     tot.push_back((double)hit.getTOT());
   }
