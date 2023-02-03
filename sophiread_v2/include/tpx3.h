@@ -16,8 +16,36 @@
  */
 class Hit {
  public:
-  Hit(const int x, const int y, const int tot, const int toa, const int ftoa,
-      const unsigned int tof, const int spidertime);
+  // copy constructor
+  Hit(const Hit& hit)
+      : m_x(hit.m_x),
+        m_y(hit.m_y),
+        m_tot(hit.m_tot),
+        m_toa(hit.m_toa),
+        m_ftoa(hit.m_ftoa),
+        m_tof(hit.m_tof),
+        m_spidertime(hit.m_spidertime){};
+
+  Hit(int x, int y, int tot, int toa, int ftoa, unsigned int tof,
+      int spidertime)
+      : m_x(x),
+        m_y(y),
+        m_tot(tot),
+        m_toa(toa),
+        m_ftoa(ftoa),
+        m_tof(tof),
+        m_spidertime(spidertime){};
+
+  Hit& operator=(const Hit& hit) {
+    m_x = hit.m_x;
+    m_y = hit.m_y;
+    m_tot = hit.m_tot;
+    m_toa = hit.m_toa;
+    m_ftoa = hit.m_ftoa;
+    m_tof = hit.m_tof;
+    m_spidertime = hit.m_spidertime;
+    return *this;
+  }
 
   int getX() const { return m_x; };
   int getY() const { return m_y; };
@@ -39,12 +67,12 @@ class Hit {
 
  private:
   // raw packet directly read from tpx3.
-  const int m_x, m_y;  // pixel coordinates
-  const int m_tot;     // time over threshold
-  const int m_toa;     // time of arrival (40MHz clock, 14 bit)
-  const int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
-  const unsigned int m_tof;
-  const int m_spidertime;  // time from the spider board (in the unit of 25ns)
+  int m_x, m_y;  // pixel coordinates
+  int m_tot;     // time over threshold
+  int m_toa;     // time of arrival (40MHz clock, 14 bit)
+  int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
+  unsigned int m_tof;
+  int m_spidertime;  // time from the spider board (in the unit of 25ns)
 
   // scale factor that converts time to ns
   const double m_scale_to_ns_40mhz =
@@ -76,19 +104,11 @@ class NeutronEvent {
 
 // static file processing
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
-// dynamic/concurrent file processing
-void streamTimepix3RawData(const std::string& filepath, std::queue<Hit>& hits,
-                           std::unique_lock<std::mutex>& lock,
-                           std::condition_variable& cv, bool& done);
-std::vector<NeutronEvent> clusterStreamTimepix3RawData(
-    std::queue<Hit>& hits, const std::string cluster_method,
-    std::unique_lock<std::mutex>& lock, std::condition_variable& cv,
-    const bool& done, const int buffer_size);
 Hit packetToHit(const std::vector<char>& packet, const unsigned long tdc,
                 const int chip_layout_type);
 //
 void saveHitsToHDF5(const std::string out_file_name,
-                    const std::vector<Hit> &hits,
-                    const std::vector<int> &labels);
+                    const std::vector<Hit>& hits,
+                    const std::vector<int>& labels);
 void saveEventsToHDF5(const std::string out_file_name,
-                      const std::vector<NeutronEvent> &events);
+                      const std::vector<NeutronEvent>& events);
