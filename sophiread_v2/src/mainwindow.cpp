@@ -28,6 +28,7 @@ class ColorMap : public QwtLinearColorMap {
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
+
   // Set up the UI
   ui->setupUi(this);
 
@@ -42,16 +43,18 @@ MainWindow::MainWindow(QWidget *parent)
   // Set up the plot
   const int ii = (int)(DSCALE * 512);
   const int jj = (int)(DSCALE * 500);
+
   //
   vhisto.resize(ii * ii);
   my2dhisto = vhisto.data();
+
   histo_data = new QwtMatrixRasterData();
   histo_data->setInterval(Qt::XAxis, QwtInterval(0, jj));
   histo_data->setInterval(Qt::YAxis, QwtInterval(0, jj));
   histo_data->setInterval(Qt::ZAxis, QwtInterval(range_min, range_max));
   histo_data->setValueMatrix(vhisto, ii);
   //
-  histo = new QwtPlotSpectrogram;
+  histo = new QwtPlotSpectrogram();
   histo->setDisplayMode(QwtPlotSpectrogram::DisplayMode::ImageMode, true);
   histo->setColorMap(new ColorMap);  // QwtLinearColorMap(Qt::white,Qt::black)
   histo->setData(histo_data);
@@ -157,10 +160,14 @@ void MainWindow::handlereadfile() {
       auto y1 = x * mysin + y * mycos;
       x = x1;
       y = y1;
-    }
-    if (x >= 0 && x < isize && y >= 0 && y < isize)
-#pragma omp atomic
-      my2dhisto[(int)(x + y * isize)] += 1;
+      
+    } 
+    if (x >= 0 && x < isize && y >= 0 && y < isize){
+      // std::cout << "(x, y) = (" << int(x) << "," << int(y)<< ")\n";
+  #pragma omp atomic
+        my2dhisto[isize*int(y) + int(x)] += 1;
+
+     }
   }
 
   // Update the histogram plot
