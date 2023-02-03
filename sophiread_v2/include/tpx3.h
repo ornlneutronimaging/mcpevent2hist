@@ -82,6 +82,8 @@ std::vector<NeutronEvent> clusterStreamTimepix3RawData(
     std::queue<Hit>& hits, const std::string cluster_method,
     std::unique_lock<std::mutex>& lock, std::condition_variable& cv,
     const bool& done, const int buffer_size);
+Hit packetToHit(const std::vector<char>& packet, const unsigned long tdc,
+                const int chip_layout_type);
 //
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit> &hits,

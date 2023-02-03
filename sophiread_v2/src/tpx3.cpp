@@ -34,12 +34,15 @@ std::string NeutronEvent::toString() const {
   return ss.str();
 }
 
-std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
-  int chip_layout_type = 0;
-  int data_packet_size = 0;
-  int data_packet_num = 0;
-  unsigned long *tdclast;
-  unsigned long mytdc = 0;
+/**
+ * @brief Convert a raw data packet into a hit.
+ *
+ * @param packet
+ * @param tdc
+ * @return Hit
+ */
+Hit packetToHit(const std::vector<char> &packet, const unsigned long tdc,
+                const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
@@ -47,6 +50,47 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   unsigned int *npixaddr;  // bytes 4,5,6,7
   int x, y, tot, toa, ftoa, spidertime;
   unsigned int tof;
+  // timing information
+  spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
+  nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
+  nTOA = (unsigned int *)(&packet[3]);           // ToA          (14 bits)
+  ftoa = *nTOT & 0xF;                            // fine ToA     (4 bits)
+  tot = (*nTOT >> 4) & 0x3FF;
+  toa = (*nTOA >> 6) & 0x3FFF;
+  spidertime = 16384 * (*spider_time) + toa;
+  tof = spidertime - tdc;
+  // pixel address
+  npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
+  pixaddr = (*npixaddr >> 12) & 0xFFFF;
+  dcol = ((pixaddr & 0xFE00) >> 8);
+  spix = ((pixaddr & 0x1F8) >> 1);
+  pix = pixaddr & 0x7;
+  x = dcol + (pix >> 2);   // x coordinate
+  y = spix + (pix & 0x3);  // y coordinate
+  // adjustment for chip layout
+  if (chip_layout_type == 0) {  // single
+    x += 260;
+    y = y;
+  } else if (chip_layout_type == 1) {  // double
+    x = 255 - x + 260;
+    y = 255 - y + 260;
+  } else if (chip_layout_type == 2) {  // triple
+    x = 255 - x;
+    y = 255 - y + 260;
+  } else {  // quad
+    x = x;
+    y = y;
+  }
+  // return the hit
+  return Hit(x, y, tot, toa, ftoa, tof, spidertime);
+}
+
+std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
+  int chip_layout_type = 0;
+  int data_packet_size = 0;
+  int data_packet_num = 0;
+  unsigned long *tdclast;
+  unsigned long mytdc = 0;
 
   // Open the file
   std::ifstream file(filepath, std::ios::binary);
@@ -82,6 +126,9 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
       data_packet_num =
           data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
 
+      // get chip layout type
+      chip_layout_type = (int)char_array[4];
+
       // processing each data packet
       for (auto j = 0; j < data_packet_num; j++) {
         i = std::next(i, 8);  // move the iterator to the next data packet
@@ -90,7 +137,6 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
           std::cout << "EOF, insufficient bytes left." << std::endl;
           break;
         }
-        chip_layout_type = (int)char_array[4];
         // extract the data from the data packet
         if (data_packet[7] == 0x6F) {
           // TDC data packets
@@ -100,44 +146,9 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
           // GDC
           // do nothing for now (unless we need the GDC count)
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
-          // timing section
-          spider_time =
-              (unsigned short *)(&data_packet[0]);     // Spider time  (16 bits)
-          nTOT = (unsigned short *)(&data_packet[2]);  // ToT          (10 bits)
-          nTOA = (unsigned int *)(&data_packet[3]);    // ToA          (14 bits)
-          ftoa = *nTOT & 0xF;                          // fine ToA     (4 bits)
-          tot = (*nTOT >> 4) & 0x3FF;
-          toa = (*nTOA >> 6) & 0x3FFF;
-          spidertime = 16384 * (*spider_time) + toa;
-          tof = spidertime - mytdc;
-
-          // position section
-          npixaddr =
-              (unsigned int *)(&data_packet[4]);  // Pixel address (14 bits)
-          pixaddr = (*npixaddr >> 12) & 0xFFFF;
-          dcol = ((pixaddr & 0xFE00) >> 8);
-          spix = ((pixaddr & 0x1F8) >> 1);
-          pix = pixaddr & 0x7;
-          x = dcol + (pix >> 2);   // x coordinate
-          y = spix + (pix & 0x3);  // y coordinate
-
-          // update pixel position based on chip layout type
-          if (chip_layout_type == 0) {  // single
-            x += 260;
-            y = y;
-          } else if (chip_layout_type == 1) {  // double
-            x = 255 - x + 260;
-            y = 255 - y + 260;
-          } else if (chip_layout_type == 2) {  // triple
-            x = 255 - x;
-            y = 255 - y + 260;
-          } else {  // quad
-            x = x;
-            y = y;
-          }
-
-          // make the hit
-          hits.push_back(Hit(x, y, tot, toa, ftoa, tof, spidertime));
+          // Process the data into hit
+          auto hit = packetToHit(data_packet, mytdc, chip_layout_type);
+          hits.push_back(hit);
         }
       }
     }
@@ -166,13 +177,6 @@ void streamTimepix3RawData(const std::string &filepath, std::queue<Hit> &hits,
   int data_packet_num = 0;
   unsigned long *tdclast;
   unsigned long mytdc = 0;
-  unsigned short pixaddr, dcol, spix, pix;
-  unsigned short *spider_time;
-  unsigned short *nTOT;    // bytes 2,3, raw time over threshold
-  unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
-  unsigned int *npixaddr;  // bytes 4,5,6,7
-  int x, y, tot, toa, ftoa, spidertime;
-  unsigned int tof;
 
   // sanity check
   std::ifstream file(filepath, std::ios::binary);
@@ -190,17 +194,17 @@ void streamTimepix3RawData(const std::string &filepath, std::queue<Hit> &hits,
 
     // locate the data packet header
     if (buffer[0] == 'T' && buffer[1] == 'P' && buffer[2] == 'X') {
+      // chip type
+      chip_layout_type = (int)buffer[4];
       // read the data packet size
       data_packet_size = ((0xff & buffer[7]) << 8) | (0xff & buffer[6]);
       data_packet_num = data_packet_size >> 3;
 
       // process each data section
-      lock.lock();
       for (auto j = 0; j < data_packet_num; j++) {
         // read the data packet
         unsigned char char_array[8];
         file.read(reinterpret_cast<char *>(char_array), 8);
-
         // extract the data from the data packet
         if (char_array[7] == 0x6F) {
           // TDC data packets
@@ -210,48 +214,16 @@ void streamTimepix3RawData(const std::string &filepath, std::queue<Hit> &hits,
           // GDC
           // do nothing for now (unless we need the GDC count)
         } else if ((char_array[7] & 0xF0) == 0xb0) {
-          // timing section
-          spider_time =
-              (unsigned short *)(&char_array[0]);     // Spider time  (16bits)
-          nTOT = (unsigned short *)(&char_array[2]);  // ToT          (10bits)
-          nTOA = (unsigned int *)(&char_array[3]);    // ToA (14 bits)
-          ftoa = *nTOT & 0xF;                         // fine ToA     (4bits)
-          tot = (*nTOT >> 4) & 0x3FF;
-          toa = (*nTOA >> 6) & 0x3FFF;
-          spidertime = 16384 * (*spider_time) + toa;
-          tof = spidertime - mytdc;
-
-          // position section
-          npixaddr =
-              (unsigned int *)(&char_array[4]);  // Pixel address (14 bits)
-          pixaddr = (*npixaddr >> 12) & 0xFFFF;
-          dcol = ((pixaddr & 0xFE00) >> 8);
-          spix = ((pixaddr & 0x1F8) >> 1);
-          pix = pixaddr & 0x7;
-          x = dcol + (pix >> 2);   // x coordinate
-          y = spix + (pix & 0x3);  // y coordinate
-
-          // update pixel position based on chip layout type
-          if (chip_layout_type == 0) {  // single
-            x += 260;
-            y = y;
-          } else if (chip_layout_type == 1) {  // double
-            x = 255 - x + 260;
-            y = 255 - y + 260;
-          } else if (chip_layout_type == 2) {  // triple
-            x = 255 - x;
-            y = 255 - y + 260;
-          } else {  // quad
-            x = x;
-            y = y;
-          }
-
-          // make the hit
-          hits.push(Hit(x, y, tot, toa, ftoa, tof, spidertime));
+          lock.lock();
+          // Process the data into hit
+          auto data_packet = std::vector<char>(
+              char_array, char_array + sizeof(char_array) / sizeof(char));
+          auto hit = packetToHit(data_packet, mytdc, chip_layout_type);
+          hits.push(hit);
+          cv.notify_all();
+          lock.unlock();
         }
       }
-      cv.notify_all();
-      lock.unlock();
     }
 
     // close the file
