@@ -17,7 +17,7 @@ std::normal_distribution<> spidertime(0, 10);
 
 TEST(PeakFitting, CentroidAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
-  const double absolute_error = 0.01;
+  const double absolute_error = 0.01 * DSCALE;
   // Create a random vector of hits
   // NOTE: random number generator do not generate the same number across
   // multiple platforms.
@@ -32,9 +32,9 @@ TEST(PeakFitting, CentroidAlgorithm) {
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event.getX(), 1863.66, absolute_error)
+  EXPECT_NEAR(event.getX(), 1863.66 * DSCALE, absolute_error)
       << "Centroid x is not correct.";
-  EXPECT_NEAR(event.getY(), 2718.74, absolute_error)
+  EXPECT_NEAR(event.getY(), 2718.74 * DSCALE, absolute_error)
       << "Centroid y is not correct.";
   EXPECT_NEAR(event.getTOF(), 2262.67, absolute_error)
       << "Centroid tof is not correct.";
@@ -44,9 +44,9 @@ TEST(PeakFitting, CentroidAlgorithm) {
   NeutronEvent event2 = alg2.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event2.getX(), 1845.67, absolute_error)
+  EXPECT_NEAR(event2.getX(), 1845.67 * DSCALE, absolute_error)
       << "Centroid x is not correct.";
-  EXPECT_NEAR(event2.getY(), 2674.33, absolute_error)
+  EXPECT_NEAR(event2.getY(), 2674.33 * DSCALE, absolute_error)
       << "Centroid y is not correct.";
   EXPECT_NEAR(event2.getTOF(), 2262.67, absolute_error)
       << "Centroid tof is not correct.";
@@ -54,7 +54,7 @@ TEST(PeakFitting, CentroidAlgorithm) {
 
 TEST(PeakFitting, FastGaussianAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
-  const double absolute_error = 1.0;
+  const double absolute_error = 1.0 * DSCALE;
 
   // Create a cluster of 300 hits
   std::vector<Hit> hits;
@@ -72,9 +72,9 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event.getX(), 50, absolute_error)
+  EXPECT_NEAR(event.getX(), 50 * DSCALE, absolute_error)
       << "FastGaussian x is not correct.";
-  EXPECT_NEAR(event.getY(), 50, absolute_error)
+  EXPECT_NEAR(event.getY(), 50 * DSCALE, absolute_error)
       << "FastGaussian y is not correct.";
   EXPECT_NEAR(event.getTOF(), 1000, absolute_error)
       << "FastGaussian tof is not correct.";

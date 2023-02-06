@@ -1,3 +1,5 @@
+#pragma once
+
 #include "clustering.h"
 #include "peakfitting.h"
 

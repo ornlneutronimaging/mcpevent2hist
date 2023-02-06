@@ -12,6 +12,17 @@ find_package(OpenMP REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(HDF5 REQUIRED)
 
+# For concurrent queue
+include(FetchContent)
+
+FetchContent_Declare(
+    readerwriterqueue
+    GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue
+    GIT_TAG           master
+)
+
+FetchContent_MakeAvailable(readerwriterqueue)
+
 # Add include&linking directories
 include_directories(
     include
@@ -26,7 +37,7 @@ link_directories(
 
 
 # Add compiler flags
-add_compile_options(-O3 -std=c++11 -Wall -Wextra ${OpenMP_CXX_FLAGS})
+add_compile_options(-O3 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
 
 # ----------------- LIBRARY ----------------- #
 add_library(SophireadLib
@@ -42,6 +53,12 @@ add_executable(Sophiread
     sophiread.cpp
 )
 target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
+
+# ------------------ CLI STREAM DEMO ------------------ #
+add_executable(SophireadStream
+    sophiread_stream.cpp
+)
+target_link_libraries(SophireadStream PUBLIC readerwriterqueue SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
 qt5_wrap_ui(SophireadDisplayUI

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "clustering.h"
 
 class DBSCAN : public ClusteringAlgorithm {

@@ -47,7 +47,7 @@ TEST(Clustering, ABSAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
   // NOTE: adaptive box search is not a robust peak fitting method, therefore we
   //       need to set a large tolerance for the absolute position error
-  const double absolute_pos_error = 2.0;
+  const double absolute_pos_error = 2.0 * DSCALE;
 
   // create 3 clusters of 20 hits each
   auto data = gen_clusters();
@@ -71,12 +71,12 @@ TEST(Clustering, ABSAlgorithm) {
   std::sort(y.begin(), y.end());
 
   // check the events x, y coordinates
-  EXPECT_NEAR(x[0], 50, absolute_pos_error);
-  EXPECT_NEAR(y[0], 50, absolute_pos_error);
-  EXPECT_NEAR(x[1], 100, absolute_pos_error);
-  EXPECT_NEAR(y[1], 100, absolute_pos_error);
-  EXPECT_NEAR(x[2], 150, absolute_pos_error);
-  EXPECT_NEAR(y[2], 150, absolute_pos_error);
+  EXPECT_NEAR(x[0], 50 * DSCALE, absolute_pos_error);
+  EXPECT_NEAR(y[0], 50 * DSCALE, absolute_pos_error);
+  EXPECT_NEAR(x[1], 100 * DSCALE, absolute_pos_error);
+  EXPECT_NEAR(y[1], 100 * DSCALE, absolute_pos_error);
+  EXPECT_NEAR(x[2], 150 * DSCALE, absolute_pos_error);
+  EXPECT_NEAR(y[2], 150 * DSCALE, absolute_pos_error);
 
   // print out the events
   std::cout << "Events:" << std::endl;
