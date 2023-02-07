@@ -2,7 +2,12 @@
 #include "tpx3.h"
 #include <iostream>
 
-
+/**
+ * @brief Perform centroid fitting on the hits.
+ *
+ * @param data: a vector of hits.
+ * @return NeutronEvent: a neutron event.
+ */
 NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
   double x = 0;
   double y = 0;
