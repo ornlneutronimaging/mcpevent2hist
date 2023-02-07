@@ -23,4 +23,5 @@ dependencies:
   # documentation
   - doxygen
   - graphviz
+  # Mac users should use its native version, MacTex
   - texlive-core
