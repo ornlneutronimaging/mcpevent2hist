@@ -101,3 +101,15 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 install(TARGETS Sophiread
         RUNTIME DESTINATION bin)
+
+# ----------------- DOXYGEN ----------------- #
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
+  add_custom_target(docs
+  COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+  COMMENT "Generating API documentation with Doxygen"
+  VERBATIM
+  )
+endif(DOXYGEN_FOUND)

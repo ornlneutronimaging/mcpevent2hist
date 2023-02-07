@@ -1,0 +1,8 @@
+PROJECT_NAME     = "Sophiread"
+PROJECT_BRIEF    = "An experimental data processing tool for TimePix3 imaging system."
+INPUT            = ../include ../src ../tests ..
+FILE_PATTERNS    = *.cpp *.h
+OUTPUT_DIRECTORY = docs
+GENERATE_HTML    = YES
+RECURSIVE        = YES
+EXTRACT_ALL      = YES

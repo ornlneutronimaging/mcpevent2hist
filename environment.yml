@@ -19,3 +19,8 @@ dependencies:
   # Linux only
   - gxx_linux-64
   - libglu
+
+  # documentation
+  - doxygen
+  - graphviz
+  - texlive-core
