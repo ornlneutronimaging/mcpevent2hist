@@ -9,9 +9,9 @@
 #include "fastgaussian.h"
 
 /**
- * @brief Generate cluster labels for the hits
+ * @brief Generate cluster labels for the hits.
  *
- * @param data
+ * @param data: a vector of hits.
  */
 void ABS::fit(const std::vector<Hit>& data) {
   // reserve space for the cluster labels and initialize to -1
@@ -110,10 +110,10 @@ void ABS::fit(const std::vector<Hit>& data) {
 }
 
 /**
- * @brief Predict the clusters by retrieving the labels of the hits
+ * @brief Predict the clusters by retrieving the labels of the hits.
  *
- * @param data
- * @return std::vector<int>
+ * @param data: a vector of hits.
+ * @return std::vector<NeutronEvent>: a vector of neutron events.
  */
 std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
   // Sanity check

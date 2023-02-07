@@ -1,5 +1,9 @@
 #include "peakfitting.h"
 
+/**
+ * @brief Peak fitting algorithm using a fast gaussian fit via least squares.
+ *
+ */
 class FastGaussian : public PeakFittingAlgorithm {
  public:
   FastGaussian(){};

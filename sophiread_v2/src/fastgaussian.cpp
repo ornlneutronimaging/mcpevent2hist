@@ -17,8 +17,12 @@
 #include <iostream>
 #include <numeric>
 
-// #define DSCALE 8.0
-
+/**
+ * @brief Get the Median of a vector of doubles.
+ *
+ * @param data: a vector of doubles.
+ * @return double
+ */
 double getMedian(const std::vector<double>& data) {
   std::vector<double> sorted_data = data;
   std::sort(sorted_data.begin(), sorted_data.end());
@@ -31,6 +35,12 @@ double getMedian(const std::vector<double>& data) {
   }
 }
 
+/**
+ * @brief Perform gaussian fitting on the hits.
+ *
+ * @param data: a vector of hits.
+ * @return NeutronEvent
+ */
 NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   // sanity check
   if (data.size() < 8) {

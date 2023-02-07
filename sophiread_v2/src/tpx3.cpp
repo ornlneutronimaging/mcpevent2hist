@@ -25,8 +25,9 @@ std::string NeutronEvent::toString() const {
 /**
  * @brief Convert a raw data packet into a hit.
  *
- * @param packet
- * @param tdc
+ * @param packet: raw data packet
+ * @param tdc: time stamp collected from the monitor
+ * @param chip_layout_type: chip layout ID number
  * @return Hit
  */
 Hit packetToHit(const std::vector<char> &packet, const unsigned long tdc, const int chip_layout_type) {
@@ -75,8 +76,8 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long tdc, const 
 /**
  * @brief Read the raw data from a TimePix3 file.
  *
- * @param filepath
- * @return std::vector<Hit>
+ * @param filepath: path to the raw data file.
+ * @return std::vector<Hit>: vector of hits.
  */
 std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   int chip_layout_type = 0;
@@ -150,11 +151,11 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
 }
 
 /**
- * @brief Save labeled hits to HDF5 file
+ * @brief Save labeled hits to HDF5 file.
  *
- * @param out_file_name
- * @param hits
- * @param labels
+ * @param out_file_name: output file name.
+ * @param hits: hits to be saved.
+ * @param labels: cluster ID for each hits.
  */
 void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit> &hits, const std::vector<int> &labels) {
   // sanity check
@@ -215,10 +216,10 @@ void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit> &hit
 }
 
 /**
- * @brief Save events to HDF5 file
+ * @brief Save events to HDF5 file.
  *
- * @param out_file_name
- * @param events
+ * @param out_file_name: output file name.
+ * @param events: neutron events to be saved.
  */
 void saveEventsToHDF5(const std::string out_file_name, const std::vector<NeutronEvent> &events) {
   // sanity check

@@ -1,0 +1,17 @@
+PROJECT_NAME           = "Sophiread"
+PROJECT_NUMBER         = 2.0.0
+PROJECT_BRIEF          = "An experimental data processing tool for TimePix3 imaging system."
+WARNINGS               = YES
+INPUT                  = ../README.md
+INPUT                 += ../include ../src ../tests ..
+USE_MDFILE_AS_MAINPAGE = README.md
+FILE_PATTERNS          = *.cpp *.h
+EXCLUDE_PATTERNS       = *codec.cpp moc_* */compat/* */3rdparty/* */_deps/*
+OUTPUT_DIRECTORY       = docs
+GENERATE_HTML          = YES
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+ALPHABETICAL_INDEX     = YES
+MACRO_EXPANSION        = YES
+HIDE_UNDOC_MEMBERS     = YES
+HIDE_UNDOC_CLASSES     = YES
