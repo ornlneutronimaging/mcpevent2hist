@@ -3,6 +3,10 @@
 #include "clustering.h"
 #include "peakfitting.h"
 
+/**
+ * @brief Struct for the cluster of hits (charged particles).
+ *
+ */
 struct Cluster {
   int x_min, y_min, x_max, y_max;
   int spidertime;

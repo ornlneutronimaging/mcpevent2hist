@@ -3,6 +3,10 @@
 
 #include "tpx3.h"
 
+/**
+ * @brief Abstract base class for peak fitting algorithms.
+ *
+ */
 class PeakFittingAlgorithm {
  public:
   // Pure virtual function for predicting the peak positions and parameters

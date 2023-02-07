@@ -22,6 +22,10 @@ namespace Ui {
 class MainWindow;
 }
 
+/**
+ * @brief The UI for SophireadDisplay.
+ *
+ */
 class MainWindow : public QMainWindow {
   Q_OBJECT
 

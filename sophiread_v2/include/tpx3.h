@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+// scale factor used for super-pixeling (1 pixel -> 8x8 pixels)
 #define DSCALE 8.0
 
 /**
@@ -81,6 +82,10 @@ class Hit {
       25.0 / 16.0;  // 640 MHz clock is used for the fine time of arrival.
 };
 
+/**
+ * @brief Class to store the data of a single neutron event.
+ *
+ */
 class NeutronEvent {
  public:
   NeutronEvent(const double x, const double y, const double tof,
