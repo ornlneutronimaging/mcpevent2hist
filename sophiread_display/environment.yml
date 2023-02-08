@@ -1,0 +1,6 @@
+name: sophiread_display
+channels:
+  - conda-forge
+dependencies:
+  - qt
+  - qwt

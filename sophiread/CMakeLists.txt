@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(Sophiread)
+
+execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE SOPHIREAD_VERSION)
+
+project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
@@ -47,17 +52,20 @@ add_library(SophireadLib
     src/centroid.cpp
     src/fastgaussian.cpp
 )
+set_target_properties(SophireadLib PROPERTIES VERSION ${PROJECT_VERSION})
 
 # ----------------- CLI APPLICATION ----------------- #
 add_executable(Sophiread
     sophiread.cpp
 )
+set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ CLI STREAM DEMO ------------------ #
 add_executable(SophireadStream
     sophiread_stream.cpp
 )
+set_target_properties(SophireadStream PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(SophireadStream PUBLIC readerwriterqueue SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
@@ -65,13 +73,14 @@ qt5_wrap_ui(SophireadDisplayUI
     ui/mainwindow.ui
 )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-add_executable(SophireadDisplay
+add_executable(SophireadGUI
     sophiread_display.cpp
     include/mainwindow.h
     src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
-target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
+set_target_properties(SophireadGUI PROPERTIES VERSION ${PROJECT_VERSION})
+target_link_libraries(SophireadGUI SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 
 # ----------------- TESTS ----------------- #
@@ -99,8 +108,10 @@ gtest_discover_tests(SophireadTests_PEAKFITTING)
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
 endif()
-install(TARGETS Sophiread
+install(TARGETS Sophiread SophireadGUI SophireadStream
         RUNTIME DESTINATION bin)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+include(CPack)
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)

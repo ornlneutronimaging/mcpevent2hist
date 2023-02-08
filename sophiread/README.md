@@ -17,10 +17,10 @@ Sophiread is built using `cmake` and `make` under a sandboxed environment with
 The following steps have been tested under MaxOS and Linux, and it is in theory possible to build it under Windows.
 
 - Install `conda` or equivalent pacakge manager such as `miniconda`, `mamba`, `micromamba`, etc.
-- Create a new development environment with `conda`:
+- Create a new development environment with `conda` (assuming we are on linux):
 
     ```bash
-    conda create -n sophiread -c conda-forge -f environment.yml
+    conda create -n sophiread -c conda-forge -f environment_linux.yml
     ```
 
 - Activate the environment:
@@ -42,6 +42,20 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
     ```bash
     make docs
     ```
+
+- Make release package (when in `build` directory)
+
+    ```bash
+    make package
+    ```
+
+    This will create three files in the `build` directory:
+
+  - `sophiread-<version>-Linux.tar.gz`: a tarball for Linux
+  - `sophiread-<version>-Linux.tar.Z`: a tarball for Linux with TZ compression
+  - `sophiread-<version>-Linux.sh`: an installer for Linux
+
+> Mac users should use `environment_mac.yml` instead. Also install [MacTex](https://www.tug.org/mactex/) before building the documentation.
 
 Use the CLI
 -----------
@@ -71,7 +85,7 @@ Use the GUI
 -----------
 
 The GUI is a graphical user interface to read and process raw data from the Timepix3 chip.
-It is a single executable file, `SophireadDisplay`, which can be found in the `build` directory.
+It is a single executable file, `SophireadGUI`, which can be found in the `build` directory.
 Once the GUI is launched, you can open a raw data file by clicking the `Load Data` button on the top left corner.
 The GUI will process the data and display the clustered neutron events in the 2D histogram.
 
