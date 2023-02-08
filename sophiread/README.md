@@ -17,10 +17,10 @@ Sophiread is built using `cmake` and `make` under a sandboxed environment with
 The following steps have been tested under MaxOS and Linux, and it is in theory possible to build it under Windows.
 
 - Install `conda` or equivalent pacakge manager such as `miniconda`, `mamba`, `micromamba`, etc.
-- Create a new development environment with `conda`:
+- Create a new development environment with `conda` (assuming we are on linux):
 
     ```bash
-    conda create -n sophiread -c conda-forge -f environment.yml
+    conda create -n sophiread -c conda-forge -f environment_linux.yml
     ```
 
 - Activate the environment:
@@ -42,6 +42,8 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
     ```bash
     make docs
     ```
+
+> Mac users should use `environment_mac.yml` instead. Also install [MacTex](https://www.tug.org/mactex/) before building the documentation.
 
 Use the CLI
 -----------
