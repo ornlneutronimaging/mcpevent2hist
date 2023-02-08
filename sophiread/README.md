@@ -43,6 +43,18 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
     make docs
     ```
 
+- Make release package (when in `build` directory)
+
+    ```bash
+    make package
+    ```
+
+    This will create three files in the `build` directory:
+
+  - `sophiread-<version>-Linux.tar.gz`: a tarball for Linux
+  - `sophiread-<version>-Linux.tar.Z`: a tarball for Linux with TZ compression
+  - `sophiread-<version>-Linux.sh`: an installer for Linux
+
 > Mac users should use `environment_mac.yml` instead. Also install [MacTex](https://www.tug.org/mactex/) before building the documentation.
 
 Use the CLI
