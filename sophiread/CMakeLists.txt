@@ -110,6 +110,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 install(TARGETS Sophiread SophireadDisplay SophireadStream
         RUNTIME DESTINATION bin)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 include(CPack)
 
 # ----------------- DOXYGEN ----------------- #
