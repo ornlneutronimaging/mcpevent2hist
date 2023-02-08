@@ -108,8 +108,9 @@ gtest_discover_tests(SophireadTests_PEAKFITTING)
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
 endif()
-install(TARGETS Sophiread
+install(TARGETS Sophiread SophireadDisplay SophireadStream
         RUNTIME DESTINATION bin)
+include(CPack)
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
