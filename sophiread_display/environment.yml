@@ -1,26 +1,6 @@
-name: sophiread
+name: sophiread_display
 channels:
   - conda-forge
 dependencies:
-  - cmake
-  - clang-format
-  - hdf5
-  - gmock
   - qt
-  - gtest
   - qwt
-  - eigen
-
-  # Not Windows, OpenGL implementation:
-  - mesalib>=18.0.0
-  - mesa-libgl-devel-cos7-x86_64>=18.3.4
-  - mesa-libgl-cos7-x86_64>=18.3.4
-
-  # Linux only
-  - gxx_linux-64
-  - libglu
-
-  # documentation
-  - doxygen
-  - graphviz
-  - texlive-core
