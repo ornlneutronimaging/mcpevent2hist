@@ -85,7 +85,7 @@ Use the GUI
 -----------
 
 The GUI is a graphical user interface to read and process raw data from the Timepix3 chip.
-It is a single executable file, `SophireadDisplay`, which can be found in the `build` directory.
+It is a single executable file, `SophireadGUI`, which can be found in the `build` directory.
 Once the GUI is launched, you can open a raw data file by clicking the `Load Data` button on the top left corner.
 The GUI will process the data and display the clustered neutron events in the 2D histogram.
 

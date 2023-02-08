@@ -73,14 +73,14 @@ qt5_wrap_ui(SophireadDisplayUI
     ui/mainwindow.ui
 )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-add_executable(SophireadDisplay
+add_executable(SophireadGUI
     sophiread_display.cpp
     include/mainwindow.h
     src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
-set_target_properties(SophireadDisplay PROPERTIES VERSION ${PROJECT_VERSION})
-target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
+set_target_properties(SophireadGUI PROPERTIES VERSION ${PROJECT_VERSION})
+target_link_libraries(SophireadGUI SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 
 # ----------------- TESTS ----------------- #
@@ -108,7 +108,7 @@ gtest_discover_tests(SophireadTests_PEAKFITTING)
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
 endif()
-install(TARGETS Sophiread SophireadDisplay SophireadStream
+install(TARGETS Sophiread SophireadGUI SophireadStream
         RUNTIME DESTINATION bin)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 include(CPack)
