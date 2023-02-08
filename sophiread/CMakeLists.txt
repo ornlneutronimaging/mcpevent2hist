@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(Sophiread)
+
+execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE SOPHIREAD_VERSION)
+
+project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
@@ -47,17 +52,20 @@ add_library(SophireadLib
     src/centroid.cpp
     src/fastgaussian.cpp
 )
+set_target_properties(SophireadLib PROPERTIES VERSION ${PROJECT_VERSION})
 
 # ----------------- CLI APPLICATION ----------------- #
 add_executable(Sophiread
     sophiread.cpp
 )
+set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ CLI STREAM DEMO ------------------ #
 add_executable(SophireadStream
     sophiread_stream.cpp
 )
+set_target_properties(SophireadStream PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(SophireadStream PUBLIC readerwriterqueue SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 # ------------------ GUI APPLICATION ------------------ #
@@ -71,6 +79,7 @@ add_executable(SophireadDisplay
     src/mainwindow.cpp
     ${SophireadDisplayUI}
 )
+set_target_properties(SophireadDisplay PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(SophireadDisplay SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
 
