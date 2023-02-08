@@ -13,7 +13,7 @@ Here is the minimum efforts route for compiling `sophiread_display`:
 micromamba create -f environment.yml
 ```
 
-- Activate the environment with `conda activate sophiread`.
+- Activate the environment with `conda activate sophiread_display`.
 
 - Go to `sophiread_display` folder.
 
