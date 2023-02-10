@@ -21,6 +21,11 @@ DBSCAN::TimeClusterInfo::TimeClusterInfo(const double time,
  * @brief Run DBSCAN clustering algorithm on the hits
  *
  * @param hits :: hits
+ *
+ * @note: the current implementation of DBSCAN does not support using customized
+ * peak fitting function to calculate the center of each cluster, aka neutron
+ * event xy position. It is using a non-weighted centroid method from
+ * mlpack::dbscan::DBSCAN<>.
  */
 void DBSCAN::fit(const std::vector<Hit>& hits) {
   // force reset
@@ -153,8 +158,8 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
     // append events
     for (auto const& label_count : label_counts)
       m_events.emplace_back(
-          NeutronEvent(centroids_2D[label_count.first].first /*X*/,
-                       centroids_2D[label_count.first].second /*Y*/,
+          NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
+                       centroids_2D[label_count.first].second * DSCALE /*Y*/,
                        info.m_time_mean, label_count.second));
   }
 
