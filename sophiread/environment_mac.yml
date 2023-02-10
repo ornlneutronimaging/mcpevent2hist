@@ -10,6 +10,8 @@ dependencies:
   - gtest
   - qwt
   - eigen
+  - mlpack
+  - cereal
 
   # Not Windows, OpenGL implementation:
   - mesalib>=18.0.0
