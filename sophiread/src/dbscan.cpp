@@ -281,14 +281,15 @@ void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data,
 }
 
 /**
- * @brief Run DBSCAN clustering on the hits and return netron events
+ * @brief Run DBSCAN clustering on the hits and return neutron events
  *
  * @param hits :: input hits
  * @return neutron events
  */
 std::vector<NeutronEvent> DBSCAN::get_events(const std::vector<Hit>& hits) {
-  reset();
-  fit(hits);
+  if (m_events.size() == 0) {
+    fit(hits);
+  }
   std::cout << "Total number of events: " << m_events.size() << std::endl;
   return m_events;
 }
