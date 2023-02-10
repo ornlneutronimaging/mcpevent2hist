@@ -172,7 +172,10 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
  */
 void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
                                  std::vector<TimeClusterInfo>& merged_infos) {
-  std::cout << "Merging time clusters..." << std::endl;
+  if (m_verbose) {
+    std::cout << "Merging time clusters..." << std::endl;
+  }
+
   // before merging, sort the infos by the min time
   std::sort(input_infos.begin(), input_infos.end(),
             [](const TimeClusterInfo& a, const TimeClusterInfo& b) {
@@ -206,10 +209,6 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
   current.m_time_mean =
       current.m_time_sum / current.m_time_cluster_xy_indexes.size();
   merged_infos.push_back(current);
-  // for(auto & info : merged_infos )
-  //   std::cout << info.m_time_min << "," << info.m_time_mean << "," <<
-  //   info.m_time_max << "," << info.m_time_cluster_xy_indexes.size() <<
-  //   std::endl;
 }
 
 /**
@@ -237,21 +236,17 @@ void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters,
   arma::mat centroids_mat;
   number_of_clusters = dbs.Cluster(data_mat, labels_row, centroids_mat);
 
-  std::cout << "Eps: " << m_eps_time << "; min_points: " << m_min_points_time
-            << "; time clusters: " << number_of_clusters << std::endl;
+  if (m_verbose) {
+    std::cout << "Eps: " << m_eps_time << "; min_points: " << m_min_points_time
+              << "; time clusters: " << number_of_clusters << std::endl;
+  }
 
   // fill in the labels vector from the arma label row
-  labels_row.for_each([&labels](size_t& val) {
-    /*std::cout << (val==SIZE_MAX?"-1":std::to_string(val)) << ",";*/
-    labels.push_back(val);
-  });
+  labels_row.for_each([&labels](size_t& val) { labels.push_back(val); });
 
   // fill in the centroids vector from the arma centroids matrix
   centroids_mat.for_each(
-      [&centroids](arma::mat::elem_type& val) { /*std::cout << val << ","*;*/
-                                                centroids.push_back(val);
-      });
-  // std::cout << "\n";
+      [&centroids](arma::mat::elem_type& val) { centroids.push_back(val); });
 }
 
 /**
@@ -279,13 +274,9 @@ void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data,
   arma::mat centroids_mat;
   number_of_clusters = dbs.Cluster(data_mat, labels_row, centroids_mat);
 
-  // std::cout << "Clusters: " << number_of_clusters << ", ";
-
   // fill in the labels vector from the arma label row
-  labels_row.for_each([&labels](size_t& val) {
-    /*std::cout << (val==SIZE_MAX?"-1":std::to_string(val)) << ",";*/
-    labels.push_back(val);
-  });
+  labels_row.for_each([&labels](size_t& val) { labels.push_back(val); });
+
   // fill in the centroids vector from the arma centroids matrix
   centroids_mat.each_col([&centroids](const arma::vec& b) {
     centroids.push_back(std::pair<double, double>(b[0], b[1]));
