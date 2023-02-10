@@ -86,5 +86,35 @@ TEST(Clustering, ABSAlgorithm) {
 }
 
 TEST(Clustering, DBSCANAlgorithm) {
-  std::cout << "DBSCAN to be implemented." << std::endl;
+  const double absolute_pos_error = 2.0;
+  
+  auto data = gen_clusters();
+  // create the DSCAN algorithm
+  DBSCAN dbs(8000./*eps time*/, 30/*min_points time*/, 4./*eps xy*/, 10/*min_points xy*/);  
+  auto events = dbs.get_events(data);
+  //dbs.fit(data);
+  
+  // check that there are 3 events
+  EXPECT_EQ(events.size(), 3);
+
+  std::vector<double> x = {events[0].getX(), events[1].getX(),
+                           events[2].getX()};
+  std::vector<double> y = {events[0].getY(), events[1].getY(),
+                           events[2].getY()};
+  std::sort(x.begin(), x.end());
+  std::sort(y.begin(), y.end());
+
+  // check the events x, y coordinates
+  EXPECT_NEAR(x[0], 50, absolute_pos_error);
+  EXPECT_NEAR(y[0], 50, absolute_pos_error);
+  EXPECT_NEAR(x[1], 100, absolute_pos_error);
+  EXPECT_NEAR(y[1], 100, absolute_pos_error);
+  EXPECT_NEAR(x[2], 150, absolute_pos_error);
+  EXPECT_NEAR(y[2], 150, absolute_pos_error);
+
+  // print out the events
+  std::cout << "Events:" << std::endl;
+  for (auto& event : events) {
+    std::cout << event.toString() << std::endl;
+  }
 }
