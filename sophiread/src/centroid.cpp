@@ -1,6 +1,8 @@
 #include "centroid.h"
-#include "tpx3.h"
+
 #include <iostream>
+
+#include "tpx3.h"
 
 /**
  * @brief Perform centroid fitting on the hits.
@@ -20,8 +22,8 @@ NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
 
   if (weighted_by_tot) {
     for (const auto& hit : data) {
-      x += DSCALE*hit.getX() * hit.getTOT();
-      y += DSCALE*hit.getY() * hit.getTOT();
+      x += DSCALE * hit.getX() * hit.getTOT();
+      y += DSCALE * hit.getY() * hit.getTOT();
       tof += hit.getTOF();
       tot += hit.getTOT();
     }

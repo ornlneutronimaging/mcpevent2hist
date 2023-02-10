@@ -55,7 +55,12 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
   - `sophiread-<version>-Linux.tar.Z`: a tarball for Linux with TZ compression
   - `sophiread-<version>-Linux.sh`: an installer for Linux
 
-> Mac users should use `environment_mac.yml` instead. Also install [MacTex](https://www.tug.org/mactex/) before building the documentation.
+- For Mac users with m-series chip, please make the following adjustment:
+  - Create env with `CONDA_SUBDIR=osx-64 conda create -f environment_mac.yml`
+    - Currently `mlpack` does not have a `arm64` package from conda, so we need to fallback to x86-64 using Rosetta 2 under the hood.
+  - Install [MacTex](https://www.tug.org/mactex/) before building the documentation.
+  - __DO NOT__ install `mlpack` from homebrew.
+    - `mlpack` from homebrew can lead to linking error when building the DBSCAN object.
 
 Use the CLI
 -----------
