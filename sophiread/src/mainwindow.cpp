@@ -28,7 +28,6 @@ class ColorMap : public QwtLinearColorMap {
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
-
   // Set up the UI
   ui->setupUi(this);
 
@@ -160,14 +159,12 @@ void MainWindow::handlereadfile() {
       auto y1 = x * mysin + y * mycos;
       x = x1;
       y = y1;
-      
-    } 
-    if (x >= 0 && x < isize && y >= 0 && y < isize){
+    }
+    if (x >= 0 && x < isize && y >= 0 && y < isize) {
       // std::cout << "(x, y) = (" << int(x) << "," << int(y)<< ")\n";
-  #pragma omp atomic
-        my2dhisto[isize*int(y) + int(x)] += 1;
-
-     }
+#pragma omp atomic
+      my2dhisto[isize * int(y) + int(x)] += 1;
+    }
   }
 
   // Update the histogram plot

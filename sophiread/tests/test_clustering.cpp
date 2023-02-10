@@ -87,13 +87,14 @@ TEST(Clustering, ABSAlgorithm) {
 
 TEST(Clustering, DBSCANAlgorithm) {
   const double absolute_pos_error = 2.0;
-  
+
   auto data = gen_clusters();
   // create the DSCAN algorithm
-  DBSCAN dbs(8000./*eps time*/, 30/*min_points time*/, 4./*eps xy*/, 10/*min_points xy*/);  
+  DBSCAN dbs(8000. /*eps time*/, 30 /*min_points time*/, 4. /*eps xy*/,
+             10 /*min_points xy*/);
   auto events = dbs.get_events(data);
-  //dbs.fit(data);
-  
+  // dbs.fit(data);
+
   // check that there are 3 events
   EXPECT_EQ(events.size(), 3);
 

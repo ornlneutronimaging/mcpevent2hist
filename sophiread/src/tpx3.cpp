@@ -11,14 +11,16 @@
 
 std::string Hit::toString() const {
   std::stringstream ss;
-  ss << "Hit: x=" << m_x << ", y=" << m_y << ", tot=" << m_tot << ", toa=" << m_toa << ", ftoa=" << m_ftoa
-     << ", tof=" << m_tof << ", spidertime=" << m_spidertime;
+  ss << "Hit: x=" << m_x << ", y=" << m_y << ", tot=" << m_tot
+     << ", toa=" << m_toa << ", ftoa=" << m_ftoa << ", tof=" << m_tof
+     << ", spidertime=" << m_spidertime;
   return ss.str();
 }
 
 std::string NeutronEvent::toString() const {
   std::stringstream ss;
-  ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof << ", nHits=" << m_nHits;
+  ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof
+     << ", nHits=" << m_nHits;
   return ss.str();
 }
 
@@ -30,7 +32,8 @@ std::string NeutronEvent::toString() const {
  * @param chip_layout_type: chip layout ID number
  * @return Hit
  */
-Hit packetToHit(const std::vector<char> &packet, const unsigned long tdc, const int chip_layout_type) {
+Hit packetToHit(const std::vector<char> &packet, const unsigned long tdc,
+                const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
@@ -92,7 +95,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
     throw std::runtime_error("Error opening file");
   }
   // Read the data from the file into a buffer
-  std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(file)),
+                                    std::istreambuf_iterator<char>());
   file.close();
 
   // Process the buffer to extract the raw data
@@ -116,7 +120,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
       // and data_packet_num, therefore we are using the code from manufacture
       // example, tpx3cam.cpp to get the data_packet_size.
       data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
-      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
+      data_packet_num =
+          data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
 
       // get chip layout type
       chip_layout_type = (int)char_array[4];
@@ -157,7 +162,9 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
  * @param hits: hits to be saved.
  * @param labels: cluster ID for each hits.
  */
-void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit> &hits, const std::vector<int> &labels) {
+void saveHitsToHDF5(const std::string out_file_name,
+                    const std::vector<Hit> &hits,
+                    const std::vector<int> &labels) {
   // sanity check
   if (hits.size() != labels.size()) {
     throw std::runtime_error("Hits and labels must have the same size");
@@ -174,42 +181,54 @@ void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit> &hit
   H5::Group group = out_file.createGroup("hits");
   // -- write x
   std::vector<int> x(hits.size());
-  std::transform(hits.begin(), hits.end(), x.begin(), [](const Hit &hit) { return hit.getX(); });
+  std::transform(hits.begin(), hits.end(), x.begin(),
+                 [](const Hit &hit) { return hit.getX(); });
   H5::DataSet x_dataset = group.createDataSet("x", int_type, dataspace);
   x_dataset.write(x.data(), int_type);
   // -- write y
   std::vector<int> y(hits.size());
-  std::transform(hits.begin(), hits.end(), y.begin(), [](const Hit &hit) { return hit.getY(); });
+  std::transform(hits.begin(), hits.end(), y.begin(),
+                 [](const Hit &hit) { return hit.getY(); });
   H5::DataSet y_dataset = group.createDataSet("y", int_type, dataspace);
   y_dataset.write(y.data(), int_type);
   // -- write tot_ns
   std::vector<double> tot_ns(hits.size());
-  std::transform(hits.begin(), hits.end(), tot_ns.begin(), [](const Hit &hit) { return hit.getTOT_ns(); });
-  H5::DataSet tot_ns_dataset = group.createDataSet("tot_ns", float_type, dataspace);
+  std::transform(hits.begin(), hits.end(), tot_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOT_ns(); });
+  H5::DataSet tot_ns_dataset =
+      group.createDataSet("tot_ns", float_type, dataspace);
   tot_ns_dataset.write(tot_ns.data(), float_type);
   // -- write toa_ns
   std::vector<double> toa_ns(hits.size());
-  std::transform(hits.begin(), hits.end(), toa_ns.begin(), [](const Hit &hit) { return hit.getTOA_ns(); });
-  H5::DataSet toa_ns_dataset = group.createDataSet("toa_ns", float_type, dataspace);
+  std::transform(hits.begin(), hits.end(), toa_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOA_ns(); });
+  H5::DataSet toa_ns_dataset =
+      group.createDataSet("toa_ns", float_type, dataspace);
   toa_ns_dataset.write(toa_ns.data(), float_type);
   // -- write ftoa_ns
   std::vector<double> ftoa_ns(hits.size());
-  std::transform(hits.begin(), hits.end(), ftoa_ns.begin(), [](const Hit &hit) { return hit.getFTOA_ns(); });
-  H5::DataSet ftoa_ns_dataset = group.createDataSet("ftoa_ns", float_type, dataspace);
+  std::transform(hits.begin(), hits.end(), ftoa_ns.begin(),
+                 [](const Hit &hit) { return hit.getFTOA_ns(); });
+  H5::DataSet ftoa_ns_dataset =
+      group.createDataSet("ftoa_ns", float_type, dataspace);
   ftoa_ns_dataset.write(ftoa_ns.data(), float_type);
   // -- write tof_ns
   std::vector<double> tof_ns(hits.size());
-  std::transform(hits.begin(), hits.end(), tof_ns.begin(), [](const Hit &hit) { return hit.getTOF_ns(); });
-  H5::DataSet tof_ns_dataset = group.createDataSet("tof_ns", float_type, dataspace);
+  std::transform(hits.begin(), hits.end(), tof_ns.begin(),
+                 [](const Hit &hit) { return hit.getTOF_ns(); });
+  H5::DataSet tof_ns_dataset =
+      group.createDataSet("tof_ns", float_type, dataspace);
   tof_ns_dataset.write(tof_ns.data(), float_type);
   // -- write spidertime_ns
   std::vector<double> spidertime_ns(hits.size());
   std::transform(hits.begin(), hits.end(), spidertime_ns.begin(),
                  [](const Hit &hit) { return hit.getSPIDERTIME_ns(); });
-  H5::DataSet spidertime_ns_dataset = group.createDataSet("spidertime_ns", float_type, dataspace);
+  H5::DataSet spidertime_ns_dataset =
+      group.createDataSet("spidertime_ns", float_type, dataspace);
   spidertime_ns_dataset.write(spidertime_ns.data(), float_type);
   // -- write labels
-  H5::DataSet labels_dataset = group.createDataSet("labels", int_type, dataspace);
+  H5::DataSet labels_dataset =
+      group.createDataSet("labels", int_type, dataspace);
   labels_dataset.write(labels.data(), int_type);
   // -- close file
   out_file.close();
@@ -221,7 +240,8 @@ void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit> &hit
  * @param out_file_name: output file name.
  * @param events: neutron events to be saved.
  */
-void saveEventsToHDF5(const std::string out_file_name, const std::vector<NeutronEvent> &events) {
+void saveEventsToHDF5(const std::string out_file_name,
+                      const std::vector<NeutronEvent> &events) {
   // sanity check
   if (events.size() == 0) {
     throw std::runtime_error("No events to save");
@@ -238,19 +258,22 @@ void saveEventsToHDF5(const std::string out_file_name, const std::vector<Neutron
   H5::Group group = out_file.createGroup("events");
   // -- write x
   std::vector<double> x(events.size());
-  std::transform(events.begin(), events.end(), x.begin(), [](const NeutronEvent &event) { return event.getX(); });
+  std::transform(events.begin(), events.end(), x.begin(),
+                 [](const NeutronEvent &event) { return event.getX(); });
   H5::DataSet x_dataset = group.createDataSet("x", float_type, dataspace);
   x_dataset.write(x.data(), float_type);
   // -- write y
   std::vector<double> y(events.size());
-  std::transform(events.begin(), events.end(), y.begin(), [](const NeutronEvent &event) { return event.getY(); });
+  std::transform(events.begin(), events.end(), y.begin(),
+                 [](const NeutronEvent &event) { return event.getY(); });
   H5::DataSet y_dataset = group.createDataSet("y", float_type, dataspace);
   y_dataset.write(y.data(), float_type);
   // -- write TOF_ns
   std::vector<double> tof_ns(events.size());
   std::transform(events.begin(), events.end(), tof_ns.begin(),
                  [](const NeutronEvent &event) { return event.getTOF_ns(); });
-  H5::DataSet tof_ns_dataset = group.createDataSet("tof_ns", float_type, dataspace);
+  H5::DataSet tof_ns_dataset =
+      group.createDataSet("tof_ns", float_type, dataspace);
   tof_ns_dataset.write(tof_ns.data(), float_type);
   // -- write Nhits
   std::vector<int> nhits(events.size());
