@@ -18,6 +18,8 @@ class DBSCAN : public ClusteringAlgorithm {
   std::vector<int> get_cluster_labels();
   void fit(const std::vector<Hit> &hits);
   std::vector<NeutronEvent> get_events(const std::vector<Hit> &hits);
+  bool verbose() const { return m_verbose; }
+  void set_verbose(bool verbose) { m_verbose = verbose; }
 
  private:
   class TimeClusterInfo {
@@ -51,4 +53,5 @@ class DBSCAN : public ClusteringAlgorithm {
   const size_t m_max_hit_chunk_size = 2e6;
   std::vector<int>
       clusterLabels_;  // The cluster labels for each hit, not implemented yet
+  bool m_verbose = false;
 };

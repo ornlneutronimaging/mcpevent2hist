@@ -26,38 +26,39 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   // force reset
   reset();
 
+  const size_t max_number_of_hits = hits.size();
   // fill ClusterLabels_ with -1
   // NOTE: the current implementation of DBSCAN does not keep track of
   //       the cluster label for each hits, so we are filling -1 for all hits.
-  clusterLabels_.resize(hits.size(), -1);
+  clusterLabels_.resize(max_number_of_hits, -1);
 
-  size_t numHits = hits.size();
-  std::cout << "Total number of hits: " << numHits << std::endl;
-  if (hits.size() == 0) return;
+  if (max_number_of_hits == 0) return;
 
-  size_t max_number_of_hits =
-      hits.size();  // how many hits we want to process in total
-  std::cout << "Maximum number of hits to be processed: " << max_number_of_hits
-            << std::endl;
-  std::cout << "Maximum chunk size (hits): " << m_max_hit_chunk_size
-            << std::endl;
-
-  if (max_number_of_hits <= m_max_hit_chunk_size)
-    std::cout << "Fitting time clusters (1D DBSCAN) on all hits" << std::endl;
-  else
-    std::cout << "Fitting time clusters (1D DBSCAN) on chunks of hits..."
+  if (m_verbose) {
+    std::cout << "Number of hits to process: " << max_number_of_hits
               << std::endl;
+    std::cout << "Maximum chunk size (hits): " << m_max_hit_chunk_size
+              << std::endl;
+
+    if (max_number_of_hits <= m_max_hit_chunk_size)
+      std::cout << "Fitting time clusters (1D DBSCAN) on all hits" << std::endl;
+    else
+      std::cout << "Fitting time clusters (1D DBSCAN) on chunks of hits..."
+                << std::endl;
+  }
 
   size_t chunk_size{0};  // either max_chunk_size or the number of unprocessed
                          // hits, whichever is smaller
   std::vector<TimeClusterInfo> all_time_cluster_infos;
   size_t hit_offset{0};  // for example, if the first chunk had N hits, the
                          // second chunk will have an offset of N, etc.
+
   while (true) {
     // make a chunk
     chunk_size =
         std::min(m_max_hit_chunk_size, max_number_of_hits - hit_offset);
     std::vector<double> chunk;
+    // NOTE: we are using TOA ns here, NOT clock cycle.
     std::transform(
         hits.begin() + hit_offset, hits.begin() + hit_offset + chunk_size,
         std::back_inserter(chunk), [](Hit const& h) { return h.getTOA_ns(); });
@@ -111,21 +112,23 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   // merge all chunk results
   std::vector<TimeClusterInfo> merged_time_cluster_infos;
   mergeTimeClusters1D(all_time_cluster_infos, merged_time_cluster_infos);
-  // std::cout << "Number of time clusters before cluster size check: " <<
-  // merged_time_cluster_infos.size() << std::endl;
 
   // run 2D clustering of XY points for each time cluster satisfying the
   // min_points size
   assert(m_events.empty());  // must run reset() before fitting
 
-  std::cout << "Fitting XY clusters (2D DBSCAN) on every time cluster..."
-            << std::endl;
-  std::cout << "Eps: " << m_eps_xy << "; min_points: " << m_min_points_xy
-            << std::endl;
+  if (m_verbose) {
+    std::cout << "Fitting XY clusters (2D DBSCAN) on every time cluster..."
+              << std::endl;
+    std::cout << "Eps: " << m_eps_xy << "; min_points: " << m_min_points_xy
+              << std::endl;
+  }
+
   size_t number_of_valid_time_clusters{0};
 
   for (auto& info : merged_time_cluster_infos) {
     if (info.m_time_cluster_xy_indexes.size() < m_min_points_time) continue;
+
     std::vector<std::pair<double, double>> xy_points;
     for (auto& index : info.m_time_cluster_xy_indexes)
       xy_points.push_back(
@@ -155,8 +158,10 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
                        info.m_time_mean, label_count.second));
   }
 
-  std::cout << "Final number of time clusters: "
-            << number_of_valid_time_clusters << std::endl;
+  if (m_verbose) {
+    std::cout << "Final number of time clusters: "
+              << number_of_valid_time_clusters << std::endl;
+  }
 }
 
 /**
