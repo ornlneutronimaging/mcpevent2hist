@@ -23,7 +23,14 @@ DBSCAN::TimeClusterInfo::TimeClusterInfo(const double time,
  * @param hits :: hits
  */
 void DBSCAN::fit(const std::vector<Hit>& hits) {
+  // force reset
   reset();
+
+  // fill ClusterLabels_ with -1
+  // NOTE: the current implementation of DBSCAN does not keep track of
+  //       the cluster label for each hits, so we are filling -1 for all hits.
+  clusterLabels_.resize(hits.size(), -1);
+
   size_t numHits = hits.size();
   std::cout << "Total number of hits: " << numHits << std::endl;
   if (hits.size() == 0) return;
@@ -303,7 +310,6 @@ void DBSCAN::reset() { m_events.clear(); }
  * @brief Get DBSCAN cluster labels for each hit
  */
 std::vector<int> DBSCAN::get_cluster_labels() {
-  std::cout << "DBSCAN::get_cluster_labels() method hasn't been implemented yet"
-            << std::endl;
-  return std::vector<int>();
+  std::cout << "DBSCAN does not provide per hit cluster label." << std::endl;
+  return clusterLabels_;
 }
