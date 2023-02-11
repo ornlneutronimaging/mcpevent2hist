@@ -51,7 +51,6 @@ class DBSCAN : public ClusteringAlgorithm {
   size_t m_min_points_xy;    // The minimum number of points in an XY cluster
   std::vector<NeutronEvent> m_events;
   const size_t m_max_hit_chunk_size = 2e6;
-  std::vector<int>
-      clusterLabels_;  // The cluster labels for each hit, not implemented yet
+  std::vector<int> clusterLabels_;  // The cluster labels for each hit
   bool m_verbose = false;
 };

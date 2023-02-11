@@ -32,9 +32,8 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   reset();
 
   const size_t max_number_of_hits = hits.size();
+
   // fill ClusterLabels_ with -1
-  // NOTE: the current implementation of DBSCAN does not keep track of
-  //       the cluster label for each hits, so we are filling -1 for all hits.
   clusterLabels_.resize(max_number_of_hits, -1);
 
   if (max_number_of_hits == 0) return;
@@ -123,28 +122,37 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   assert(m_events.empty());  // must run reset() before fitting
 
   if (m_verbose) {
+    std::cout << "Number of time clusters: " << merged_time_cluster_infos.size()
+              << std::endl;
     std::cout << "Fitting XY clusters (2D DBSCAN) on every time cluster..."
               << std::endl;
     std::cout << "Eps: " << m_eps_xy << "; min_points: " << m_min_points_xy
               << std::endl;
   }
 
-  size_t number_of_valid_time_clusters{0};
-
+  size_t label_offset{0};
   for (auto& info : merged_time_cluster_infos) {
-    if (info.m_time_cluster_xy_indexes.size() < m_min_points_time) continue;
+    assert(info.m_time_cluster_xy_indexes.size() >= m_min_points_time);
 
     std::vector<std::pair<double, double>> xy_points;
     for (auto& index : info.m_time_cluster_xy_indexes)
       xy_points.push_back(
           std::pair<double, double>(hits[index].getX(), hits[index].getY()));
 
-    number_of_valid_time_clusters++;
-
     std::vector<size_t> labels;
     std::vector<std::pair<double, double>> centroids_2D;
     size_t number_of_clusters{0};
     fit2D(xy_points, number_of_clusters, labels, centroids_2D);
+
+    // set cluster labels to all hits contained in the current time cluster
+    for (size_t ii = 0; ii < labels.size(); ii++) {
+      size_t label = labels[ii];
+      int cluster_label = (label == SIZE_MAX || label > number_of_clusters - 1)
+                              ? -1
+                              : label + label_offset;
+      clusterLabels_[info.m_time_cluster_xy_indexes[ii]] = cluster_label;
+    }
+    label_offset += number_of_clusters;
 
     std::map<size_t, size_t>
         label_counts;  // label vs. number of xy points with that label
@@ -161,11 +169,6 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
           NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
                        centroids_2D[label_count.first].second * DSCALE /*Y*/,
                        info.m_time_mean, label_count.second));
-  }
-
-  if (m_verbose) {
-    std::cout << "Final number of time clusters: "
-              << number_of_valid_time_clusters << std::endl;
   }
 }
 
@@ -204,16 +207,20 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
           next.m_time_cluster_xy_indexes.end());
       current.m_time_sum += next.m_time_sum;
     } else {
-      current.m_time_mean =
-          current.m_time_sum / current.m_time_cluster_xy_indexes.size();
-      merged_infos.push_back(current);
+      if (current.m_time_cluster_xy_indexes.size() >= m_min_points_time) {
+        current.m_time_mean =
+            current.m_time_sum / current.m_time_cluster_xy_indexes.size();
+        merged_infos.push_back(current);
+      }
       current = *(it);
     }
     it++;
   }
-  current.m_time_mean =
-      current.m_time_sum / current.m_time_cluster_xy_indexes.size();
-  merged_infos.push_back(current);
+  if (current.m_time_cluster_xy_indexes.size() >= m_min_points_time) {
+    current.m_time_mean =
+        current.m_time_sum / current.m_time_cluster_xy_indexes.size();
+    merged_infos.push_back(current);
+  }
 }
 
 /**
@@ -298,7 +305,8 @@ std::vector<NeutronEvent> DBSCAN::get_events(const std::vector<Hit>& hits) {
   if (m_events.size() == 0) {
     fit(hits);
   }
-  std::cout << "Total number of events: " << m_events.size() << std::endl;
+  if (m_verbose)
+    std::cout << "Total number of events: " << m_events.size() << std::endl;
   return m_events;
 }
 
@@ -310,7 +318,4 @@ void DBSCAN::reset() { m_events.clear(); }
 /**
  * @brief Get DBSCAN cluster labels for each hit
  */
-std::vector<int> DBSCAN::get_cluster_labels() {
-  std::cout << "DBSCAN does not provide per hit cluster label." << std::endl;
-  return clusterLabels_;
-}
+std::vector<int> DBSCAN::get_cluster_labels() { return clusterLabels_; }
