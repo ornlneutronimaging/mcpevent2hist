@@ -95,7 +95,7 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   }
 
   // return the hit
-  return Hit(x, y, tot, toa, ftoa, tof, SPDR_timestamp);
+  return Hit(x, y, tot, toa, ftoa, tof, spidertime);
 }
 
 /**
