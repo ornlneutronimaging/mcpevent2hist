@@ -99,8 +99,8 @@ int main(int argc, char *argv[])
                         trigger_counter = temp >> 44 & 0xFFF; 
                         TDC_timestamp = coarsetime * 25E-9 + trigtime_fine * time_unit*1E-9;
 						//uncomment below to save TDC timestamps into the txt file                        
-                    //  xy_file << setprecision(15) << TDC_timestamp << endl;  
-                        cout<< "TDC timestamp: " << setprecision(15) << TDC_timestamp << endl;
+                        xy_file << setprecision(15) << TDC_timestamp << endl;  
+                        // cout<< "TDC timestamp: " << setprecision(15) << TDC_timestamp << endl;
 						numofTDC=numofTDC+1;												
                         break;
 
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
                                 Timer_MSB16 = Timer_MSB16 - diff;
                             }  
 							//uncomment below to save the global timestamps into the text file;
-                         //xy_file << " Global time: " << setprecision(15) << timemaster * 25e-9 << endl;  //global timestamps can be saved into text file
+                         xy_file << " Global time: " << setprecision(15) << timemaster * 25e-9 << endl;  //global timestamps can be saved into text file
                         }
 
                         break;
