@@ -73,7 +73,8 @@ class Hit {
   int m_toa;     // time of arrival (40MHz clock, 14 bit)
   int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
   unsigned int m_tof;
-  unsigned long long m_spidertime;  // time from the spider board (in the unit of 25ns)
+  unsigned long long
+      m_spidertime;  // time from the spider board (in the unit of 25ns)
 
   // scale factor that converts time to ns
   const double m_scale_to_ns_40mhz =
