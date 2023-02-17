@@ -34,7 +34,6 @@ std::string NeutronEvent::toString() const {
  */
 Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
                 const unsigned long long gdc, const int chip_layout_type) {
-
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
@@ -52,23 +51,23 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   spidertime = 16384 * (*spider_time) + toa;
 
   // rename variables for clarity
-  unsigned long long int GDC_timestamp=gdc; 
-  unsigned long long TDC_timestamp=tdc;
+  unsigned long long int GDC_timestamp = gdc;
+  unsigned long long TDC_timestamp = tdc;
 
-  // convert spidertime to global timestamp 
-  unsigned long SPDR_LSB30=0;
-  unsigned long SPDR_MSB18=0;
-  unsigned long long SPDR_timestamp=0;
+  // convert spidertime to global timestamp
+  unsigned long SPDR_LSB30 = 0;
+  unsigned long SPDR_MSB18 = 0;
+  unsigned long long SPDR_timestamp = 0;
 
   SPDR_LSB30 = GDC_timestamp & 0x3FFFFFFF;
   SPDR_MSB18 = (GDC_timestamp >> 30) & 0x3FFFF;
-  if (spidertime < SPDR_LSB30){
+  if (spidertime < SPDR_LSB30) {
     SPDR_MSB18++;
   }
   SPDR_timestamp = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
-  SPDR_timestamp = SPDR_timestamp | spidertime; 
+  SPDR_timestamp = SPDR_timestamp | spidertime;
 
-  // tof calculation 
+  // tof calculation
   tof = SPDR_timestamp - TDC_timestamp;
 
   // pixel address
@@ -95,7 +94,7 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   }
 
   // return the hit
-  return Hit(x, y, tot, toa, ftoa, tof, spidertime);
+  return Hit(x, y, tot, toa, ftoa, tof, SPDR_timestamp);
 }
 
 /**
@@ -125,19 +124,19 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   std::vector<Hit> hits;
   std::cout << "File size: " << buffer.size() << std::endl;
 
-  // for TDC information 
+  // for TDC information
   unsigned long *tdclast;
   unsigned long long mytdc = 0;
-  unsigned long TDC_MSB16=0;
-  unsigned long TDC_LSB32=0;
-  unsigned long TDC_timestamp=0;
+  unsigned long TDC_MSB16 = 0;
+  unsigned long TDC_LSB32 = 0;
+  unsigned long TDC_timestamp = 0;
 
-  // for GDC information 
+  // for GDC information
   unsigned long *gdclast;
   unsigned long long mygdc = 0;
-  unsigned long Timer_LSB32=0;
-  unsigned long Timer_MSB16=0;
-  unsigned long long int GDC_timestamp=0;            // 48-bit 
+  unsigned long Timer_LSB32 = 0;
+  unsigned long Timer_MSB16 = 0;
+  unsigned long long int GDC_timestamp = 0;  // 48-bit
 
   for (auto i = buffer.begin(); i != buffer.end(); i += 8) {
     std::vector<char> char_array(i, std::next(i, 8));
@@ -172,32 +171,38 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
         if (data_packet[7] == 0x6F) {
           // TDC data packets
           tdclast = (unsigned long *)(&data_packet[0]);
-          mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+          mytdc = (((*tdclast) >> 12) &
+                   0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
           TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
           TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
-          if (mytdc < TDC_LSB32){
+          if (mytdc < TDC_LSB32) {
             TDC_MSB16++;
           }
           TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
           TDC_timestamp = TDC_timestamp | mytdc;
-          // std::cout << "TDC_timestamp: " << std::setprecision(15) << TDC_timestamp*25E-9 <<std::endl; 
+          // std::cout << "TDC_timestamp: " << std::setprecision(15) <<
+          // TDC_timestamp*25E-9 <<std::endl;
         } else if ((data_packet[7] & 0xF0) == 0x40) {
           // GDC data packet
           gdclast = (unsigned long *)(&data_packet[0]);
-          mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF); 
-          if (((mygdc >> 40) & 0xF) == 0x4){
-            Timer_LSB32 = mygdc & 0xFFFFFFFF;             // 32-bit 
-          } else if (((mygdc >> 40) & 0xF) == 0x5){
-            Timer_MSB16 = mygdc & 0xFFFF;                 // 16-bit
+          mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+          if (((mygdc >> 40) & 0xF) == 0x4) {
+            Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
+          } else if (((mygdc >> 40) & 0xF) == 0x5) {
+            Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
             GDC_timestamp = Timer_MSB16;
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
-            // std::cout << "GDC_timestamp: " << std::setprecision(15) << GDC_timestamp*25E-9 << std::endl;
+            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            // GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
           // Process the data into hit
-          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp, chip_layout_type);
-          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " << hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 << std::endl;
+          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+                                 chip_layout_type);
+          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+          // std::endl;
           hits.push_back(hit);
         }
       }
