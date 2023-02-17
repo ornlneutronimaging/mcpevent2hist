@@ -4,11 +4,13 @@
  *
  */
 #include <unistd.h>
+
 #include <fstream>
 #include <iostream>
-#include "tpx3.h"
+
 #include "abs.h"
 #include "dbscan.h"
+#include "tpx3.h"
 
 int main(int argc, char *argv[]) {
   // processing command line arguments
@@ -62,17 +64,17 @@ int main(int argc, char *argv[]) {
 
   // clustering and fitting
   ClusteringAlgorithm *alg;
-  if(use_abs_algorithm) {
+  if (use_abs_algorithm) {
     alg = new ABS(5.0);
     alg->set_method("fast_gaussian");
-  }
-  else
-  {
-    // parameters for DBSCAN were chosen based on the results from the frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file
-    alg = new DBSCAN(3.0/*eps time*/, 10/*min_points time*/, 2.0/*eps xy*/, 5/*min_points xy*/);
+  } else {
+    // parameters for DBSCAN were chosen based on the results from the
+    // frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file
+    alg = new DBSCAN(3.0 /*eps time*/, 10 /*min_points time*/, 2.0 /*eps xy*/,
+                     5 /*min_points xy*/);
     alg->set_method("centroid");
   }
-  
+
   alg->fit(hits);
   auto labels = alg->get_cluster_labels();
   // print out labeled hits
