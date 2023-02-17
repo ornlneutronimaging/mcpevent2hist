@@ -75,7 +75,7 @@ void ABS::fit(const std::vector<Hit>& data) {
 
     if (!foundCluster) {
       // look for a cluster with the smallest spidertime
-      int min_spidertime = clusters[0].spidertime;
+      auto min_spidertime = clusters[0].spidertime;
       int min_spidertime_index = 0;
       for (int j = 1; j < numClusters_; j++) {
         if (clusters[j].size > 0 && clusters[j].spidertime < min_spidertime) {
