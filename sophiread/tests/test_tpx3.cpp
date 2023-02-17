@@ -9,22 +9,6 @@ TEST(FileHandlingTest, ReadTPX3RawData) {
   auto hits =
       readTimepix3RawData("data/frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3");
 
-  std::cout << hits[0].getX() << " " 
-            << hits[0].getY() << " " 
-            << hits[0].getTOT() << " " 
-            << hits[0].getTOA() << " " 
-            << hits[0].getFTOA() << " " 
-            << hits[0].getTOF() << " " 
-            << hits[0].getSPIDERTIME() << std::endl;
-
-  std::cout << hits[9933804 - 1].getX() << " "  
-            << hits[9933804 - 1].getY() << " " 
-            << hits[9933804 - 1].getTOT() << " " 
-            << hits[9933804 - 1].getTOA() << " " 
-            << hits[9933804 - 1].getFTOA() << " " 
-            << hits[9933804 - 1].getTOF() << " " 
-            << hits[9933804 - 1].getSPIDERTIME() << std::endl;
-            
   // check the number of hits
   EXPECT_EQ(hits.size(), 9933804);
   // // check the first hit
