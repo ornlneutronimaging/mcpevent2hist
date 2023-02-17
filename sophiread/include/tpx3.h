@@ -28,7 +28,7 @@ class Hit {
         m_spidertime(hit.m_spidertime){};
 
   Hit(int x, int y, int tot, int toa, int ftoa, unsigned int tof,
-      int spidertime)
+      unsigned long long spidertime)
       : m_x(x),
         m_y(y),
         m_tot(tot),
@@ -53,7 +53,7 @@ class Hit {
   int getTOT() const { return m_tot; };
   int getTOA() const { return m_toa; };
   int getFTOA() const { return m_ftoa; };
-  int getSPIDERTIME() const { return m_spidertime; };
+  unsigned long long getSPIDERTIME() const { return m_spidertime; };
   unsigned int getTOF() const { return m_tof; };
 
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
@@ -73,7 +73,8 @@ class Hit {
   int m_toa;     // time of arrival (40MHz clock, 14 bit)
   int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
   unsigned int m_tof;
-  int m_spidertime;  // time from the spider board (in the unit of 25ns)
+  unsigned long long
+      m_spidertime;  // time from the spider board (in the unit of 25ns)
 
   // scale factor that converts time to ns
   const double m_scale_to_ns_40mhz =
@@ -109,8 +110,8 @@ class NeutronEvent {
 
 // static file processing
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
-Hit packetToHit(const std::vector<char>& packet, const unsigned long tdc,
-                const int chip_layout_type);
+Hit packetToHit(const std::vector<char>& packet, const unsigned long long tdc,
+                const unsigned long long gdc, const int chip_layout_type);
 //
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit>& hits,

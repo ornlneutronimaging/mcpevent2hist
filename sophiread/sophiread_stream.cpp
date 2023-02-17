@@ -3,7 +3,6 @@
  *
  */
 #include <readerwriterqueue.h>
-#include "tpx3.h"
 
 #include <fstream>
 #include <iostream>
@@ -12,6 +11,7 @@
 
 #include "abs.h"
 #include "dbscan.h"
+#include "tpx3.h"
 
 moodycamel::BlockingReaderWriterQueue<Hit> q_hits;
 bool done = false;
@@ -44,8 +44,20 @@ void reader(std::string filename) {
   int chip_layout_type = 0;
   int data_packet_size = 0;
   int data_packet_num = 0;
+
+  // for TDC information
   unsigned long *tdclast;
-  unsigned long mytdc = 0;
+  unsigned long long mytdc = 0;
+  unsigned long TDC_MSB16 = 0;
+  unsigned long TDC_LSB32 = 0;
+  unsigned long TDC_timestamp = 0;
+
+  // for GDC information
+  unsigned long *gdclast;
+  unsigned long long mygdc = 0;
+  unsigned long Timer_LSB32 = 0;
+  unsigned long Timer_MSB16 = 0;
+  unsigned long long int GDC_timestamp = 0;  // 48-bit
 
   // sanity check
   std::ifstream file(filename, std::ios::binary);
@@ -77,14 +89,41 @@ void reader(std::string filename) {
         if (char_array[7] == 0x6F) {
           // TDC data packets
           tdclast = (unsigned long *)(&char_array[0]);
-          mytdc = (((*tdclast) >> 12) & 0x3fffffff);
+          mytdc = (((*tdclast) >> 12) &
+                   0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+          TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
+          TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
+          if (mytdc < TDC_LSB32) {
+            TDC_MSB16++;
+          }
+          TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
+          TDC_timestamp = TDC_timestamp | mytdc;
+          // std::cout << "TDC_timestamp: " << std::setprecision(15) <<
+          // TDC_timestamp*25E-9 <<std::endl;
+
         } else if ((char_array[7] & 0xF0) == 0x40) {
-          // GDC
-          // do nothing for now (unless we need the GDC count)
+          // GDC data packet
+          gdclast = (unsigned long *)(&char_array[0]);
+          mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+          if (((mygdc >> 40) & 0xF) == 0x4) {
+            Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
+          } else if (((mygdc >> 40) & 0xF) == 0x5) {
+            Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
+            GDC_timestamp = Timer_MSB16;
+            GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
+            GDC_timestamp = GDC_timestamp | Timer_LSB32;
+            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            // GDC_timestamp*25E-9 << std::endl;
+          }
         } else if ((char_array[7] & 0xF0) == 0xb0) {
           // Process the data into hit
-          auto data_packet = std::vector<char>(char_array, char_array + sizeof(char_array) / sizeof(char));
-          auto hit = packetToHit(data_packet, mytdc, chip_layout_type);
+          auto data_packet = std::vector<char>(
+              char_array, char_array + sizeof(char_array) / sizeof(char));
+          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+                                 chip_layout_type);
+          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+          // std::endl;
           q_hits.enqueue(hit);
         }
         //
@@ -102,7 +141,7 @@ void reader(std::string filename) {
 void processor() {
   std::vector<Hit> batch;
   while (!done) {
-    Hit hit(0,0,0,0,0,0,0);
+    Hit hit(0, 0, 0, 0, 0, 0, 0);
     if (q_hits.try_dequeue(hit)) {
       batch.push_back(hit);
       if (batch.size() >= batch_size) {
@@ -116,11 +155,11 @@ void processor() {
   // process remaining data
   batch.clear();
   while (q_hits.size_approx() > 0) {
-    Hit hit(0,0,0,0,0,0,0);
+    Hit hit(0, 0, 0, 0, 0, 0, 0);
     q_hits.wait_dequeue(hit);
     batch.push_back(hit);
   }
-  if (batch.size() >0) {
+  if (batch.size() > 0) {
     process_batch(batch);
   }
 }

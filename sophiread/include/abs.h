@@ -9,7 +9,7 @@
  */
 struct Cluster {
   int x_min, y_min, x_max, y_max;
-  int spidertime;
+  unsigned long long spidertime;
   int label, size;
 };
 
