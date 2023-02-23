@@ -137,6 +137,9 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     for (auto& index : clusterIndices_[label]) {
       cluster.push_back(data[index]);
     }
+    if (cluster.size() < m_min_cluster_size) {
+      continue;
+    }
     // get the neutron event
     PeakFittingAlgorithm* alg;
     if (m_method == "centroid") {
