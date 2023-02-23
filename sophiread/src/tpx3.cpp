@@ -68,7 +68,12 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   SPDR_timestamp = SPDR_timestamp | spidertime;
 
   // tof calculation
-  tof = SPDR_timestamp - TDC_timestamp;
+  // TDC packets not always arrive before corresponding data packets
+  if (SPDR_timestamp < TDC_timestamp){
+    tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
+  } else {
+    tof = SPDR_timestamp - TDC_timestamp;
+  }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
