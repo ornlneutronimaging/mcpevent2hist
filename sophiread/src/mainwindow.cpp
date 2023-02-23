@@ -64,8 +64,8 @@ MainWindow::MainWindow(QWidget *parent)
   // NOTE: use adaptive search box with a feature of 5.0 pixels
   //       use weighted centroid for approximating neutron event
   clustering_alg = new ABS(5.0);
-  // clustering_alg->set_method("centroid");
-  clustering_alg->set_method("fast_gaussian");
+  clustering_alg->set_method("centroid");
+  // clustering_alg->set_method("fast_gaussian");
 
   // Connect signals and slots
   connect(mytimer, SIGNAL(timeout()), this, SLOT(handletimer()));
@@ -163,7 +163,7 @@ void MainWindow::handlereadfile() {
     if (x >= 0 && x < isize && y >= 0 && y < isize) {
       // std::cout << "(x, y) = (" << int(x) << "," << int(y)<< ")\n";
 #pragma omp atomic
-      my2dhisto[isize * int(y) + int(x)] += 1;
+      my2dhisto[isize * int(x) + int(y)] += 1;
     }
   }
 
