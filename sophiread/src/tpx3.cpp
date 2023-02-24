@@ -25,6 +25,86 @@ std::string NeutronEvent::toString() const {
 }
 
 /**
+ * @brief Alternative way to parse data packet where timing is assumed.
+ *
+ * @param packet
+ * @param rollover_counter
+ * @param previous_time
+ * @param chip_layout_type
+ * @return Hit
+ *
+ * @note As of 2023-02-24, timing packet (gdc, tdc) are not reliable, therefore
+ * this function is used as a temporary solution with assumed timing, until
+ * timing packet is fixed on the hardware side.
+ */
+Hit packetToHitAlt(const std::vector<char> &packet,
+                   unsigned long long *rollover_counter,
+                   unsigned long long *previous_time,
+                   const int chip_layout_type) {
+  unsigned short pixaddr, dcol, spix, pix;
+  unsigned short *spider_time;
+  unsigned short *nTOT;    // bytes 2,3, raw time over threshold
+  unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
+  unsigned int *npixaddr;  // bytes 4,5,6,7
+  int x, y, tot, toa, ftoa;
+  unsigned int spidertime, tof;
+  // timing information
+  spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
+  nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
+  nTOA = (unsigned int *)(&packet[3]);           // ToA          (14 bits)
+  ftoa = *nTOT & 0xF;                            // fine ToA     (4 bits)
+  tot = (*nTOT >> 4) & 0x3FF;
+  toa = (*nTOA >> 6) & 0x3FFF;
+  spidertime = 16384 * (*spider_time) + toa;
+
+  // time calculation
+  // Compute SPDR_timestamp
+  unsigned long long SPDR_timestamp;
+  const unsigned long long time_range = 2 << 30;
+  // - decide if rollover happened
+  //    if so, increase the rollover counter
+  // - data packet are long range ordered, short range disordered
+  //    only update previous_time when I am indeed arrive later
+  if (spidertime < *previous_time) {
+    if (*previous_time - spidertime > time_range / 2) {
+      *rollover_counter += 1;
+    }
+  } else {
+    *previous_time = spidertime;
+  }
+  SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
+  // compute tof = mod(SPDR_timestamp, 666667)
+  // 666667 = 1E9/60.0/25.0
+  tof = SPDR_timestamp % 666667;
+
+  // pixel address
+  npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
+  pixaddr = (*npixaddr >> 12) & 0xFFFF;
+  dcol = ((pixaddr & 0xFE00) >> 8);
+  spix = ((pixaddr & 0x1F8) >> 1);
+  pix = pixaddr & 0x7;
+  x = dcol + (pix >> 2);   // x coordinate
+  y = spix + (pix & 0x3);  // y coordinate
+  // adjustment for chip layout
+  if (chip_layout_type == 0) {  // single
+    x += 260;
+    y = y;
+  } else if (chip_layout_type == 1) {  // double
+    x = 255 - x + 260;
+    y = 255 - y + 260;
+  } else if (chip_layout_type == 2) {  // triple
+    x = 255 - x;
+    y = 255 - y + 260;
+  } else {  // quad
+    x = x;
+    y = y;
+  }
+
+  // return the hit
+  return Hit(x, y, tot, toa, ftoa, tof, SPDR_timestamp);
+}
+
+/**
  * @brief Convert a raw data packet into a hit.
  *
  * @param packet: raw data packet
@@ -129,6 +209,10 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   std::vector<Hit> hits;
   std::cout << "File size: " << buffer.size() << std::endl;
 
+  // for Alternative timing handler
+  unsigned long long *rollover_counter = new unsigned long long(0);
+  unsigned long long *previous_time = new unsigned long long(0);
+
   // for TDC information
   unsigned long *tdclast;
   unsigned long long mytdc = 0;
@@ -202,9 +286,14 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
             // GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
+          // NOTE: as of 2023-02-24, timing data packet cannot be used, using
+          // alternative method to get the timing information
+          auto hit = packetToHitAlt(data_packet, rollover_counter,
+                                    previous_time, chip_layout_type);
+          // std::cout << hit.toString() << std::endl;
           // Process the data into hit
-          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
-                                 chip_layout_type);
+          // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+          //                        chip_layout_type);
           // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
           // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
           // std::endl;

@@ -112,6 +112,10 @@ class NeutronEvent {
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
 Hit packetToHit(const std::vector<char>& packet, const unsigned long long tdc,
                 const unsigned long long gdc, const int chip_layout_type);
+Hit packetToHitAlt(const std::vector<char>& packet,
+                   unsigned long long* rollover_counter,
+                   unsigned long long* previous_time,
+                   const int chip_layout_type);
 //
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit>& hits,
