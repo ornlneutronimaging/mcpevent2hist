@@ -34,7 +34,7 @@ class ABS : public ClusteringAlgorithm {
   std::vector<std::vector<int>> clusterIndices_;  // The cluster indices for
                                                   // each cluster
   const int numClusters_ = 128;     // The number of clusters use in runtime
-  const int maxClusterSize_ = 10;   // The maximum cluster size
+  const long unsigned int m_min_cluster_size = 3;  // The maximum cluster size
   const int spiderTimeRange_ = 75;  // The spider time range (in ns)
   PeakFittingAlgorithm* peakFittingAlgorithm_;  // The clustering algorithm
 };
