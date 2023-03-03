@@ -37,6 +37,11 @@ std::string NeutronEvent::toString() const {
  * @note As of 2023-02-24, timing packet (gdc, tdc) are not reliable, therefore
  * this function is used as a temporary solution with assumed timing, until
  * timing packet is fixed on the hardware side.
+ * 
+ * @note this function should only be used during high flux environment because
+ * we rely on the pixel hit spidertime to do auto-increment when rollover occurs.
+ * In situation where the time between hits is larger than the rollover time, 
+ * the auto-increment does not work. 
  */
 Hit packetToHitAlt(const std::vector<char> &packet,
                    unsigned long long* rollover_counter,
