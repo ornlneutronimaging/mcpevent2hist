@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 
 #include "abs.h"
 #include "dbscan.h"
