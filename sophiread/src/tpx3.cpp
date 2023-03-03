@@ -38,8 +38,8 @@ std::string NeutronEvent::toString() const {
  * timing packet is fixed on the hardware side.
  */
 Hit packetToHitAlt(const std::vector<char> &packet,
-                   unsigned long long *rollover_counter,
-                   unsigned long long *previous_time,
+                   unsigned long long* rollover_counter,
+                   unsigned long long* previous_time,
                    const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
@@ -58,21 +58,26 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   spidertime = 16384 * (*spider_time) + toa;
 
   // time calculation
-  // Compute SPDR_timestamp
   unsigned long long SPDR_timestamp;
-  const unsigned long long time_range = 2 << 30;
+  const unsigned long time_range = 1 << 30;
+  SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
+
   // - decide if rollover happened
   //    if so, increase the rollover counter
   // - data packet are long range ordered, short range disordered
   //    only update previous_time when I am indeed arrive later
-  if (spidertime < *previous_time) {
-    if (*previous_time - spidertime > time_range / 2) {
-      *rollover_counter += 1;
+
+  // std::cout << "previous_time: " << *previous_time*25e-9 << std::endl;
+  // std::cout << "curr_time: " << SPDR_timestamp*25e-9 << std::endl;
+  // std::cout << "rollover_counter: " << *rollover_counter << std::endl;
+
+  if (SPDR_timestamp < *previous_time) {
+    if ((*previous_time - SPDR_timestamp) > time_range / 2) {
+      (*rollover_counter) += 1;
     }
-  } else {
-    *previous_time = spidertime;
-  }
-  SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
+  } 
+
+  *previous_time = SPDR_timestamp;
   // compute tof = mod(SPDR_timestamp, 666667)
   // 666667 = 1E9/60.0/25.0
   tof = SPDR_timestamp % 666667;
@@ -210,8 +215,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   std::cout << "File size: " << buffer.size() << std::endl;
 
   // for Alternative timing handler
-  unsigned long long *rollover_counter = new unsigned long long(0);
-  unsigned long long *previous_time = new unsigned long long(0);
+  unsigned long long* rollover_counter = new unsigned long long (0);
+  unsigned long long* previous_time = new unsigned long long (0);
 
   // for TDC information
   unsigned long *tdclast;
@@ -269,8 +274,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
           }
           TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
           TDC_timestamp = TDC_timestamp | mytdc;
-          // std::cout << "TDC_timestamp: " << std::setprecision(15) <<
-          // TDC_timestamp*25E-9 <<std::endl;
+          std::cout << "TDC_timestamp: " << std::setprecision(15) <<
+          TDC_timestamp*25E-9 <<std::endl;
         } else if ((data_packet[7] & 0xF0) == 0x40) {
           // GDC data packet
           gdclast = (unsigned long *)(&data_packet[0]);
@@ -282,21 +287,23 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
             GDC_timestamp = Timer_MSB16;
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
-            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
-            // GDC_timestamp*25E-9 << std::endl;
+            std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
           // NOTE: as of 2023-02-24, timing data packet cannot be used, using
           // alternative method to get the timing information
+          
           auto hit = packetToHitAlt(data_packet, rollover_counter,
                                     previous_time, chip_layout_type);
           // std::cout << hit.toString() << std::endl;
+
           // Process the data into hit
           // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
           //                        chip_layout_type);
-          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
-          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
-          // std::endl;
+          std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+          hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+          std::endl;
           hits.push_back(hit);
         }
       }
