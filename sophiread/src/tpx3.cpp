@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
 
 #include "abs.h"
 #include "dbscan.h"
@@ -37,15 +36,10 @@ std::string NeutronEvent::toString() const {
  * @note As of 2023-02-24, timing packet (gdc, tdc) are not reliable, therefore
  * this function is used as a temporary solution with assumed timing, until
  * timing packet is fixed on the hardware side.
- * 
- * @note this function should only be used during high flux environment because
- * we rely on the pixel hit spidertime to do auto-increment when rollover occurs.
- * In situation where the time between hits is larger than the rollover time, 
- * the auto-increment does not work. 
  */
 Hit packetToHitAlt(const std::vector<char> &packet,
-                   unsigned long long* rollover_counter,
-                   unsigned long long* previous_time,
+                   unsigned long long *rollover_counter,
+                   unsigned long long *previous_time,
                    const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
@@ -64,28 +58,30 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   spidertime = 16384 * (*spider_time) + toa;
 
   // time calculation
+  // Compute SPDR_timestamp
   unsigned long long SPDR_timestamp;
-  const unsigned long time_range = 1 << 30;
-  SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
-
+  const unsigned long long time_range = 1 << 30;
   // - decide if rollover happened
   //    if so, increase the rollover counter
   // - data packet are long range ordered, short range disordered
   //    only update previous_time when I am indeed arrive later
-
-  // std::cout << "previous_time: " << *previous_time*25e-9 << std::endl;
-  // std::cout << "curr_time: " << SPDR_timestamp*25e-9 << std::endl;
-  // std::cout << "rollover_counter: " << *rollover_counter << std::endl;
-
-  if (SPDR_timestamp < *previous_time) {
-    if ((*previous_time - SPDR_timestamp) > time_range / 2) {
-      (*rollover_counter) += 1;
+  if (spidertime < *previous_time) {
+    if (*previous_time - spidertime > time_range / 2) {
+      *rollover_counter += 1;
     }
-  } 
+  } else {
+    if (spidertime - *previous_time > time_range / 2) {
+      *rollover_counter -= 1;
+    }
+  }
 
-  *previous_time = SPDR_timestamp;
+  *previous_time = spidertime;
+
+  SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
   // compute tof = mod(SPDR_timestamp, 666667)
   // 666667 = 1E9/60.0/25.0
+  // a consistent round off error of 10ns due to using integer for modulus
+  // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
 
   // pixel address
@@ -131,7 +127,7 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   int x, y, tot, toa, ftoa;
-  unsigned int spidertime, tof;
+  unsigned int spidertime, tof=0;
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
   nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
@@ -160,11 +156,11 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
 
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
-  if (SPDR_timestamp < TDC_timestamp){
-    tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
-  } else {
-    tof = SPDR_timestamp - TDC_timestamp;
-  }
+  // if (SPDR_timestamp < TDC_timestamp){
+  //   tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
+  // } else {
+  //   tof = SPDR_timestamp - TDC_timestamp;
+  // }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
@@ -221,8 +217,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
   std::cout << "File size: " << buffer.size() << std::endl;
 
   // for Alternative timing handler
-  unsigned long long* rollover_counter = new unsigned long long (0);
-  unsigned long long* previous_time = new unsigned long long (0);
+  unsigned long long *rollover_counter = new unsigned long long(0);
+  unsigned long long *previous_time = new unsigned long long(0);
 
   // for TDC information
   unsigned long *tdclast;
@@ -293,23 +289,22 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
             GDC_timestamp = Timer_MSB16;
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
-            std::cout << "GDC_timestamp: " << std::setprecision(15) <<
-            GDC_timestamp*25E-9 << std::endl;
+            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            // GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
           // NOTE: as of 2023-02-24, timing data packet cannot be used, using
           // alternative method to get the timing information
-          
           auto hit = packetToHitAlt(data_packet, rollover_counter,
                                     previous_time, chip_layout_type);
           // std::cout << hit.toString() << std::endl;
-
           // Process the data into hit
           // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
           //                        chip_layout_type);
-          std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
-          hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
-          std::endl;
+          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+          // std::endl;
+          // std::cout << std::setprecision(15) << hit.getSPIDERTIME_ns()*1E-9 << std::endl;
           hits.push_back(hit);
         }
       }
