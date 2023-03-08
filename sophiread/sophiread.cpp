@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
   ClusteringAlgorithm *alg;
   if (use_abs_algorithm) {
     alg = new ABS(5.0);
-    alg->set_method("fast_gaussian");
+    alg->set_method("centroid");
+    // alg->set_method("fast_gaussian");
   } else {
     // parameters for DBSCAN were chosen based on the results from the
     // frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file

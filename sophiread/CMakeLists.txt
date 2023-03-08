@@ -6,6 +6,7 @@ execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
 
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
+# set(CMAKE_BUILD_TYPE DEBUG)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 
@@ -43,6 +44,8 @@ link_directories(
 
 # Add compiler flags
 add_compile_options(-O3 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
+# add_compile_options(-O0 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
+
 
 # ----------------- LIBRARY ----------------- #
 add_library(SophireadLib

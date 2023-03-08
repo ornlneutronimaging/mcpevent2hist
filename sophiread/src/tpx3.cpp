@@ -59,22 +59,34 @@ Hit packetToHitAlt(const std::vector<char> &packet,
 
   // time calculation
   // Compute SPDR_timestamp
-  unsigned long long SPDR_timestamp;
-  const unsigned long long time_range = 2 << 30;
-  // - decide if rollover happened
-  //    if so, increase the rollover counter
-  // - data packet are long range ordered, short range disordered
-  //    only update previous_time when I am indeed arrive later
+  unsigned long long SPDR_timestamp = 0;
+  const unsigned long long time_range = 1 << 30;
+
+  // if curr hit arrives earlier than previous hit (out of order)
+  // if it is a lot earlier, it belongs to the next rollover
+
   if (spidertime < *previous_time) {
     if (*previous_time - spidertime > time_range / 2) {
       *rollover_counter += 1;
     }
+
+  // if the curr hit arrives later than previous hit (in order)
+  // if it is a lot later, it belongs to the previous rollover
   } else {
-    *previous_time = spidertime;
+    if (spidertime - *previous_time > time_range / 2) {
+      if (*rollover_counter > 0) {
+        *rollover_counter -= 1;
+      }
+    }
   }
+
+  *previous_time = spidertime;
+
   SPDR_timestamp = spidertime + (*rollover_counter) * time_range;
   // compute tof = mod(SPDR_timestamp, 666667)
   // 666667 = 1E9/60.0/25.0
+  // a consistent round off error of 10ns due to using integer for modulus
+  // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
 
   // pixel address
@@ -120,7 +132,7 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   int x, y, tot, toa, ftoa;
-  unsigned int spidertime, tof;
+  unsigned int spidertime=0, tof=0;
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
   nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
@@ -297,6 +309,7 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
           // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
           // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
           // std::endl;
+          // std::cout << std::setprecision(15) << hit.getSPIDERTIME_ns()*1E-9 << std::endl;
           hits.push_back(hit);
         }
       }
