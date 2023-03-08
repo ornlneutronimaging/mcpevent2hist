@@ -61,14 +61,17 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   // Compute SPDR_timestamp
   unsigned long long SPDR_timestamp = 0;
   const unsigned long long time_range = 1 << 30;
-  // - decide if rollover happened
-  //    if so, increase the rollover counter
-  // - data packet are long range ordered, short range disordered
-  //    only update previous_time when I am indeed arrive later
+
+  // if curr hit arrives earlier than previous hit (out of order)
+  // if it is a lot earlier, it belongs to the next rollover
+
   if (spidertime < *previous_time) {
     if (*previous_time - spidertime > time_range / 2) {
       *rollover_counter += 1;
     }
+
+  // if the curr hit arrives later than previous hit (in order)
+  // if it is a lot later, it belongs to the previous rollover
   } else {
     if (spidertime - *previous_time > time_range / 2) {
       if (*rollover_counter > 0) {
@@ -85,7 +88,7 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   // a consistent round off error of 10ns due to using integer for modulus
   // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
-  
+
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -158,11 +161,11 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
 
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
-  // if (SPDR_timestamp < TDC_timestamp){
-  //   tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
-  // } else {
-  //   tof = SPDR_timestamp - TDC_timestamp;
-  // }
+  if (SPDR_timestamp < TDC_timestamp){
+    tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
+  } else {
+    tof = SPDR_timestamp - TDC_timestamp;
+  }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
@@ -278,8 +281,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
           }
           TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
           TDC_timestamp = TDC_timestamp | mytdc;
-          std::cout << "TDC_timestamp: " << std::setprecision(15) <<
-          TDC_timestamp*25E-9 <<std::endl;
+          // std::cout << "TDC_timestamp: " << std::setprecision(15) <<
+          // TDC_timestamp*25E-9 <<std::endl;
         } else if ((data_packet[7] & 0xF0) == 0x40) {
           // GDC data packet
           gdclast = (unsigned long *)(&data_packet[0]);
