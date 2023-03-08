@@ -59,7 +59,7 @@ Hit packetToHitAlt(const std::vector<char> &packet,
 
   // time calculation
   // Compute SPDR_timestamp
-  unsigned long long SPDR_timestamp;
+  unsigned long long SPDR_timestamp = 0;
   const unsigned long long time_range = 1 << 30;
   // - decide if rollover happened
   //    if so, increase the rollover counter
@@ -71,7 +71,9 @@ Hit packetToHitAlt(const std::vector<char> &packet,
     }
   } else {
     if (spidertime - *previous_time > time_range / 2) {
-      *rollover_counter -= 1;
+      if (*rollover_counter > 0) {
+        *rollover_counter -= 1;
+      }
     }
   }
 
@@ -83,7 +85,7 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   // a consistent round off error of 10ns due to using integer for modulus
   // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
-
+  
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -127,7 +129,7 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   int x, y, tot, toa, ftoa;
-  unsigned int spidertime, tof=0;
+  unsigned int spidertime=0, tof=0;
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
   nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
