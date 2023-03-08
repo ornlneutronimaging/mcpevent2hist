@@ -53,3 +53,48 @@ TEST(FileHandlingTest, VerifyTiming) {
   // EXPECT_EQ(hits[365 - 1].getTOF(), 172774);
   // EXPECT_EQ(hits[365 - 1].getSPIDERTIME(), 8809347419);
 }
+
+TEST(FileHandlingTest, VerifyRollover){
+  // reading the testing raw data 
+  auto hits =
+      readTimepix3RawData("data/rollover_test_data.tpx3");
+
+  // check the number of hits
+  EXPECT_EQ(hits.size(),26);
+
+  // check disordered pixels: increment counter 
+  EXPECT_EQ(hits[0].getSPIDERTIME(),1006649343);               // 25.1662, 1006649343
+  EXPECT_EQ(hits[1].getSPIDERTIME(),1069563903);               // 26.7391, 1069563903
+  EXPECT_EQ(hits[2].getSPIDERTIME(),1073741823);               // 26.8435, 1073741823
+  EXPECT_EQ(hits[3].getSPIDERTIME(),262143 + 1073741824);      // 0.00655357, 262143
+  EXPECT_EQ(hits[4].getSPIDERTIME(),4194303 + 1073741824);     // 0.104858, 4194303
+  EXPECT_EQ(hits[5].getSPIDERTIME(),67108863 + 1073741824);    // 1.67772, 67108863
+  EXPECT_EQ(hits[6].getSPIDERTIME(), 201326591 + 1073741824);  // 5.03316, 201326591
+
+  // check disordered pixels: do nothing to counter
+  EXPECT_EQ(hits[7].getSPIDERTIME(),262143 + 1073741824);      // 0.00655357, 262143
+  EXPECT_EQ(hits[8].getSPIDERTIME(),268435455 + 1073741824);   // 6.71089, 268435455
+  EXPECT_EQ(hits[9].getSPIDERTIME(),4194303 + 1073741824);     // 0.104858, 4194303   
+  EXPECT_EQ(hits[10].getSPIDERTIME(),67108863 + 1073741824);   // 1.67772, 67108863
+  EXPECT_EQ(hits[11].getSPIDERTIME(),134217727 + 1073741824);  // 3.35544, 134217727
+  EXPECT_EQ(hits[12].getSPIDERTIME(),201326591 + 1073741824);  // 5.03316, 201326591
+
+  // check order pixels: decrement counter 
+  EXPECT_EQ(hits[13].getSPIDERTIME(),262143 + 1073741824);         // 0.00655357, 262143
+  EXPECT_EQ(hits[14].getSPIDERTIME(),4194303 + 1073741824);        // 0.104858, 4194303
+  EXPECT_EQ(hits[15].getSPIDERTIME(),67108863 + 1073741824);       // 1.67772, 67108863
+  EXPECT_EQ(hits[16].getSPIDERTIME(),201326591 + 1073741824);      // 5.03316, 201326591
+  EXPECT_EQ(hits[17].getSPIDERTIME(),1006649343);     // 25.1662, 1006649343
+  EXPECT_EQ(hits[18].getSPIDERTIME(),1069563903);     // 26.7391, 1069563903
+  EXPECT_EQ(hits[19].getSPIDERTIME(),1073741823);     // 26.8435, 1073741823
+
+  // check ordered pixels: do nothing to counter 
+  EXPECT_EQ(hits[20].getSPIDERTIME(),262143 + 1073741824);     // 0.00655357, 262143
+  EXPECT_EQ(hits[21].getSPIDERTIME(),4194303 + 1073741824);    // 0.104858, 4194303
+  EXPECT_EQ(hits[22].getSPIDERTIME(),67108863 + 1073741824);   // 1.67772, 67108863
+  EXPECT_EQ(hits[23].getSPIDERTIME(),134217727 + 1073741824);  // 3.35544, 134217727
+  EXPECT_EQ(hits[24].getSPIDERTIME(),201326591 + 1073741824);  // 5.03316, 201326591
+  EXPECT_EQ(hits[25].getSPIDERTIME(),268435455 + 1073741824);  // 6.71089, 268435455
+
+
+}
