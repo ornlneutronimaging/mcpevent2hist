@@ -13,6 +13,8 @@ Here is the minimum efforts route for compiling `sophiread_display`:
 micromamba create -f environment.yml
 ```
 
+> NOTE: When creating a conda environment without a file, use `conda create -n <env_name> <package_name>`; when creating a conda environment with a file, use `conda env create -n <env_name> -f <file_name>`.
+
 - Activate the environment with `conda activate sophiread_display`.
 
 - Go to `sophiread_display` folder.

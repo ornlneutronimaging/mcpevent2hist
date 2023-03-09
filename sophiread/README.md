@@ -20,8 +20,10 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
 - Create a new development environment with `conda` (assuming we are on linux):
 
     ```bash
-    conda create -n sophiread -c conda-forge -f environment_linux.yml
+    conda env create -n sophiread -c conda-forge -f environment_linux.yml
     ```
+
+  > NOTE: When creating a conda environment without a file, use `conda create -n <env_name> <package_name>`; when creating a conda environment with a file, use `conda env create -n <env_name> -f <file_name>`.
 
 - Activate the environment:
 
