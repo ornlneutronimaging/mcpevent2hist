@@ -168,7 +168,7 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
       m_events.emplace_back(
           NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
                        centroids_2D[label_count.first].second * DSCALE /*Y*/,
-                       info.m_time_mean, label_count.second));
+                       info.m_time_mean,0, label_count.second));
   }
 }
 

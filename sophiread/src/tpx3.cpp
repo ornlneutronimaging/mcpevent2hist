@@ -88,7 +88,7 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   // a consistent round off error of 10ns due to using integer for modulus
   // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
-
+  
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -446,6 +446,12 @@ void saveEventsToHDF5(const std::string out_file_name,
                  [](const NeutronEvent &event) { return event.getNHits(); });
   H5::DataSet nhits_dataset = group.createDataSet("NHits", int_type, dataspace);
   nhits_dataset.write(nhits.data(), int_type);
+  // -- write TOT 
+  std::vector<double> tot(events.size());
+  std::transform(events.begin(),events.end(),tot.begin(),
+                [](const NeutronEvent &event) { return event.getTOT(); });
+  H5::DataSet tot_dataset = group.createDataSet("tot", float_type, dataspace);
+  tot_dataset.write(tot.data(), float_type);
   // -- close file
   out_file.close();
 }

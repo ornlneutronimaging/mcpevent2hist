@@ -17,7 +17,7 @@ NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
   double tot = 0;
 
   if (data.size() == 0) {
-    return NeutronEvent(0, 0, 0, 0);
+    return NeutronEvent(0, 0, 0, 0, 0);
   }
 
   if (weighted_by_tot) {
@@ -34,12 +34,13 @@ NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
       x += DSCALE * hit.getX();
       y += DSCALE * hit.getY();
       tof += hit.getTOF();
+      tot += hit.getTOT();
     }
     x /= data.size();
     y /= data.size();
   }
 
   tof /= data.size();
-
-  return NeutronEvent(x, y, tof, data.size());
+  
+  return NeutronEvent(x, y, tof, tot, data.size());
 }
