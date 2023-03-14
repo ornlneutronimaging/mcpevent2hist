@@ -49,7 +49,7 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
     // 4 parameters since we are throwing away the bottom 50% of the data
     // points
     // use -1 to indicate that the fit failed
-    return NeutronEvent(-1, -1, 0, 0);
+    return NeutronEvent(-1, -1, 0, 0, 0);
   }
 
   // extract the x, y, tof, and tot into separate vectors
@@ -113,7 +113,10 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
       std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) /
       tof_filtered.size();
 
+  // calculate the tot
+  double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(),0.0);
+
   // even if we are throwing away to bottom half, we still need to return the
   // pre-filtered number of hits
-  return NeutronEvent(x_event, y_event, tof_event, tof.size());
+  return NeutronEvent(x_event, y_event, tof_event, tot_event, tof.size());
 }

@@ -164,11 +164,13 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
     }
 
     // append events
+    // note: currently the tot for each neutron event is set to 0
+    // as there is no simple solution to incorporate tot info using DBSCAN
     for (auto const& label_count : label_counts)
       m_events.emplace_back(
           NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
                        centroids_2D[label_count.first].second * DSCALE /*Y*/,
-                       info.m_time_mean, label_count.second));
+                       info.m_time_mean,0, label_count.second));  
   }
 }
 

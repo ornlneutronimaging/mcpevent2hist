@@ -90,10 +90,11 @@ class Hit {
 class NeutronEvent {
  public:
   NeutronEvent(const double x, const double y, const double tof,
-               const int nHits)
-      : m_x(x), m_y(y), m_tof(tof), m_nHits(nHits){};
+               const double tot, const int nHits)
+      : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits){};
   double getX() const { return m_x; };
   double getY() const { return m_y; };
+  double getTOT() const { return m_tot;}
   double getTOF() const { return m_tof; };
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
@@ -103,6 +104,7 @@ class NeutronEvent {
  private:
   const double m_x, m_y;  // pixel coordinates
   const double m_tof;     // time of flight
+  const double m_tot;     // time-over-threshold
   const int m_nHits;      // number of hits in the event (cluster size)
   const double m_scale_to_ns_40mhz =
       25.0;  // 40 MHz clock is used for the coarse time of arrival.
