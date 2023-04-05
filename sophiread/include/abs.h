@@ -3,8 +3,6 @@
 #include "clustering.h"
 #include "peakfitting.h"
 
-#include <iostream>
-
 /**
  * @brief Struct for the cluster of hits (charged particles).
  *
@@ -26,16 +24,6 @@ class ABS : public ClusteringAlgorithm {
       m_feature(r), m_min_cluster_size(min_cluster_size), spiderTimeRange_(spider_time_range) {};
   void fit(const std::vector<Hit>& data);
   void set_method(std::string method) { m_method = method; };
-  // void set_radius(double r) {m_feature = r;};
-  // void set_min_cluster_size(unsigned long int min_cluster_size) {m_min_cluster_size = min_cluster_size;};
-  // void set_spider_time_range(unsigned long int spider_time_range) { spiderTimeRange_ = spider_time_range;};
-  // 
-  void printDetails(){ 
-    std::cout << "ABS radius: " << m_feature 
-              << "\nABS min_cluster_size: " << m_min_cluster_size
-              << "\nABS spider_time_range: " << spiderTimeRange_ 
-              << std::endl;
-    };
   void reset() { clusterLabels_.clear(); };
   std::vector<int> get_cluster_labels() { return clusterLabels_; };
   std::vector<NeutronEvent> get_events(const std::vector<Hit>& data);
