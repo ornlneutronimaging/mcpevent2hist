@@ -8,7 +8,7 @@
 #include <vector>
 
 // scale factor used for super-pixeling (1 pixel -> 8x8 pixels)
-#define DSCALE 2.0
+#define DSCALE 1.0
 
 /**
  * @brief Class to store the data of a single hit of a charged particle
