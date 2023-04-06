@@ -72,10 +72,11 @@ It is a single executable file, `Sophiread`, which can be found in the `build` d
 The current version of the CLI supports the following input arguments:
 
 ```bash
-Sophiread [-i input_tpx3]  [-H output_hits_HDF5]  [-E output_event_HDF5]  [-v]
+Sophiread [-i input_tpx3] [-u user_defined_params_list] [-H output_hits_HDF5]  [-E output_event_HDF5]  [-v]
 ```
 
-- `-i`: input raw Timepix3 data file.  (Manadatory)
+- `-i`: input raw Timepix3 data file.  (Mandatory)
+- `-u`: parse user-defined parameter list for clustering algorithsm. Please refer to the `user_defined_params.txt` template for reference. (Optional)
 - `-H`: output processed hits with corresponding cluster labels as HDF5 archive. (Optional)
 - `-E`: output processed neutron events as HDF5 archive. (Optional)
 - `-v`: verbose mode. (Optional)
