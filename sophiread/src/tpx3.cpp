@@ -494,13 +494,12 @@ Params parseUserDefinedParams(const std::string& filepath){
     }
   }
 
+  Params p(radius,min_cluster_size,spider_time_range);
+
   // prints out user-defined parameters 
   std::cout << "User-defined params file: " << filepath << std::endl;
-  std::cout << "abs_radius: " << radius << std::endl;
-  std::cout << "abs_min_cluster_size: " << min_cluster_size << std::endl;
-  std::cout << "abs_spider_time_range: " << spider_time_range << std::endl;
+  std::cout << p.toString() << std::endl;
 
-  Params p(radius,min_cluster_size,spider_time_range);
   return p;
 
 }
