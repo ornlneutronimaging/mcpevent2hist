@@ -63,7 +63,11 @@ MainWindow::MainWindow(QWidget *parent)
   // Init the clustering algorithm
   // NOTE: use adaptive search box with a feature of 5.0 pixels
   //       use weighted centroid for approximating neutron event
-  clustering_alg = new ABS(5.0);
+  double radius = 5.0;
+  unsigned long int min_cluster_size = 1;
+  unsigned long int spider_time_range = 75;
+
+  clustering_alg = new ABS(radius,min_cluster_size,spider_time_range);
   clustering_alg->set_method("centroid");
   // clustering_alg->set_method("fast_gaussian");
 

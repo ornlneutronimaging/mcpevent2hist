@@ -8,7 +8,7 @@
 #include <vector>
 
 // scale factor used for super-pixeling (1 pixel -> 8x8 pixels)
-#define DSCALE 2.0
+#define DSCALE 1.0
 
 /**
  * @brief Class to store the data of a single hit of a charged particle
@@ -110,6 +110,33 @@ class NeutronEvent {
       25.0;  // 40 MHz clock is used for the coarse time of arrival.
 };
 
+/**
+ *  @brief Class to store user-defined parameters for clustering algorithms 
+ * */
+class Params {
+public:
+  Params(const double abs_radius, 
+    unsigned long int abs_min_cluster_size,
+    unsigned long int abs_spider_time_range) :
+    m_abs_radius(abs_radius), 
+    m_abs_min_cluster_size(abs_min_cluster_size),
+    m_abs_spider_time_range(abs_spider_time_range){};
+
+  double getABSRadius() const {return m_abs_radius;};
+  unsigned long int getABSMinClusterSize() 
+        const {return m_abs_min_cluster_size;};
+  unsigned long int getABSSpidertimeRange() 
+        const {return m_abs_spider_time_range;};
+
+  std::string toString() const;
+
+private:
+  // ABS members (see abs.h for details)
+  double m_abs_radius;                            
+  unsigned long int m_abs_min_cluster_size;
+  unsigned long int m_abs_spider_time_range;
+};
+
 // static file processing
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
 Hit packetToHit(const std::vector<char>& packet, const unsigned long long tdc,
@@ -124,3 +151,7 @@ void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<int>& labels);
 void saveEventsToHDF5(const std::string out_file_name,
                       const std::vector<NeutronEvent>& events);
+
+// parse user-defined param file 
+Params parseUserDefinedParams(const std::string& filepath);
+

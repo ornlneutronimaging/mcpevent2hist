@@ -24,6 +24,15 @@ std::string NeutronEvent::toString() const {
   return ss.str();
 }
 
+std::string Params::toString() const {
+  std::stringstream ss;
+  ss << "ABS: radius=" << m_abs_radius 
+     << ", min_cluster_size=" << m_abs_min_cluster_size
+     << ", spider_time_range=" << m_abs_spider_time_range;
+
+  return ss.str();
+}
+
 /**
  * @brief Alternative way to parse data packet where timing is assumed.
  *
@@ -454,4 +463,43 @@ void saveEventsToHDF5(const std::string out_file_name,
   tot_dataset.write(tot.data(), float_type);
   // -- close file
   out_file.close();
+}
+
+/**
+ * @brief Parse user-defined parameters from a parameter file 
+ *
+ * @param filepath: path to the parameter file.
+ * @return Params
+ */
+
+Params parseUserDefinedParams(const std::string& filepath){
+  // default ABS settings 
+  double radius = 5.0;
+  unsigned long int min_cluster_size = 1;
+  unsigned long int spider_time_range = 75;
+
+  std::ifstream user_defined_params_file(filepath);
+  std::string line;
+
+  while (std::getline(user_defined_params_file,line)){
+    std::istringstream ss(line);
+    std::string name;
+    ss >> name;
+    if (name == "abs_radius"){
+      ss >> radius;
+    } else if (name == "abs_min_cluster_size"){
+      ss >> min_cluster_size;
+    } else if (name == "spider_time_range"){
+      ss >> spider_time_range;
+    }
+  }
+
+  Params p(radius,min_cluster_size,spider_time_range);
+
+  // prints out user-defined parameters 
+  std::cout << "User-defined params file: " << filepath << std::endl;
+  std::cout << p.toString() << std::endl;
+
+  return p;
+
 }

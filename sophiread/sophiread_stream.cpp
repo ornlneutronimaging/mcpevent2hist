@@ -25,7 +25,7 @@ std::vector<NeutronEvent> neutron_events;
  */
 void process_batch(const std::vector<Hit> &batch) {
   ClusteringAlgorithm *alg;
-  alg = new ABS(5.0);                // select clustering algorithm
+  alg = new ABS(5.0,1,75);                // select clustering algorithm
   alg->set_method("fast_gaussian");  // select peak fitting method
   alg->fit(batch);
   std::vector<NeutronEvent> events = alg->get_events(batch);

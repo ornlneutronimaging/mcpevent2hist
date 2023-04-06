@@ -96,5 +96,22 @@ TEST(FileHandlingTest, VerifyRollover){
   EXPECT_EQ(hits[24].getSPIDERTIME(),201326591 + 1073741824);  // 5.03316, 201326591
   EXPECT_EQ(hits[25].getSPIDERTIME(),268435455 + 1073741824);  // 6.71089, 268435455
 
+}
+
+// Test the parseUserDefinedParams function
+TEST(FileHandlingTest, ParseUserDefinedParams) {
+
+  // read user-defined param files 
+  auto p1 = parseUserDefinedParams("../user_defined_params.txt");
+  auto p2 = parseUserDefinedParams("../user_defined_params_1.txt");
+
+  // check user-defined params 
+  EXPECT_EQ(p1.getABSRadius(), 5.0);
+  EXPECT_EQ(p1.getABSMinClusterSize(),1);
+  EXPECT_EQ(p1.getABSSpidertimeRange(), 75);
+
+  EXPECT_EQ(p2.getABSRadius(), 20.0);
+  EXPECT_EQ(p2.getABSMinClusterSize(),30);
+  EXPECT_EQ(p2.getABSSpidertimeRange(),500000);
 
 }

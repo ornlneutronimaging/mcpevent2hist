@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
   std::string in_tpx3;
   std::string out_hits;
   std::string out_events;
+  std::string user_defined_params;
   bool verbose = false;
   bool use_abs_algorithm = true;
   int opt;
@@ -24,10 +25,11 @@ int main(int argc, char *argv[]) {
   // help message string
   std::string help_msg = "Usage: " + std::string(argv[0]) +
                          " [-i input_tpx3] " + " [-H output_hits_HDF5] " +
-                         " [-E output_event_HDF5] " + " [-v]";
+                         " [-E output_event_HDF5] " + 
+                         " [-u user_defined_params]" + " [-v]";
 
   // parse command line arguments
-  while ((opt = getopt(argc, argv, "i:H:E:v")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:u:v")) != -1) {
     switch (opt) {
       case 'i':  // input file
         in_tpx3 = optarg;
@@ -38,6 +40,9 @@ int main(int argc, char *argv[]) {
       case 'E':  // output event file
         out_events = optarg;
         break;
+      case 'u':  // user-defined params 
+        user_defined_params = optarg;
+        break;
       case 'v':
         verbose = true;
         break;
@@ -46,6 +51,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
   }
+
+  auto p = parseUserDefinedParams(user_defined_params);
 
   // recap
   if (verbose) {
@@ -65,7 +72,7 @@ int main(int argc, char *argv[]) {
   // clustering and fitting
   ClusteringAlgorithm *alg;
   if (use_abs_algorithm) {
-    alg = new ABS(5.0);
+    alg = new ABS(p.getABSRadius(),p.getABSMinClusterSize(),p.getABSSpidertimeRange());
     alg->set_method("centroid");
     // alg->set_method("fast_gaussian");
   } else {

@@ -1,0 +1,4 @@
+# ABS
+abs_radius 20.0 					# in number of pixels 
+abs_min_cluster_size 30  		# in number of pixels
+spider_time_range 500000 			# in nanoseconds
