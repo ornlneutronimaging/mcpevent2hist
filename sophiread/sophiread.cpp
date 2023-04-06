@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
   }
 
   auto p = parseUserDefinedParams(user_defined_params);
-  p.toString();
 
   // recap
   if (verbose) {
