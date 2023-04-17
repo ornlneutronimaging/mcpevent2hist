@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/629073069.svg)](https://zenodo.org/badge/latestdoi/629073069)
+
 MCP2EventHist
 =============
 
