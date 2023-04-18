@@ -20,7 +20,7 @@ std::string Hit::toString() const {
 std::string NeutronEvent::toString() const {
   std::stringstream ss;
   ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof
-     << ", nHits=" << m_nHits;
+     << ", toa=" << m_toa << ", tot=" << m_tot << ", nHits=" << m_nHits;
   return ss.str();
 }
 
@@ -455,12 +455,18 @@ void saveEventsToHDF5(const std::string out_file_name,
                  [](const NeutronEvent &event) { return event.getNHits(); });
   H5::DataSet nhits_dataset = group.createDataSet("NHits", int_type, dataspace);
   nhits_dataset.write(nhits.data(), int_type);
-  // -- write TOT 
-  std::vector<double> tot(events.size());
-  std::transform(events.begin(),events.end(),tot.begin(),
-                [](const NeutronEvent &event) { return event.getTOT(); });
-  H5::DataSet tot_dataset = group.createDataSet("tot", float_type, dataspace);
-  tot_dataset.write(tot.data(), float_type);
+  // -- write TOT_ns
+  std::vector<double> tot_ns(events.size());
+  std::transform(events.begin(),events.end(),tot_ns.begin(),
+                [](const NeutronEvent &event) { return event.getTOT_ns(); });
+  H5::DataSet tot_ns_dataset = group.createDataSet("tot_ns", float_type, dataspace);
+  tot_ns_dataset.write(tot_ns.data(), float_type);
+  // -- write TOA_ns
+  std::vector<double> toa_ns(events.size());
+  std::transform(events.begin(),events.end(),toa_ns.begin(),
+                [](const NeutronEvent &event) { return event.getTOA_ns(); });
+  H5::DataSet toa_ns_dataset = group.createDataSet("toa_ns", float_type, dataspace);
+  toa_ns_dataset.write(toa_ns.data(), float_type);
   // -- close file
   out_file.close();
 }

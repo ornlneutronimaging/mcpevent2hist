@@ -49,7 +49,7 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
     // 4 parameters since we are throwing away the bottom 50% of the data
     // points
     // use -1 to indicate that the fit failed
-    return NeutronEvent(-1, -1, 0, 0, 0);
+    return NeutronEvent(-1, -1, 0, 0, 0, 0);
   }
 
   // extract the x, y, tof, and tot into separate vectors
@@ -57,11 +57,14 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   std::vector<double> y;
   std::vector<double> tof;
   std::vector<double> tot;
+  std::vector<double> toa;
+
   for (const auto& hit : data) {
     x.push_back((double)DSCALE * hit.getX());
     y.push_back((double)DSCALE * hit.getY());
     tof.push_back((double)hit.getTOF());
     tot.push_back((double)hit.getTOT());
+    toa.push_back((double)hit.getTOA());
   }
 
   // calculate the median of tot
@@ -77,12 +80,15 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   std::vector<double> y_filtered;
   std::vector<double> tof_filtered;
   std::vector<double> tot_filtered;
+  std::vector<double> toa_filtered;
+
   for (size_t i = 0; i < tot.size(); ++i) {
     if (tot[i] > 0) {
       x_filtered.push_back(x[i]);
       y_filtered.push_back(y[i]);
       tof_filtered.push_back(tof[i]);
       tot_filtered.push_back(tot[i]);
+      toa_filtered.push_back(toa[i]);
     }
   }
 
@@ -113,10 +119,15 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
       std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) /
       tof_filtered.size();
 
+  // calculate the toa as the average of the toa of the filtered hits
+  double toa_event =
+      std::accumulate(toa_filtered.begin(), toa_filtered.end(), 0.0) /
+      toa_filtered.size();
+
   // calculate the tot
   double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(),0.0);
 
   // even if we are throwing away to bottom half, we still need to return the
   // pre-filtered number of hits
-  return NeutronEvent(x_event, y_event, tof_event, tot_event, tof.size());
+  return NeutronEvent(x_event, y_event, tof_event, toa_event, tot_event, tof.size());
 }
