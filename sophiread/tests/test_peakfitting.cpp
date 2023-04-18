@@ -63,34 +63,59 @@ TEST(PeakFitting, CentroidAlgorithm) {
 
 TEST(PeakFitting, FastGaussianAlgorithm) {
   // set tolerance for the absolute position error to half a pixel
-  const double absolute_error = 1.0 * DSCALE;
+  const double absolute_error = 0.01 * DSCALE;
 
-  // Create a cluster of 300 hits
+  // // Create a cluster of 300 hits
+  // std::vector<Hit> hits;
+  // for (int i = 0; i < 300; i++) {
+  //   int x = 50 + pos(gen);
+  //   int y = 50 + pos(gen);
+  //   int mytof = 1000 + tof(gen);
+  //   int stime = 10 + spidertime(gen);
+  //   int mytoa = 10 + toa(gen);
+  //   double mytot = 10 + 0.001 * tot(gen);
+  //   hits.push_back(
+  //       Hit(x, y, (int) mytot, mytoa , ftoa(gen), mytof, stime));
+  // }
+
+  // Create a random vector of hits
+  // NOTE: random number generator do not generate the same number across
+  // multiple platforms.
   std::vector<Hit> hits;
-  for (int i = 0; i < 300; i++) {
-    int x = 50 + pos(gen);
-    int y = 50 + pos(gen);
-    int mytof = 1000 + tof(gen);
-    int stime = 10 + spidertime(gen);
-    int mytoa = 10 + toa(gen);
-    double mytot = 10 + 0.001 * tot(gen);
-    hits.push_back(
-        Hit(x, y, (int) mytot, mytoa , ftoa(gen), mytof, stime));
-  }
+  hits.push_back(Hit(1750, 2038, 2445, 1428, 3989, 3026, 740));
+  hits.push_back(Hit(3015, 2073, 3212, 718, 2842, 428, 422));
+  hits.push_back(Hit(772, 3912, 3133, 2664, 236, 3334, 3134));
+
+  hits.push_back(Hit(20, 23, 40, 18, 15, 70, 100));
+  hits.push_back(Hit(315, 373, 312, 71, 242, 48, 42));
+  hits.push_back(Hit(72, 312, 313, 264, 36, 334, 134));
+
+  hits.push_back(Hit(1740, 2238, 2435, 1928, 3489, 3676, 767));
+  hits.push_back(Hit(3055, 2973, 3242, 818, 2232, 4678, 465));
+  hits.push_back(Hit(777, 3812, 3135, 7664, 232, 6734, 3145));
+
+  hits.push_back(Hit(123, 238, 345, 128, 389, 326, 120));
+  hits.push_back(Hit(345, 203, 342, 128, 242, 428, 122));
+  hits.push_back(Hit(752, 342, 3154, 2844, 276, 394, 149));
+
+  hits.push_back(Hit(150, 2638, 3445, 3428, 5689, 3026, 740));
+  hits.push_back(Hit(415, 2573, 7812, 568, 2676, 489, 122));
+  hits.push_back(Hit(372, 4312, 6533, 5464, 252, 3234, 234));
+
 
   // Create a fast gaussian algorithm
   FastGaussian alg;
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event.getX(), 50 * DSCALE, absolute_error)
+  EXPECT_NEAR(event.getX(), 1419.00 * DSCALE, absolute_error)
       << "FastGaussian x is not correct.";
-  EXPECT_NEAR(event.getY(), 50 * DSCALE, absolute_error)
+  EXPECT_NEAR(event.getY(),  2347.80 * DSCALE, absolute_error)
       << "FastGaussian y is not correct.";
-  EXPECT_NEAR(event.getTOF(), 1000, absolute_error)
+  EXPECT_NEAR(event.getTOF(),  2711.85, absolute_error)
       << "FastGaussian tof is not correct.";
-  // EXPECT_NEAR(event.getTOT(),  138 , absolute_error)
-  //    << "FastGaussian tot is not correct.";
-  EXPECT_NEAR(event.getTOA(),  1009.62 , absolute_error)
+  EXPECT_NEAR(event.getTOT(),  8602, absolute_error)
+     << "FastGaussian tot is not correct.";
+  EXPECT_NEAR(event.getTOA(),   3072, absolute_error)
      << "FastGaussian toa is not correct.";
 }
