@@ -12,7 +12,7 @@ on:
       - "v*"
 
 jobs:
-  build:
+  ubuntu-latest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -33,4 +33,27 @@ jobs:
         shell: bash -l {0}
         run: |
           cd sophiread/build
-          ctest -V 
+          ctest -V
+
+  macos-latest:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          mamba-version: "*"
+          environment-file: sophiread/environment_mac.yml
+      - name: build_sophiread
+        shell: bash -l {0}
+        run: |
+          cd sophiread
+          mkdir build
+          cd build
+          cmake ..
+          make
+      - name: test_sophiread
+        shell: bash -l {0}
+        run: |
+          cd sophiread/build
+          ctest -V
