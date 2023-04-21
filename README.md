@@ -1,4 +1,5 @@
 [![DOI](https://zenodo.org/badge/629073069.svg)](https://zenodo.org/badge/latestdoi/629073069)
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/7256/badge)](https://bestpractices.coreinfrastructure.org/projects/7256)
 
 MCP2EventHist
 =============
