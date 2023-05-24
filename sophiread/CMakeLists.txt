@@ -30,3 +30,6 @@ add_subdirectory(SophireadLib)
 
 # Add Sophiread command line interface
 add_subdirectory(SophireadCLI)
+
+# Add Sophiread stream command line interface
+add_subdirectory(SophireadStreamCLI)
