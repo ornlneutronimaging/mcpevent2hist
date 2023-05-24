@@ -17,6 +17,10 @@ find_package(HDF5 REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
+link_directories(
+    $ENV{CONDA_PREFIX}/lib
+)
+
 # Testing setup
 enable_testing()
 include(GoogleTest)
