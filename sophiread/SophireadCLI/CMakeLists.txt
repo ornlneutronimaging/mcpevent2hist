@@ -12,7 +12,6 @@ include_directories(
 add_executable(Sophiread
     ${SRC_FILES}
 )
-
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 
