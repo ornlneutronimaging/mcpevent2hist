@@ -50,6 +50,7 @@ add_compile_options(-O3 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
 # ----------------- LIBRARY ----------------- #
 # The build of SophireadLib is configured in src/CMakeLists.txt
 add_subdirectory(src)
+set_target_properties(SophireadLib PROPERTIES VERSION ${PROJECT_VERSION})
 
 # ----------------- CLI APPLICATION ----------------- #
 add_executable(Sophiread

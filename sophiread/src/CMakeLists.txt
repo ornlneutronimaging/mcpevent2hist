@@ -25,4 +25,3 @@ add_library(SophireadLib
     centroid.cpp
     fastgaussian.cpp
 )
-set_target_properties(SophireadLib PROPERTIES VERSION ${PROJECT_VERSION})
