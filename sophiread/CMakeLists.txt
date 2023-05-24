@@ -27,3 +27,6 @@ add_compile_options(-O3 -std=c++14 -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
 # Add Sophiread library
 # NOTE: this will take care of the testing as well
 add_subdirectory(SophireadLib)
+
+# Add Sophiread command line interface
+add_subdirectory(SophireadCLI)
