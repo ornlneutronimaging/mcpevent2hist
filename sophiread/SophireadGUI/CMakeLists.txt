@@ -37,3 +37,12 @@ add_custom_command(TARGET SophireadGUI POST_BUILD
     ${PROJECT_BINARY_DIR}/SophireadGUI/SophireadGUI
     ${PROJECT_BINARY_DIR}/SophireadGUI.app
 )
+
+# ----------------- INSTALL ----------------- #
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
+endif()
+install(TARGETS SophireadGUI
+        RUNTIME DESTINATION bin)
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+include(CPack)
