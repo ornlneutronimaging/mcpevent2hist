@@ -34,3 +34,12 @@ add_custom_command(TARGET SophireadStream POST_BUILD
     ${PROJECT_BINARY_DIR}/SophireadStreamCLI/SophireadStream
     ${PROJECT_BINARY_DIR}/SophireadStream
 )
+
+# ----------------- INSTALL ----------------- #
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
+endif()
+install(TARGETS SophireadStream
+        RUNTIME DESTINATION bin)
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+include(CPack)
