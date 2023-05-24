@@ -8,13 +8,14 @@ project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 # set(CMAKE_BUILD_TYPE DEBUG)
 set(CMAKE_CXX_STANDARD 14)
-# set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
+set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(GTest REQUIRED)
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 # Testing setup
 enable_testing()
@@ -33,3 +34,6 @@ add_subdirectory(SophireadCLI)
 
 # Add Sophiread stream command line interface
 add_subdirectory(SophireadStreamCLI)
+
+# Add Sophiread GUI application
+add_subdirectory(SophireadGUI)
