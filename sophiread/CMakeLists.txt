@@ -37,3 +37,21 @@ add_subdirectory(SophireadStreamCLI)
 
 # Add Sophiread GUI application
 add_subdirectory(SophireadGUI)
+
+# ----------------- DOXYGEN ----------------- #
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
+  add_custom_target(docs
+  COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+  COMMENT "Generating API documentation with Doxygen"
+  VERBATIM
+  )
+  add_custom_command(TARGET docs POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E chdir
+        ${CMAKE_BINARY_DIR}/docs/html
+        open
+        index.html
+  )
+endif(DOXYGEN_FOUND)
