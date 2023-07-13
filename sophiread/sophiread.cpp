@@ -79,41 +79,41 @@ int main(int argc, char *argv[]) {
   std::cout << "Elapsed time for processing raw bytes to hits: " << diff.count() << " s\n";
 
   auto start1 = std::chrono::high_resolution_clock::now();
-  // // clustering and fitting
-  // ClusteringAlgorithm *alg;
-  // if (use_abs_algorithm) {
-  //   alg = new ABS(p.getABSRadius(),p.getABSMinClusterSize(),p.getABSSpidertimeRange());
-  //   alg->set_method("centroid");
-  //   // alg->set_method("fast_gaussian");
-  // } else {
-  //   // parameters for DBSCAN were chosen based on the results from the
-  //   // frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file
-  //   alg = new DBSCAN(3.0 /*eps time*/, 10 /*min_points time*/, 2.0 /*eps xy*/,
-  //                    5 /*min_points xy*/);
-  //   alg->set_method("centroid");
-  // }
+  // clustering and fitting
+  ClusteringAlgorithm *alg;
+  if (use_abs_algorithm) {
+    alg = new ABS(p.getABSRadius(),p.getABSMinClusterSize(),p.getABSSpidertimeRange());
+    alg->set_method("centroid");
+    // alg->set_method("fast_gaussian");
+  } else {
+    // parameters for DBSCAN were chosen based on the results from the
+    // frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file
+    alg = new DBSCAN(3.0 /*eps time*/, 10 /*min_points time*/, 2.0 /*eps xy*/,
+                     5 /*min_points xy*/);
+    alg->set_method("centroid");
+  }
 
-  // alg->fit(hits);
-  // auto labels = alg->get_cluster_labels();
-  // // print out labeled hits
-  // if (verbose) {
-  //   std::cout << "Found " << labels.size() << " hits." << std::endl;
-  // }
-  // // Save labeled hits to HDF5 file
-  // if (!out_hits.empty()) {
-  //   saveHitsToHDF5(out_hits, hits, labels);
-  // }
+  alg->fit(hits);
+  auto labels = alg->get_cluster_labels();
+  // print out labeled hits
+  if (verbose) {
+    std::cout << "Found " << labels.size() << " hits." << std::endl;
+  }
+  // Save labeled hits to HDF5 file
+  if (!out_hits.empty()) {
+    saveHitsToHDF5(out_hits, hits, labels);
+  }
 
-  // // generate events
-  // auto events = alg->get_events(hits);
-  // // print out events
-  // if (verbose) {
-  //   std::cout << "Found " << events.size() << " events." << std::endl;
-  // }
-  // // save events to HDF5 file
-  // if (!out_events.empty()) {
-  //   saveEventsToHDF5(out_events, events);
-  // }
+  // generate events
+  auto events = alg->get_events(hits);
+  // print out events
+  if (verbose) {
+    std::cout << "Found " << events.size() << " events." << std::endl;
+  }
+  // save events to HDF5 file
+  if (!out_events.empty()) {
+    saveEventsToHDF5(out_events, events);
+  }
 
   end = std::chrono::high_resolution_clock::now();
   diff = end - start1;
