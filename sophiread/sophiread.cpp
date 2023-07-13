@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
   std::chrono::duration<double> diff = end - start;
   std::cout << "Elapsed time for processing raw bytes to hits: " << diff.count() << " s\n";
 
+  auto start1 = std::chrono::high_resolution_clock::now();
   // clustering and fitting
   ClusteringAlgorithm *alg;
   if (use_abs_algorithm) {
@@ -115,8 +116,11 @@ int main(int argc, char *argv[]) {
   }
 
   end = std::chrono::high_resolution_clock::now();
-  diff = end - start;
+  diff = end - start1;
   std::cout << "Elapsed time for clustering hits into neutron events: " << diff.count() << " s\n";
+
+  diff = end - start;
+  std::cout << "Total elapsed time: " << diff.count() << " s\n";
 
   return 0;
 }
