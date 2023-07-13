@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+
 #include "abs.h"
 #include "dbscan.h"
 
@@ -313,8 +314,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
         //   //                          previous_time, chip_layout_type);
         //   // std::cout << hit.toString() << std::endl;
         //   // Process the data into hit
-        //    auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
-        //                           chip_layout_type);
+        //   auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+        //                         chip_layout_type);
         //  //  std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
         //  // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
         //  // std::endl;

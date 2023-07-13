@@ -8,6 +8,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <iomanip>
 
 #include "abs.h"
 #include "dbscan.h"
@@ -112,19 +113,19 @@ void reader(std::string filename) {
             GDC_timestamp = Timer_MSB16;
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
-            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
-            // GDC_timestamp*25E-9 << std::endl;
+            std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((char_array[7] & 0xF0) == 0xb0) {
-          // Process the data into hit
-          auto data_packet = std::vector<char>(
-              char_array, char_array + sizeof(char_array) / sizeof(char));
-          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
-                                 chip_layout_type);
-          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
-          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
-          // std::endl;
-          q_hits.enqueue(hit);
+          // // Process the data into hit
+          // auto data_packet = std::vector<char>(
+          //     char_array, char_array + sizeof(char_array) / sizeof(char));
+          // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+          //                        chip_layout_type);
+          // // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+          // // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+          // // std::endl;
+          // q_hits.enqueue(hit);
         }
         //
       }
@@ -185,7 +186,9 @@ int main(int argc, char *argv[]) {
   std::cout << "Number of events: " << neutron_events.size() << std::endl;
 
   // save events to file
-  saveEventsToHDF5("events_streamed.h5", neutron_events);
+  if (neutron_events.size() > 0){
+    saveEventsToHDF5("events_streamed.h5", neutron_events);
+  }
 
   return 0;
 }
