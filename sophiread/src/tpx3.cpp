@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-
+#include <iomanip>
 #include "abs.h"
 #include "dbscan.h"
 
@@ -303,22 +303,22 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
             GDC_timestamp = Timer_MSB16;
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
-            // std::cout << "GDC_timestamp: " << std::setprecision(15) <<
-            // GDC_timestamp*25E-9 << std::endl;
+            std::cout << "GDC_timestamp: " << std::setprecision(15) <<
+            GDC_timestamp*25E-9 << std::endl;
           }
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
           // NOTE: as of 2023-02-24, timing data packet cannot be used, using
           // alternative method to get the timing information
-          auto hit = packetToHitAlt(data_packet, rollover_counter,
-                                    previous_time, chip_layout_type);
+          // auto hit = packetToHitAlt(data_packet, rollover_counter,
+          //                          previous_time, chip_layout_type);
           // std::cout << hit.toString() << std::endl;
           // Process the data into hit
-          // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
-          //                        chip_layout_type);
-          // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
-          // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
-          // std::endl;
-          // std::cout << std::setprecision(15) << hit.getSPIDERTIME_ns()*1E-9 << std::endl;
+           auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
+                                  chip_layout_type);
+         //  std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
+         // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
+         // std::endl;
+         // std::cout << std::setprecision(15) << hit.getSPIDERTIME_ns()*1E-9 << std::endl;
           hits.push_back(hit);
         }
       }

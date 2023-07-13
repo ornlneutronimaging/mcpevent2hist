@@ -7,6 +7,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 #include "abs.h"
 #include "dbscan.h"
@@ -67,7 +68,15 @@ int main(int argc, char *argv[]) {
     std::cerr << help_msg << std::endl;
     return 1;
   }
+
+  auto start = std::chrono::high_resolution_clock::now();
+  // reading in raw data to memory and parse into Hits 
   auto hits = readTimepix3RawData(in_tpx3);
+  std::cout << "Number of hits: " << hits.size() << std::endl;
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  std::cout << "Elapsed time for processing raw bytes to hits: " << diff.count() << " s\n";
 
   // clustering and fitting
   ClusteringAlgorithm *alg;
@@ -104,5 +113,10 @@ int main(int argc, char *argv[]) {
   if (!out_events.empty()) {
     saveEventsToHDF5(out_events, events);
   }
+
+  end = std::chrono::high_resolution_clock::now();
+  diff = end - start;
+  std::cout << "Elapsed time for clustering hits into neutron events: " << diff.count() << " s\n";
+
   return 0;
 }
