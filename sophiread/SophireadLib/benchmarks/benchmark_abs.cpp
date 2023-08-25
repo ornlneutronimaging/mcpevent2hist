@@ -29,13 +29,14 @@ std::uniform_real_distribution<> spidertime(-1, 1);
 
 /*
 Target processing speed: 120,000,000 hits / sec -> 120 hits/us
-  -> 12 clusters, 10 hits each cluster
+  -> 12 clusters, 10 hits each == 120 hits -> 1 us
+  -> 12000 clusters, 10 hits each == 120000 hits -> 1000 us
 */
 
 std::vector<Hit> fake_hits() {
   std::vector<Hit> hits;
-  // generate 12 clusters of 10 hits each
-  for (int i = 0; i < 12; i++) {
+  // generate 12000 clusters of 10 hits each
+  for (int i = 0; i < 12000; i++) {
     // cluster center
     int x = 10 * i + pos(gen);
     int y = 10 * i + pos(gen);
@@ -48,10 +49,8 @@ std::vector<Hit> fake_hits() {
   return hits;
 }
 
-int main(int argc, char **argv) {
-  // generate fake hits
-  auto hits = fake_hits();
-
+double run_single_test(int run_id, std::vector<Hit> hits, double &fit_time,
+                       double &events_time) {
   // create ABS algorithm
   ABS abs_alg(5.0, 1, 75);
 
@@ -72,6 +71,32 @@ int main(int argc, char **argv) {
       chrono::duration_cast<chrono::microseconds>(end_events - start_events)
           .count();
   cout << "abs::get_events " << duration_events << " us" << endl;
+
+  fit_time += duration_fit;
+  events_time += duration_events;
+
+  // release memory
+  abs_alg.reset();
+
+  return duration_fit + duration_events;
+}
+
+int main(int argc, char **argv) {
+  // generate fake hits
+  auto hits = fake_hits();
+
+  // run 100 tests and get the average
+  const int num_tests = 100;
+  double total_time = 0;
+  double fit_time = 0;
+  double events_time = 0;
+  for (int i = 0; i < num_tests; i++) {
+    total_time += run_single_test(i, hits, fit_time, events_time);
+  }
+  cout << "For 120,000 hits (ref time cap: 1000 us):" << endl
+       << "Average total time: " << total_time / num_tests << " us" << endl
+       << "Average fit time: " << fit_time / num_tests << " us" << endl
+       << "Average events time: " << events_time / num_tests << " us" << endl;
 
   return 0;
 }

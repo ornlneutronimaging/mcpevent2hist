@@ -131,8 +131,8 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
       std::max_element(clusterLabels_.begin(), clusterLabels_.end());
   int max_label = *max_label_it;
 
-// loop over all clusterIndices_
-#pragma omp parallel for
+  // loop over all clusterIndices_
+  // #pragma omp parallel for
   for (int label = 0; label <= max_label; label++) {
     std::vector<Hit> cluster;
     for (auto& index : clusterIndices_[label]) {
@@ -152,7 +152,7 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
     }
     auto event = alg->fit(cluster);
     // Add the event to the list
-#pragma omp critical
+    // #pragma omp critical
     if (event.getX() >= 0.0 && event.getY() >= 0.0) {
       // x, y = -1 means a failed fit
       events.push_back(event);
