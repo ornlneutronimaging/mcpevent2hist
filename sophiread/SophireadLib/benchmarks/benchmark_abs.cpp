@@ -18,29 +18,60 @@
 #include "abs.h"
 
 using namespace std;
+std::random_device rd;
+std::mt19937 gen(rd());
+std::uniform_real_distribution<> pos(0, 2);
+std::uniform_real_distribution<> tot(0, 100);
+std::uniform_real_distribution<> toa(0, 1000);
+std::uniform_real_distribution<> ftoa(0, 255);
+std::uniform_real_distribution<> tof(0, 2000);
+std::uniform_real_distribution<> spidertime(-1, 1);
+
+/*
+Target processing speed: 120,000,000 hits / sec -> 120 hits/us
+  -> 12 clusters, 10 hits each cluster
+*/
+
+std::vector<Hit> fake_hits() {
+  std::vector<Hit> hits;
+  // generate 12 clusters of 10 hits each
+  for (int i = 0; i < 12; i++) {
+    // cluster center
+    int x = 10 * i + pos(gen);
+    int y = 10 * i + pos(gen);
+    int stime = 10 * i + spidertime(gen);
+    // cluster
+    for (int j = 0; j < 10; j++) {
+      hits.push_back(Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
+    }
+  }
+  return hits;
+}
 
 int main(int argc, char **argv) {
-  // generate random data
-  int n = 1000000;
-  vector<double> data(n);
-  random_device rd;
-  mt19937 gen(rd());
-  uniform_real_distribution<> dis(0, 1);
-  for (int i = 0; i < n; i++) {
-    data[i] = dis(gen);
-  }
+  // generate fake hits
+  auto hits = fake_hits();
 
-  // benchmark
-  int niter = 100;
-  vector<double> result(n);
-  auto start = chrono::high_resolution_clock::now();
-  for (int i = 0; i < niter; i++) {
-    //
-  }
-  auto end = chrono::high_resolution_clock::now();
-  auto duration =
-      chrono::duration_cast<chrono::microseconds>(end - start).count();
-  cout << "abs: " << duration / niter << " us" << endl;
+  // create ABS algorithm
+  ABS abs_alg(5.0, 1, 75);
+
+  // fit hits into clusters
+  auto start_fit = chrono::high_resolution_clock::now();
+  abs_alg.fit(hits);
+  auto end_fit = chrono::high_resolution_clock::now();
+  auto duration_fit =
+      chrono::duration_cast<chrono::microseconds>(end_fit - start_fit).count();
+  cout << "abs::fit " << duration_fit << " us" << endl;
+
+  // convert to neutron events
+  auto start_events = chrono::high_resolution_clock::now();
+  abs_alg.set_method("centroid");
+  auto events = abs_alg.get_events(hits);
+  auto end_events = chrono::high_resolution_clock::now();
+  auto duration_events =
+      chrono::duration_cast<chrono::microseconds>(end_events - start_events)
+          .count();
+  cout << "abs::get_events " << duration_events << " us" << endl;
 
   return 0;
 }
