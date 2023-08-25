@@ -49,11 +49,26 @@ add_executable(
 target_link_libraries(
     SophireadBenchmarks_ABS
     SophireadLib
-    OpenMP::OpenMP_CXX
 )
 # symlink executable to the build directory
 add_custom_command(TARGET SophireadLib POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS
     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS.app
+)
+
+add_executable(
+    SophireadBenchmarks_ABS_Thread
+    benchmarks/benchmark_abs_thread.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_ABS_Thread
+    SophireadLib
+    pthread
+)
+# symlink executable to the build directory
+add_custom_command(TARGET SophireadLib POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS_Thread
+    ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS_Thread.app
 )
