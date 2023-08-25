@@ -81,7 +81,7 @@ double run_single_test(int run_id, std::vector<Hit> hits, double &fit_time,
   return duration_fit + duration_events;
 }
 
-int main(int argc, char **argv) {
+int main() {
   // generate fake hits
   auto hits = fake_hits();
 
