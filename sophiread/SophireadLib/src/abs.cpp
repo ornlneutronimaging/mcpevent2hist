@@ -151,6 +151,8 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
       throw std::runtime_error("ERROR: peak fitting method not supported!");
     }
     auto event = alg->fit(cluster);
+    delete alg;
+
     // Add the event to the list
     // #pragma omp critical
     if (event.getX() >= 0.0 && event.getY() >= 0.0) {
