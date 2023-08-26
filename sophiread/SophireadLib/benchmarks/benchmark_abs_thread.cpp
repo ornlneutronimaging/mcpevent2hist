@@ -36,16 +36,18 @@ Target processing speed: 120,000,000 hits / sec -> 120 hits/us
 
 std::vector<Hit> fake_hits() {
   std::vector<Hit> hits;
-  hits.reserve(12000 * 10);
+  const int num_clusters = 12000000;
+  const int num_hits_per_cluster = 10;
+  hits.reserve(num_clusters * num_hits_per_cluster);
 
-  // generate 12000 clusters of 10 hits each
-  for (int i = 0; i < 12000; i++) {
+  // generate
+  for (int i = 0; i < num_clusters; i++) {
     // cluster center
     int x = 10 * i + pos(gen);
     int y = 10 * i + pos(gen);
     int stime = 10 * i + spidertime(gen);
     // cluster
-    for (int j = 0; j < 10; j++) {
+    for (int j = 0; j < num_hits_per_cluster; j++) {
       hits.emplace_back(
           Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
     }
