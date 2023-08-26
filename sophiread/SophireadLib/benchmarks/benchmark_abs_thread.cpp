@@ -36,6 +36,8 @@ Target processing speed: 120,000,000 hits / sec -> 120 hits/us
 
 std::vector<Hit> fake_hits() {
   std::vector<Hit> hits;
+  hits.reserve(12000 * 10);
+
   // generate 12000 clusters of 10 hits each
   for (int i = 0; i < 12000; i++) {
     // cluster center
@@ -44,15 +46,16 @@ std::vector<Hit> fake_hits() {
     int stime = 10 * i + spidertime(gen);
     // cluster
     for (int j = 0; j < 10; j++) {
-      hits.push_back(Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
+      hits.emplace_back(
+          Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
     }
   }
   return hits;
 }
 
 struct thread_data {
-  std::vector<Hit>::iterator begin;
-  std::vector<Hit>::iterator end;
+  std::vector<Hit>::const_iterator begin;
+  std::vector<Hit>::const_iterator end;
 
   void run() {
     ABS abs_alg(5.0, 1, 75);
@@ -64,9 +67,9 @@ struct thread_data {
   }
 };
 
-double single_test(std::vector<Hit> hits, int num_thread) {
+double single_test(const std::vector<Hit>& hits, int num_thread) {
   // record time
-  auto start = chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
 
   // chunk size
   size_t chunk_size = hits.size() / num_thread;
@@ -80,7 +83,7 @@ double single_test(std::vector<Hit> hits, int num_thread) {
     thread_data_list[i].end = (i == num_thread - 1)
                                   ? hits.end()
                                   : hits.begin() + (i + 1) * chunk_size;
-    threads[i] = std::thread(&thread_data::run, &thread_data_list[i]);
+    threads[i] = std::thread(&thread_data::run, std::ref(thread_data_list[i]));
   }
 
   // join threads
@@ -89,10 +92,11 @@ double single_test(std::vector<Hit> hits, int num_thread) {
   }
 
   // record time
-  auto end = chrono::high_resolution_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
 
   auto duration =
-      chrono::duration_cast<chrono::microseconds>(end - start).count();
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
   cout << "[user]total " << duration << " us" << endl;
 
   return duration;
@@ -101,9 +105,9 @@ double single_test(std::vector<Hit> hits, int num_thread) {
 int main() {
   // create fake hits
   auto hits = fake_hits();
-  size_t num_threads = 16;
+  size_t num_threads = 64;
 
-  // run 1000 tests and get the average
+  // run 100 tests and get the average
   const int num_tests = 1000;
   double total_time = 0;
   for (int i = 0; i < num_tests; i++) {
