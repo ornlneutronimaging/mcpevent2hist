@@ -147,6 +147,8 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
   // loop over all clusterIndices_
   for (int label = 0; label <= max_label; label++) {
     std::vector<Hit> cluster;
+    cluster.reserve(clusterIndices_[label].size());
+
     for (auto& index : clusterIndices_[label]) {
       cluster.push_back(data[index]);
     }
