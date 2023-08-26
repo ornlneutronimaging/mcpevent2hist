@@ -49,7 +49,7 @@ std::vector<Hit> fake_hits() {
   return hits;
 }
 
-double run_single_test(int run_id, std::vector<Hit> hits, double &fit_time,
+double run_single_test(std::vector<Hit> hits, double &fit_time,
                        double &events_time) {
   // create ABS algorithm
   ABS abs_alg(5.0, 1, 75);
@@ -91,7 +91,7 @@ int main() {
   double fit_time = 0;
   double events_time = 0;
   for (int i = 0; i < num_tests; i++) {
-    total_time += run_single_test(i, hits, fit_time, events_time);
+    total_time += run_single_test(hits, fit_time, events_time);
   }
   cout << "For 120,000 hits (ref time cap: 1000 us):" << endl
        << "Average total time: " << total_time / num_tests << " us" << endl
