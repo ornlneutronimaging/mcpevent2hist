@@ -98,8 +98,9 @@ double single_test(const std::vector<Hit>& hits, int num_thread) {
 
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count();
-  cout << "[user]total " << duration << " us" << endl;
+          .count() /
+      1e6;
+  cout << "[user]total " << duration << " sec" << endl;
 
   return duration;
 }
@@ -115,6 +116,6 @@ int main() {
   for (int i = 0; i < num_tests; i++) {
     total_time += single_test(hits, num_threads);
   }
-  cout << "average " << total_time / num_tests << " us" << endl;
+  cout << "average " << total_time / num_tests << " sec" << endl;
   return 0;
 }
