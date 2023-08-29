@@ -131,28 +131,35 @@ std::vector<NeutronEvent> ABS::get_events(const std::vector<Hit>& data) {
       std::max_element(clusterLabels_.begin(), clusterLabels_.end());
   int max_label = *max_label_it;
 
-// loop over all clusterIndices_
-#pragma omp parallel for
+  // determine fitting algorithm
+  std::unique_ptr<PeakFittingAlgorithm> alg;
+  if (m_method == "centroid") {
+    alg = std::make_unique<Centroid>(true);
+  } else if (m_method == "fast_gaussian") {
+    alg = std::make_unique<FastGaussian>();
+  } else {
+    throw std::runtime_error("ERROR: peak fitting method not supported!");
+  }
+
+  // pre-allocate memory for events
+  events.reserve(max_label + 1);
+
+  // loop over all clusterIndices_
   for (int label = 0; label <= max_label; label++) {
     std::vector<Hit> cluster;
+    cluster.reserve(clusterIndices_[label].size());
+
     for (auto& index : clusterIndices_[label]) {
       cluster.push_back(data[index]);
     }
     if (cluster.size() < m_min_cluster_size) {
       continue;
     }
+
     // get the neutron event
-    PeakFittingAlgorithm* alg;
-    if (m_method == "centroid") {
-      alg = new Centroid(true);
-    } else if (m_method == "fast_gaussian") {
-      alg = new FastGaussian();
-    } else {
-      throw std::runtime_error("ERROR: peak fitting method not supported!");
-    }
     auto event = alg->fit(cluster);
+
     // Add the event to the list
-#pragma omp critical
     if (event.getX() >= 0.0 && event.getY() >= 0.0) {
       // x, y = -1 means a failed fit
       events.push_back(event);
