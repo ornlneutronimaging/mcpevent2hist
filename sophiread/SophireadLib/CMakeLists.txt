@@ -39,3 +39,36 @@ gtest_discover_tests(SophireadTests_CLUSTER)
 add_executable(SophireadTests_PEAKFITTING tests/test_peakfitting.cpp)
 target_link_libraries(SophireadTests_PEAKFITTING SophireadLib GTest::GTest GTest::Main hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
 gtest_discover_tests(SophireadTests_PEAKFITTING)
+
+# ------------------ Benchmarks ------------------ #
+# ABS
+add_executable(
+    SophireadBenchmarks_ABS
+    benchmarks/benchmark_abs.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_ABS
+    SophireadLib
+)
+# symlink executable to the build directory
+add_custom_command(TARGET SophireadLib POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS
+    ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS.app
+)
+
+add_executable(
+    SophireadBenchmarks_ABS_Thread
+    benchmarks/benchmark_abs_thread.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_ABS_Thread
+    SophireadLib
+    pthread
+)
+# symlink executable to the build directory
+add_custom_command(TARGET SophireadLib POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS_Thread
+    ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS_Thread.app
+)
