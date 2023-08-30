@@ -65,23 +65,21 @@ int main(int argc, char* argv[]) {
   std::cout << "Read raw data: " << elapsed / 1e6 << " s" << std::endl;
 
   // first, measure how many hits in the data
+  start = std::chrono::high_resolution_clock::now();
   auto hits = parseRawBytesToHits(raw_data);
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  std::cout << "Single thread" << std::endl;
   std::cout << "Number of hits: " << hits.size() << std::endl;
+  std::cout << "Parse raw data: " << elapsed / 1e6 << " s" << std::endl;
+  std::cout << "Speed: " << hits.size() / (elapsed / 1e6) << " hits/s" << std::endl;
 
-  // second, measure how long and calculate speed
-  const int num_trials = 100;
-  double total_time = 0;
-  double speed = 0;
-  for (int i = 0; i < num_trials; ++i) {
-    start = std::chrono::high_resolution_clock::now();
-    hits = parseRawBytesToHits(raw_data);
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    speed = hits.size() / (elapsed / 1e6);
-    std::cout << "Trial " << i << ":\n"
-              << "\t" << elapsed / 1e6 << " s, " << speed << " hits/s" << std::endl;
-    total_time += elapsed;
-  }
-  std::cout << "Average time: " << total_time / num_trials / 1e6 << " s" << std::endl;
-  std::cout << "Average speed: " << hits.size() / (total_time / num_trials / 1e6) << " hits/s" << std::endl;
+  // second, try the two step approach
+  start = std::chrono::high_resolution_clock::now();
+  auto hits_alt = fastParseTPX3Raw(raw_data, 64);
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  std::cout << "Number of hits (alt): " << hits_alt.size() << std::endl;
+  std::cout << "Fast parse raw data: " << elapsed / 1e6 << " s" << std::endl;
+  std::cout << "Speed: " << hits_alt.size() / (elapsed / 1e6) << " hits/s" << std::endl;
 }
