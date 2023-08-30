@@ -145,6 +145,8 @@ Hit packetToHitAlt(const std::vector<char>& packet,
                    unsigned long long* rollover_counter,
                    unsigned long long* previous_time,
                    const int chip_layout_type);
+// in memory processing
+std::vector<Hit> parseRawBytesToHits(const std::vector<char>& raw_bytes);
 //
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit>& hits,

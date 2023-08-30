@@ -72,3 +72,18 @@ add_custom_command(TARGET SophireadLib POST_BUILD
     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS_Thread
     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS_Thread.app
 )
+
+add_executable(
+    SophireadBenchmarks_raw2hits
+    benchmarks/benchmark_raw2hits.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_raw2hits
+    SophireadLib
+)
+# symlink executable to the build directory
+add_custom_command(TARGET SophireadLib POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_raw2hits
+    ${PROJECT_BINARY_DIR}/SophireadBenchmarks_raw2hits.app
+)
