@@ -3,6 +3,7 @@
 #include <H5Cpp.h>
 
 #include <algorithm>
+#include <future>
 #include <iostream>
 #include <sstream>
 
@@ -409,6 +410,127 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
 }
 
 /**
+ * @brief Read the raw data from a TimePix3 file, main thread is only collecting
+ *        header positions (i.e. packets batch), and the work is distributed to
+ *        other worker threads to process each packets into hits.
+ *
+ * @param raw_bytes
+ * @param num_threads
+ * @return std::vector<Hit>
+ */
+std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes, int num_threads) {
+  std::vector<Hit> hits;
+  hits.reserve(raw_bytes.size() / 64);
+
+  std::vector<TPX3H> batches;
+  batches.reserve(raw_bytes.size() / 128);  // just a guess here, need more work
+
+  // local variables
+  int chip_layout_type = 0;
+  int data_packet_size = 0;
+  int data_packet_num = 0;
+
+  // find all batches
+  for (auto i = raw_bytes.begin(); i + 8 < raw_bytes.end(); i += 8) {
+    const char *char_array = &(*i);
+
+    // locate the data packet header
+    if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
+      data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
+      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
+      chip_layout_type = static_cast<int>(char_array[4]);
+      batches.emplace_back(TPX3H{i, data_packet_size, data_packet_num, chip_layout_type});
+    }
+  }
+
+  // process batches in multiple threads
+  std::vector<std::future<std::vector<Hit>>> futures;
+
+  for (int i = 0; i < num_threads; i++) {
+    int start = i * batches.size() / num_threads;
+    int end = (i + 1) * batches.size() / num_threads;
+
+    futures.push_back(std::async(std::launch::async, [=, &raw_bytes] {
+      std::vector<Hit> thread_hits;
+      for (int j = start; j < end; j++) {
+        auto hits_batch = processBatch(batches[j], raw_bytes);
+        thread_hits.insert(thread_hits.end(), hits_batch.begin(), hits_batch.end());
+      }
+      return thread_hits;
+    }));
+  }
+
+  for (auto &future : futures) {
+    auto future_hits = future.get();
+    hits.insert(hits.end(), future_hits.begin(), future_hits.end());
+  }
+
+  return hits;
+}
+
+std::vector<Hit> processBatch(TPX3H batch, const std::vector<char> &raw_bytes) {
+  //
+  std::vector<Hit> hits;
+  hits.reserve(batch.num_packets);
+
+  // -- TDC
+  unsigned long *tdclast;
+  unsigned long long mytdc = 0;
+  unsigned long TDC_MSB16 = 0;
+  unsigned long TDC_LSB32 = 0;
+  unsigned long TDC_timestamp = 0;
+  // -- GDC
+  unsigned long *gdclast;
+  unsigned long long mygdc = 0;
+  unsigned long Timer_LSB32 = 0;
+  unsigned long Timer_MSB16 = 0;
+  unsigned long long int GDC_timestamp = 0;  // 48-bit
+
+  //
+  auto i = batch.header_it;
+  for (auto j = 0; j < batch.num_packets; ++j) {
+    if (i + 8 > raw_bytes.end()) {
+      continue;
+    }
+
+    i = std::next(i, 8);
+    const char *char_array = &(*i);
+
+    // extract the data from the data packet
+    if (char_array[7] == 0x6F) {
+      // TDC data packets
+      tdclast = (unsigned long *)(&char_array[0]);
+      mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+      TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
+      TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
+      if (mytdc < TDC_LSB32) {
+        TDC_MSB16++;
+      }
+      TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
+      TDC_timestamp = TDC_timestamp | mytdc;
+    } else if ((char_array[7] & 0xF0) == 0x40) {
+      // GDC data packet
+      gdclast = (unsigned long *)(&char_array[0]);
+      mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+      if (((mygdc >> 40) & 0xF) == 0x4) {
+        Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
+      } else if (((mygdc >> 40) & 0xF) == 0x5) {
+        Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
+        GDC_timestamp = Timer_MSB16;
+        GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
+        GDC_timestamp = GDC_timestamp | Timer_LSB32;
+      }
+    } else if ((char_array[7] & 0xF0) == 0xb0) {
+      // record the packet info
+      auto hit = packetToHit(char_array, TDC_timestamp, GDC_timestamp, batch.chip_layout_type);
+      hits.emplace_back(hit);
+    }
+  }
+
+  return hits;
+}
+
+/**
  * @brief Iterate through the raw char array and convert it to hits.
  *
  * @param raw_bytes
@@ -440,7 +562,6 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
 
   // main loop
   for (auto i = raw_bytes.begin(); i + 8 < raw_bytes.end(); i += 8) {
-    // const auto char_array = std::vector<char>(i, std::next(i, 8));
     const char *char_array = &(*i);
 
     // locate the data packet header
@@ -453,14 +574,12 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
 
       // processing each data packet
       for (auto j = 0; j < data_packet_num; ++j) {
-        i = std::next(i, 8);  // move the iterator to the next data packet
-        // std::vector<char> data_packet(i, std::next(i, 8));
-        char_array = &(*i);
-
         if (i + 8 > raw_bytes.end()) {
-          std::cout << "EOF, insufficient bytes left." << std::endl;
-          break;
+          continue;
         }
+
+        i = std::next(i, 8);  // move the iterator to the next data packet
+        char_array = &(*i);
 
         // extract the data from the data packet
         if (char_array[7] == 0x6F) {

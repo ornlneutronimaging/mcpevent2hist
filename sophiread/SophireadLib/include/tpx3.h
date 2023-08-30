@@ -157,3 +157,12 @@ void saveEventsToHDF5(const std::string out_file_name,
 // parse user-defined param file 
 Params parseUserDefinedParams(const std::string& filepath);
 
+// for fast processing raw bytes into hit
+struct TPX3H {
+  std::vector<char>::const_iterator header_it;
+  const int packet_size;
+  const int num_packets;
+  const int chip_layout_type;
+};
+std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes, int num_threads);
+std::vector<Hit> processBatch(TPX3H batch, const std::vector<char>& raw_bytes);
