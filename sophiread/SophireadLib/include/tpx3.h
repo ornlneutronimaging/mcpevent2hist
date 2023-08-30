@@ -37,6 +37,10 @@ class Hit {
         m_tof(tof),
         m_spidertime(spidertime){};
 
+  // special constructor that directly parse the raw packet from tpx3
+  // into a hit
+  Hit(const char* packet, const unsigned long long tdc, const unsigned long long gdc, const int chip_layout_type);
+
   Hit& operator=(const Hit& hit) {
     m_x = hit.m_x;
     m_y = hit.m_y;
