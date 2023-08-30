@@ -27,7 +27,16 @@ include(GoogleTest)
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 
 # Add compiler flags
-add_compile_options(-O3 -std=c++14 -march=native -ffast-math -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
+add_compile_options(
+  -O3
+  -std=c++20
+  -march=native
+  -ffast-math
+  -pthread
+  -Wall
+  -Wextra
+  # ${OpenMP_CXX_FLAGS}
+)
 
 # Add Sophiread library
 # NOTE: this will take care of the testing as well
