@@ -204,6 +204,85 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
 }
 
 /**
+ * @brief Convert a raw data packet into a hit.
+ *
+ * @param packet
+ * @param tdc
+ * @param gdc
+ * @param chip_layout_type
+ * @return Hit
+ */
+Hit packetToHit(const char *packet, const unsigned long long tdc, const unsigned long long gdc,
+                const int chip_layout_type) {
+  unsigned short pixaddr, dcol, spix, pix;
+  unsigned short *spider_time;
+  unsigned short *nTOT;    // bytes 2,3, raw time over threshold
+  unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
+  unsigned int *npixaddr;  // bytes 4,5,6,7
+  int x, y, tot, toa, ftoa;
+  unsigned int spidertime = 0, tof = 0;
+  // timing information
+  spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
+  nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
+  nTOA = (unsigned int *)(&packet[3]);           // ToA          (14 bits)
+  ftoa = *nTOT & 0xF;                            // fine ToA     (4 bits)
+  tot = (*nTOT >> 4) & 0x3FF;
+  toa = (*nTOA >> 6) & 0x3FFF;
+  spidertime = 16384 * (*spider_time) + toa;
+
+  // rename variables for clarity
+  unsigned long long int GDC_timestamp = gdc;
+  unsigned long long TDC_timestamp = tdc;
+
+  // convert spidertime to global timestamp
+  unsigned long SPDR_LSB30 = 0;
+  unsigned long SPDR_MSB18 = 0;
+  unsigned long long SPDR_timestamp = 0;
+
+  SPDR_LSB30 = GDC_timestamp & 0x3FFFFFFF;
+  SPDR_MSB18 = (GDC_timestamp >> 30) & 0x3FFFF;
+  if (spidertime < SPDR_LSB30) {
+    SPDR_MSB18++;
+  }
+  SPDR_timestamp = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
+  SPDR_timestamp = SPDR_timestamp | spidertime;
+
+  // tof calculation
+  // TDC packets not always arrive before corresponding data packets
+  if (SPDR_timestamp < TDC_timestamp) {
+    tof = SPDR_timestamp - TDC_timestamp + 16666667;  // 1E9 / 60.0 is approximately 16666667
+  } else {
+    tof = SPDR_timestamp - TDC_timestamp;
+  }
+
+  // pixel address
+  npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
+  pixaddr = (*npixaddr >> 12) & 0xFFFF;
+  dcol = ((pixaddr & 0xFE00) >> 8);
+  spix = ((pixaddr & 0x1F8) >> 1);
+  pix = pixaddr & 0x7;
+  x = dcol + (pix >> 2);   // x coordinate
+  y = spix + (pix & 0x3);  // y coordinate
+  // adjustment for chip layout
+  if (chip_layout_type == 0) {  // single
+    x += 260;
+    y = y;
+  } else if (chip_layout_type == 1) {  // double
+    x = 255 - x + 260;
+    y = 255 - y + 260;
+  } else if (chip_layout_type == 2) {  // triple
+    x = 255 - x;
+    y = 255 - y + 260;
+  } else {  // quad
+    x = x;
+    y = y;
+  }
+
+  // return the hit
+  return Hit(x, y, tot, toa, ftoa, tof, SPDR_timestamp);
+}
+
+/**
  * @brief Read the raw data from a TimePix3 file.
  *
  * @param filepath: path to the raw data file.
@@ -336,15 +415,10 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
  * @return std::vector<Hit>
  */
 std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
-  // check if the raw_bytes is empty
-  if (raw_bytes.size() == 0) {
-    throw std::runtime_error("Empty raw_bytes");
-  }
-
-  // assume every 100 char will result in 1 hit (this needs to be verified via
+  // assume every 64 char will result in 1 hit (this needs to be verified via
   // experiments).
   std::vector<Hit> hits;
-  hits.reserve(raw_bytes.size() / 100);
+  hits.reserve(raw_bytes.size() / 64);
 
   // local variables
   // -- packet information
@@ -365,28 +439,33 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
   unsigned long long int GDC_timestamp = 0;  // 48-bit
 
   // main loop
-  for (auto i = raw_bytes.begin(); i < raw_bytes.end(); i += 8) {
-    const auto char_array = std::vector<char>(i, std::next(i, 8));
+  for (auto i = raw_bytes.begin(); i + 8 < raw_bytes.end(); i += 8) {
+    // const auto char_array = std::vector<char>(i, std::next(i, 8));
+    const char *char_array = &(*i);
+
     // locate the data packet header
     if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
       // get the size of the data packet
       data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
       data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
       // get chip layout type
-      chip_layout_type = (int)char_array[4];
+      chip_layout_type = static_cast<int>(char_array[4]);
 
       // processing each data packet
-      for (auto j = 0; j < data_packet_num; j++) {
+      for (auto j = 0; j < data_packet_num; ++j) {
         i = std::next(i, 8);  // move the iterator to the next data packet
-        std::vector<char> data_packet(i, std::next(i, 8));
-        if (data_packet.size() != 8) {
+        // std::vector<char> data_packet(i, std::next(i, 8));
+        char_array = &(*i);
+
+        if (i + 8 > raw_bytes.end()) {
           std::cout << "EOF, insufficient bytes left." << std::endl;
           break;
         }
+
         // extract the data from the data packet
-        if (data_packet[7] == 0x6F) {
+        if (char_array[7] == 0x6F) {
           // TDC data packets
-          tdclast = (unsigned long *)(&data_packet[0]);
+          tdclast = (unsigned long *)(&char_array[0]);
           mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
           TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
           TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
@@ -395,9 +474,9 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
           }
           TDC_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
           TDC_timestamp = TDC_timestamp | mytdc;
-        } else if ((data_packet[7] & 0xF0) == 0x40) {
+        } else if ((char_array[7] & 0xF0) == 0x40) {
           // GDC data packet
-          gdclast = (unsigned long *)(&data_packet[0]);
+          gdclast = (unsigned long *)(&char_array[0]);
           mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
           if (((mygdc >> 40) & 0xF) == 0x4) {
             Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
@@ -407,10 +486,10 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
             GDC_timestamp = (GDC_timestamp << 32) & 0xFFFF00000000;
             GDC_timestamp = GDC_timestamp | Timer_LSB32;
           }
-        } else if ((data_packet[7] & 0xF0) == 0xb0) {
+        } else if ((char_array[7] & 0xF0) == 0xb0) {
           // Process the data into hit
-          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp, chip_layout_type);
-          hits.push_back(hit);
+          auto hit = packetToHit(char_array, TDC_timestamp, GDC_timestamp, chip_layout_type);
+          hits.emplace_back(hit);
         }
       }
     }
