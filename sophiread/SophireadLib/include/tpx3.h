@@ -17,6 +17,8 @@
  */
 class Hit {
  public:
+  // default constructor
+  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
   // copy constructor
   Hit(const Hit& hit)
       : m_x(hit.m_x),
@@ -163,10 +165,13 @@ Params parseUserDefinedParams(const std::string& filepath);
 
 // for fast processing raw bytes into hit
 struct TPX3H {
-  std::vector<char>::const_iterator header_it;
+  std::size_t index;
   const int packet_size;
   const int num_packets;
   const int chip_layout_type;
+
+  TPX3H(std::size_t index, int packet_size, int num_packets, int chip_layout_type)
+      : index(index), packet_size(packet_size), num_packets(num_packets), chip_layout_type(chip_layout_type){};
 };
-std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes, int num_threads);
+std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes);
 std::vector<Hit> processBatch(TPX3H batch, const std::vector<char>& raw_bytes);

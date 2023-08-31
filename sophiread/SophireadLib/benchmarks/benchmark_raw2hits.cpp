@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 
   // second, try the two step approach
   start = std::chrono::high_resolution_clock::now();
-  auto hits_alt = fastParseTPX3Raw(raw_data, 64);
+  auto hits_alt = fastParseTPX3Raw(raw_data);
   end = std::chrono::high_resolution_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   std::cout << "Number of hits (alt): " << hits_alt.size() << std::endl;
