@@ -1,18 +1,47 @@
 /**
  * @file benchmakr_raw2hit.cpp
  * @author Chen Zhang (zhangc@ornl.gov)
- * @brief benchmark converting raw data to hit performance in single thread
+ * @brief benchmark converting raw data to hit performance.
  * @version 0.1
  * @date 2023-08-30
  *
  * @copyright Copyright (c) 2023
+ * BSD 3-Clause License
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of ORNL nor the names of its contributors may be used
+ * to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES(INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT(INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <chrono>
 #include <fstream>
 #include <iostream>
 
-#include "tpx3.h"
+#include "tbb/tbb.h"
+#include "tpx3_fast.h"
 
 using namespace std;
 
@@ -64,22 +93,49 @@ int main(int argc, char* argv[]) {
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   std::cout << "Read raw data: " << elapsed / 1e6 << " s" << std::endl;
 
-  // first, measure how many hits in the data
+  // single thread processing
+  // -- run
+  std::cout << "\nSingle thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
-  auto hits = parseRawBytesToHits(raw_data);
+  auto batches = findTPX3H(raw_data);
+  for (auto& tpx3 : batches) {
+    extractHits(tpx3, raw_data);
+  }
   end = std::chrono::high_resolution_clock::now();
+  // -- gather statistics
+  int n_hits = 0;
+  for (const auto& tpx3 : batches) {
+    auto hits = tpx3.hits;
+    n_hits += hits.size();
+  }
+  std::cout << "Number of hits: " << n_hits << std::endl;
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  std::cout << "Single thread" << std::endl;
-  std::cout << "Number of hits: " << hits.size() << std::endl;
-  std::cout << "Parse raw data: " << elapsed / 1e6 << " s" << std::endl;
-  std::cout << "Speed: " << hits.size() / (elapsed / 1e6) << " hits/s" << std::endl;
+  std::cout << "Single thread processing: " << elapsed / 1e6 << " s" << std::endl;
+  auto speed = n_hits / (elapsed / 1e6);
+  std::cout << "Single thread processing speed: " << speed << " hits/s" << std::endl;
 
-  // second, try the two step approach
+  // multi-thread processing
+  // -- run
+  std::cout << "\nMulti-thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
-  auto hits_alt = fastParseTPX3Raw(raw_data);
+  auto batches_mt = findTPX3H(raw_data);
+  // use tbb parallel_for to process batches
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      auto& tpx3 = batches_mt[i];
+      extractHits(tpx3, raw_data);
+    }
+  });
   end = std::chrono::high_resolution_clock::now();
+  // -- gather statistics
+  n_hits = 0;
+  for (const auto& tpx3 : batches_mt) {
+    auto hits = tpx3.hits;
+    n_hits += hits.size();
+  }
+  std::cout << "Number of hits: " << n_hits << std::endl;
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  std::cout << "Number of hits (alt): " << hits_alt.size() << std::endl;
-  std::cout << "Fast parse raw data: " << elapsed / 1e6 << " s" << std::endl;
-  std::cout << "Speed: " << hits_alt.size() / (elapsed / 1e6) << " hits/s" << std::endl;
+  std::cout << "Multi-thread processing: " << elapsed / 1e6 << " s" << std::endl;
+  speed = n_hits / (elapsed / 1e6);
+  std::cout << "Multi-thread processing speed: " << speed << " hits/s" << std::endl;
 }
