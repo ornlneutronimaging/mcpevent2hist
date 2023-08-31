@@ -5,11 +5,14 @@
 #include <algorithm>
 #include <future>
 #include <iostream>
+#include <numeric>
 #include <sstream>
+#include <vector>
 
 #include "abs.h"
 #include "dbscan.h"
 #include "tbb/parallel_for.h"
+#include "tbb/tbb.h"
 
 std::string Hit::toString() const {
   std::stringstream ss;
@@ -407,13 +410,9 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
  *        other worker threads to process each packets into hits.
  *
  * @param raw_bytes
- * @param num_threads
  * @return std::vector<Hit>
  */
-std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes, int num_threads) {
-  std::vector<Hit> hits;
-  hits.reserve(raw_bytes.size());
-
+std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes) {
   std::vector<TPX3H> batches;
   batches.reserve(raw_bytes.size() / 64);  // just a guess here, need more work
 
@@ -423,31 +422,44 @@ std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes, int num_th
   int data_packet_num = 0;
 
   // find all batches
-  for (auto i = raw_bytes.begin(); i + 8 < raw_bytes.end(); i += 8) {
-    const char *char_array = &(*i);
+  const auto iter_begin = raw_bytes.cbegin();
+  const auto iter_end = raw_bytes.cend();
+  for (auto iter = raw_bytes.cbegin(); iter + 8 < iter_end; iter += 8) {
+    const char *char_array = &(*iter);
 
     // locate the data packet header
     if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
       data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
       data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
       chip_layout_type = static_cast<int>(char_array[4]);
-      batches.emplace_back(TPX3H{i, data_packet_size, data_packet_num, chip_layout_type});
+      batches.emplace_back(static_cast<size_t>(std::distance(iter_begin, iter)), data_packet_size, data_packet_num,
+                           chip_layout_type);
     }
   }
 
-  // use tbb::parallel_for to process batches in parallel
-  // tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
-  //   for (size_t i = r.begin(); i != r.end(); ++i) {
-  //     auto hits_batch = processBatch(batches[i], raw_bytes);
-  //     hits.insert(hits.end(), hits_batch.begin(), hits_batch.end());
-  //   }
-  // });
+  // get upper estimate of total num_packets using std::accumulate
+  const auto total_num_packets = std::accumulate(
+      batches.cbegin(), batches.cend(), 0, [](const int &sum, const TPX3H &batch) { return sum + batch.num_packets; });
+  std::vector<Hit> hits(total_num_packets);
 
-  // process one batch at a time
-  for (auto &batch : batches) {
-    auto hits_batch = processBatch(batch, raw_bytes);
-    hits.insert(hits.end(), hits_batch.begin(), hits_batch.end());
-  }
+  // // process each batch
+  // // tbb::parallel_for_each(batches.cbegin(), batches.cend(), [&](const TPX3H &batch) {
+  // //   const auto batch_hits = processBatch(batch, raw_bytes);
+  // //   std::copy(batch_hits.cbegin(), batch_hits.cend(), hits.begin() + batch.index);
+  // // });
+
+  // tbb::parallel_for(tbb::blocked_range<size_t>(0, hits.size()), [&](const tbb::blocked_range<size_t> &r) {
+  //   for (auto i = r.begin(); i != r.end(); ++i) {
+  //     if (hits[i].getX() == 0 && hits[i].getY() == 0) {
+  //       hits[i] = Hit();
+  //     }
+  //   }
+  // }
+
+  // remove empty Hit
+  // hits.erase(
+  //     std::remove_if(hits.begin(), hits.end(), [](const Hit &hit) { return hit.getX() == 0 && hit.getY() == 0; }),
+  //     hits.end());
 
   return hits;
 }
@@ -471,14 +483,14 @@ std::vector<Hit> processBatch(TPX3H batch, const std::vector<char> &raw_bytes) {
   unsigned long long int GDC_timestamp = 0;  // 48-bit
 
   //
-  auto i = batch.header_it;
+  auto bytes_iter = raw_bytes.cbegin() + batch.index;
   for (auto j = 0; j < batch.num_packets; ++j) {
-    if (i + 8 > raw_bytes.end()) {
+    if (bytes_iter + 8 >= raw_bytes.cend()) {
       continue;
     }
 
-    i = std::next(i, 8);
-    const char *char_array = &(*i);
+    bytes_iter = std::next(bytes_iter, 8);
+    const char *char_array = &(*bytes_iter);
 
     // extract the data from the data packet
     if (char_array[7] == 0x6F) {
@@ -506,7 +518,7 @@ std::vector<Hit> processBatch(TPX3H batch, const std::vector<char> &raw_bytes) {
       }
     } else if ((char_array[7] & 0xF0) == 0xb0) {
       // record the packet info
-      hits.emplace_back(Hit(char_array, TDC_timestamp, GDC_timestamp, batch.chip_layout_type));
+      hits.emplace_back(char_array, TDC_timestamp, GDC_timestamp, batch.chip_layout_type);
     }
   }
 
@@ -590,7 +602,7 @@ std::vector<Hit> parseRawBytesToHits(const std::vector<char> &raw_bytes) {
           }
         } else if ((char_array[7] & 0xF0) == 0xb0) {
           // Process the data into hit
-          hits.emplace_back(Hit(char_array, TDC_timestamp, GDC_timestamp, chip_layout_type));
+          hits.emplace_back(char_array, TDC_timestamp, GDC_timestamp, chip_layout_type);
         }
       }
     }
