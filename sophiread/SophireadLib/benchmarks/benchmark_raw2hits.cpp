@@ -75,11 +75,11 @@ int main(int argc, char* argv[]) {
   std::cout << "Speed: " << hits.size() / (elapsed / 1e6) << " hits/s" << std::endl;
 
   // second, try the two step approach
-  // start = std::chrono::high_resolution_clock::now();
-  // auto hits_alt = fastParseTPX3Raw(raw_data, 64);
-  // end = std::chrono::high_resolution_clock::now();
-  // elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  // std::cout << "Number of hits (alt): " << hits_alt.size() << std::endl;
-  // std::cout << "Fast parse raw data: " << elapsed / 1e6 << " s" << std::endl;
-  // std::cout << "Speed: " << hits_alt.size() / (elapsed / 1e6) << " hits/s" << std::endl;
+  start = std::chrono::high_resolution_clock::now();
+  auto hits_alt = fastParseTPX3Raw(raw_data, 64);
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  std::cout << "Number of hits (alt): " << hits_alt.size() << std::endl;
+  std::cout << "Fast parse raw data: " << elapsed / 1e6 << " s" << std::endl;
+  std::cout << "Speed: " << hits_alt.size() / (elapsed / 1e6) << " hits/s" << std::endl;
 }

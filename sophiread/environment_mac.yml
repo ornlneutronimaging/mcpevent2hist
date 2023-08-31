@@ -12,6 +12,7 @@ dependencies:
   - eigen
   - mlpack
   - cereal
+  - tbb-devel
 
   # Not Windows, OpenGL implementation:
   - mesalib>=18.0.0

@@ -9,6 +9,7 @@
 
 #include "abs.h"
 #include "dbscan.h"
+#include "tbb/parallel_for.h"
 
 std::string Hit::toString() const {
   std::stringstream ss;
@@ -411,10 +412,10 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
  */
 std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes, int num_threads) {
   std::vector<Hit> hits;
-  hits.reserve(raw_bytes.size() / 64);
+  hits.reserve(raw_bytes.size());
 
   std::vector<TPX3H> batches;
-  batches.reserve(raw_bytes.size() / 128);  // just a guess here, need more work
+  batches.reserve(raw_bytes.size() / 64);  // just a guess here, need more work
 
   // local variables
   int chip_layout_type = 0;
@@ -434,26 +435,18 @@ std::vector<Hit> fastParseTPX3Raw(const std::vector<char> &raw_bytes, int num_th
     }
   }
 
-  // process batches in multiple threads
-  std::vector<std::future<std::vector<Hit>>> futures;
+  // use tbb::parallel_for to process batches in parallel
+  // tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
+  //   for (size_t i = r.begin(); i != r.end(); ++i) {
+  //     auto hits_batch = processBatch(batches[i], raw_bytes);
+  //     hits.insert(hits.end(), hits_batch.begin(), hits_batch.end());
+  //   }
+  // });
 
-  for (int i = 0; i < num_threads; i++) {
-    int start = i * batches.size() / num_threads;
-    int end = (i + 1) * batches.size() / num_threads;
-
-    futures.push_back(std::async(std::launch::async, [=, &raw_bytes] {
-      std::vector<Hit> thread_hits;
-      for (int j = start; j < end; j++) {
-        auto hits_batch = processBatch(batches[j], raw_bytes);
-        thread_hits.insert(thread_hits.end(), hits_batch.begin(), hits_batch.end());
-      }
-      return thread_hits;
-    }));
-  }
-
-  for (auto &future : futures) {
-    auto future_hits = future.get();
-    hits.insert(hits.end(), future_hits.begin(), future_hits.end());
+  // process one batch at a time
+  for (auto &batch : batches) {
+    auto hits_batch = processBatch(batch, raw_bytes);
+    hits.insert(hits.end(), hits_batch.begin(), hits_batch.end());
   }
 
   return hits;
