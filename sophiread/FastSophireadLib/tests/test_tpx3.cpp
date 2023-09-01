@@ -37,6 +37,7 @@
  */
 #include <gtest/gtest.h>
 
+#include "disk_io.h"
 #include "spdlog/spdlog.h"
 #include "tpx3_fast.h"
 
@@ -66,6 +67,35 @@ TEST_F(TPX3Test, CheckNumPackets) { ASSERT_EQ(num_packets, tpx3.num_packets); }
 TEST_F(TPX3Test, CheckChipLayoutType) { ASSERT_EQ(chip_layout_type, tpx3.chip_layout_type); }
 
 TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, tpx3.hits.size()); }
+
+TEST(TPX3FuncTest, TestFindTPX3H) {
+  // read the testing raw data
+  auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
+
+  //
+  auto batches = findTPX3H(rawdata);
+
+  // check the size of the raw data
+  EXPECT_EQ(batches.size(), 150611);
+}
+
+TEST(TPX3FuncTest, TestExtractHits) {
+  // read the testing raw data
+  auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
+
+  //
+  auto batches = findTPX3H(rawdata);
+  for (auto& tpx3 : batches) {
+    extractHits(tpx3, rawdata);
+  }
+  //
+  int n_hits = 0;
+  for (const auto& tpx3 : batches) {
+    auto hits = tpx3.hits;
+    n_hits += hits.size();
+  }
+  EXPECT_EQ(n_hits, 9647818);
+}
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
