@@ -37,6 +37,21 @@ target_link_libraries(
     GTest::Main
 )
 gtest_discover_tests(SophireadTests_diskio)
+# Hit Test
+add_executable(
+    SophireadTests_hit
+    tests/test_hit.cpp
+)
+target_link_libraries(
+    SophireadTests_hit
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_hit)
 
 # ------------------ Benchmarks ------------------ #
 add_executable(
