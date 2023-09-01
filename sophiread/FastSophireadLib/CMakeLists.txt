@@ -21,6 +21,23 @@ add_library(
     ${SRC_FAST_FILES}
 )
 
+# ----------------- TESTS ----------------- #
+# DiskIO Tests
+add_executable(
+    SophireadTests_diskio
+    tests/test_disk_io.cpp
+)
+target_link_libraries(
+    SophireadTests_diskio
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_diskio)
+
 # ------------------ Benchmarks ------------------ #
 add_executable(
     SophireadBenchmarks_raw2hits
