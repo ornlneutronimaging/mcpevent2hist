@@ -37,7 +37,6 @@
  */
 #include "tpx3_fast.h"
 
-#include <iostream>
 #include <numeric>
 
 /**

@@ -13,6 +13,7 @@ dependencies:
   - mlpack
   - cereal
   - tbb-devel
+  - spdlog
 
 
   # Not Windows, OpenGL implementation:

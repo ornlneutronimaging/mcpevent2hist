@@ -18,20 +18,10 @@ set(SRC_FILES
     src/tpx3.cpp
 )
 
-set(SRC_FAST_FILES
-    src/tpx3_fast.cpp
-)
-
 # ------------- SophireadLib -------------- #
 add_library(
     SophireadLib
     ${SRC_FILES}
-)
-
-# ------------- SophireadLibFast -------------- #
-add_library(
-    SophireadLibFast
-    ${SRC_FAST_FILES}
 )
 
 # ----------------- TESTS ----------------- #
@@ -82,36 +72,3 @@ add_custom_command(TARGET SophireadLib POST_BUILD
     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS_Thread
     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS_Thread.app
 )
-
-add_executable(
-    SophireadBenchmarks_raw2hits
-    benchmarks/benchmark_raw2hits.cpp
-)
-target_link_libraries(
-    SophireadBenchmarks_raw2hits
-    SophireadLibFast
-    pthread
-    tbb
-)
-# symlink executable to the build directory
-add_custom_command(TARGET SophireadLib POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
-    ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_raw2hits
-    ${PROJECT_BINARY_DIR}/SophireadBenchmarks_raw2hits.app
-)
-
-# add_executable(
-#     SophireadBenchmarks_raw2hits_Thread
-#     benchmarks/benchmark_raw2hits_thread.cpp
-# )
-# target_link_libraries(
-#     SophireadBenchmarks_raw2hits_Thread
-#     SophireadLib
-#     pthread
-# )
-# # symlink executable to the build directory
-# add_custom_command(TARGET SophireadLib POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E create_symlink 
-#     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_raw2hits_Thread
-#     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_raw2hits_Thread.app
-# )
