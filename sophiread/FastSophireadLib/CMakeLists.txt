@@ -52,6 +52,21 @@ target_link_libraries(
     GTest::Main
 )
 gtest_discover_tests(SophireadTests_hit)
+# TPX3 Test
+add_executable(
+    SophireadTests_tpx3
+    tests/test_tpx3.cpp
+)
+target_link_libraries(
+    SophireadTests_tpx3
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_tpx3)
 
 # ------------------ Benchmarks ------------------ #
 add_executable(

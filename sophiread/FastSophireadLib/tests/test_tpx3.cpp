@@ -1,7 +1,7 @@
 /**
- * @file test_tpx3_fast.cpp
+ * @file test_tpx3.cpp
  * @author Chen Zhang (zhangc@orn.gov)
- * @brief unit test for Hit class
+ * @brief unit test for TPX3 struct
  * @version 0.1
  * @date 2023-09-01
  *
@@ -40,47 +40,32 @@
 #include "spdlog/spdlog.h"
 #include "tpx3_fast.h"
 
-class HitTest : public ::testing::Test {
+class TPX3Test : public ::testing::Test {
  protected:
- protected:
-  char packet[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-  unsigned long long tdc = 1000;
-  unsigned long long gdc = 2000;
-  int chip_layout_type = 0;
-  Hit hit;
+  std::size_t index = 0;
+  int num_packets = 10;
+  int chip_layout_type = 1;
+  TPX3 tpx3;
 
-  HitTest() : hit(packet, tdc, gdc, chip_layout_type) {}
+  TPX3Test() : tpx3(index, num_packets, chip_layout_type) {}
+
+  void SetUp() override {
+    char packet[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    unsigned long long tdc = 1000;
+    unsigned long long gdc = 2000;
+    for (int i = 0; i < num_packets; ++i) {
+      tpx3.emplace_back(packet, tdc, gdc);
+    }
+  }
 };
 
-TEST_F(HitTest, CheckSpidertime) {
-  unsigned long long expectedSpidertime = 8411156;  // Expected spidertime
-  ASSERT_EQ(expectedSpidertime, hit.getSPIDERTIME());
-}
+TEST_F(TPX3Test, CheckIndex) { ASSERT_EQ(index, tpx3.index); }
 
-TEST_F(HitTest, CheckSpidertimens) {
-  const double expectedSpidertimens = 210278900;  // Expected spidertimens
-  ASSERT_DOUBLE_EQ(expectedSpidertimens, hit.getSPIDERTIME_ns());
-}
+TEST_F(TPX3Test, CheckNumPackets) { ASSERT_EQ(num_packets, tpx3.num_packets); }
 
-TEST_F(HitTest, CheckTOF) {
-  unsigned long long expectedTOF = 8410156;  // Expected TOF
-  ASSERT_EQ(expectedTOF, hit.getTOF());
-}
+TEST_F(TPX3Test, CheckChipLayoutType) { ASSERT_EQ(chip_layout_type, tpx3.chip_layout_type); }
 
-TEST_F(HitTest, CheckTOFns) {
-  double expectedTOFns = 210253900;  // Expected TOFns
-  ASSERT_DOUBLE_EQ(expectedTOFns, hit.getTOF_ns());
-}
-
-TEST_F(HitTest, CheckXCoordinate) {
-  int expectedX = 388;  // Expected X coordinate
-  ASSERT_EQ(expectedX, hit.getX());
-}
-
-TEST_F(HitTest, CheckYCoordinate) {
-  int expectedY = 56;  // Expected Y coordinate
-  ASSERT_EQ(expectedY, hit.getY());
-}
+TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, tpx3.hits.size()); }
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

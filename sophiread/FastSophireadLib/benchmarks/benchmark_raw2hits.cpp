@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Single thread processing: {} s", elapsed / 1e6);
   auto speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Single thread processing speed: {} hits/s", speed);
+  spdlog::info("Single thread processing speed: {:<e} hits/s", speed);
 
   // multi-thread processing
   // -- run
@@ -105,5 +105,5 @@ int main(int argc, char* argv[]) {
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
   speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Multi-thread processing speed: {} hits/s", speed);
+  spdlog::info("Multi-thread processing speed: {:<e} hits/s", speed);
 }
