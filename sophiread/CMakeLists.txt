@@ -13,6 +13,7 @@ set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 # Dependencies
 find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(spdlog REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
@@ -41,6 +42,9 @@ add_compile_options(
 # Add Sophiread library
 # NOTE: this will take care of the testing as well
 add_subdirectory(SophireadLib)
+
+# Add FastSophiread library
+add_subdirectory(FastSophireadLib)
 
 # Add Sophiread command line interface
 add_subdirectory(SophireadCLI)
