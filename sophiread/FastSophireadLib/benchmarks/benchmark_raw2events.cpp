@@ -1,9 +1,9 @@
 /**
- * @file benchmakr_raw2hit.cpp
+ * @file benchmark_raw2events.cpp
  * @author Chen Zhang (zhangc@ornl.gov)
- * @brief benchmark converting raw data to hit performance.
+ * @brief benchmark converting raw data to neutron events performance.
  * @version 0.1
- * @date 2023-08-30
+ * @date 2023-08-31
  *
  * @copyright Copyright (c) 2023
  * BSD 3-Clause License
@@ -35,39 +35,76 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <chrono>
 #include <fstream>
 #include <iostream>
 
-#include "disk_io.h"
-#include "spdlog/spdlog.h"
+#include "abs.h"
 #include "tbb/tbb.h"
 #include "tpx3_fast.h"
+
+using namespace std;
+
+/**
+ * @brief Read Timepix3 raw data from file to memory for subsequent analysis.
+ *
+ * @param filepath
+ * @return std::vector<char>
+ */
+std::vector<char> readTimepix3RawFile(const std::string& filepath) {
+  // Open the file
+  std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+
+  // Check if file is open successfully
+  if (!file.is_open()) {
+    std::cerr << "Failed to open file: " << filepath << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // Get the size of the file
+  std::streamsize fileSize = file.tellg();
+  file.seekg(0, std::ios::beg);
+  std::cout << "File size (bytes): " << fileSize << std::endl;
+
+  // Create a vector to store the data
+  std::vector<char> fileData(fileSize);
+
+  // Read the data
+  file.read(fileData.data(), fileSize);
+
+  // Close the file
+  file.close();
+
+  return fileData;
+}
 
 int main(int argc, char* argv[]) {
   // sanity check
   if (argc < 2) {
-    spdlog::critical("Usage: {} <input file>", argv[0]);
+    std::cerr << "Usage: " << argv[0] << " <input file>" << std::endl;
     return 1;
   }
 
   // read raw data
   std::string in_tpx3 = argv[1];
   auto start = std::chrono::high_resolution_clock::now();
-  auto raw_data = readTPX3RawToCharVec(in_tpx3);
+  auto raw_data = readTimepix3RawFile(in_tpx3);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  // logging
-  spdlog::info("Read raw data: {} s", elapsed / 1e6);
+  std::cout << "Read raw data: " << elapsed / 1e6 << " s" << std::endl;
 
   // single thread processing
   // -- run
-  spdlog::info("***Single thread processing***");
+  std::cout << "\nSingle thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
   auto batches = findTPX3H(raw_data);
+  ABS abs_alg(5.0, 1, 75);
   for (auto& tpx3 : batches) {
     extractHits(tpx3, raw_data);
+    // fit hits into clusters
+    abs_alg.fit(tpx3.hits);
+    // get neutron events
+    abs_alg.get_events(tpx3.hits);
   }
   end = std::chrono::high_resolution_clock::now();
   // -- gather statistics
@@ -76,15 +113,15 @@ int main(int argc, char* argv[]) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
-  spdlog::info("Number of hits: {}", n_hits);
+  std::cout << "Number of hits: " << n_hits << std::endl;
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Single thread processing: {} s", elapsed / 1e6);
+  std::cout << "Single thread processing: " << elapsed / 1e6 << " s" << std::endl;
   auto speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Single thread processing speed: {} hits/s", speed);
+  std::cout << "Single thread processing speed: " << speed << " hits/s" << std::endl;
 
   // multi-thread processing
   // -- run
-  spdlog::info("***Multi-thread processing***");
+  std::cout << "\nMulti-thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
   auto batches_mt = findTPX3H(raw_data);
   // use tbb parallel_for to process batches
@@ -101,9 +138,9 @@ int main(int argc, char* argv[]) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
-  spdlog::info("Number of hits: {}", n_hits);
+  std::cout << "Number of hits: " << n_hits << std::endl;
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
+  std::cout << "Multi-thread processing: " << elapsed / 1e6 << " s" << std::endl;
   speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Multi-thread processing speed: {} hits/s", speed);
+  std::cout << "Multi-thread processing speed: " << speed << " hits/s" << std::endl;
 }

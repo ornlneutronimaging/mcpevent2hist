@@ -37,7 +37,7 @@
  */
 #include "disk_io.h"
 
-#include "logger.h"
+#include "spdlog/spdlog.h"
 
 /**
  * @brief Read Timepix3 raw data from file into memory as a vector of char for subsequent analysis.
@@ -51,12 +51,14 @@ std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
 
   // Check if file is open successfully
   if (!file.is_open()) {
+    spdlog::error("Failed to open file: {}", tpx3file);
     exit(EXIT_FAILURE);
   }
 
   // Get the size of the file
   std::streampos fileSize = file.tellg();
   file.seekg(0, std::ios::beg);
+  spdlog::info("File size: {} bytes", static_cast<size_t>(fileSize));
 
   // Allocate a vector to store the data
   std::vector<char> vec(fileSize);
