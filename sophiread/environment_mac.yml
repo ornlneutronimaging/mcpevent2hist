@@ -5,20 +5,18 @@ dependencies:
   - cmake
   - clang-format
   - hdf5
-  - gmock
-  - qt
+  # - gmock
+  # - qt
   - gtest
-  - qwt
+  # - qwt
   - eigen
-  - mlpack
-  - cereal
   - tbb-devel
   - spdlog
 
   # Not Windows, OpenGL implementation:
-  - mesalib>=18.0.0
-  - mesa-libgl-devel-cos7-x86_64>=18.3.4
-  - mesa-libgl-cos7-x86_64>=18.3.4
+  # - mesalib>=18.0.0
+  # - mesa-libgl-devel-cos7-x86_64>=18.3.4
+  # - mesa-libgl-cos7-x86_64>=18.3.4
 
   # documentation
   - doxygen
