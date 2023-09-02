@@ -44,7 +44,7 @@
 class TPX3Test : public ::testing::Test {
  protected:
   std::size_t index = 0;
-  int num_packets = 10;
+  const int num_packets = 10;
   int chip_layout_type = 1;
   TPX3 tpx3;
 
@@ -54,7 +54,7 @@ class TPX3Test : public ::testing::Test {
     char packet[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
     unsigned long long tdc = 1000;
     unsigned long long gdc = 2000;
-    for (int i = 0; i < num_packets; ++i) {
+    for (auto i = 0; i < num_packets; ++i) {
       tpx3.emplace_back(packet, tdc, gdc);
     }
   }
@@ -66,7 +66,7 @@ TEST_F(TPX3Test, CheckNumPackets) { ASSERT_EQ(num_packets, tpx3.num_packets); }
 
 TEST_F(TPX3Test, CheckChipLayoutType) { ASSERT_EQ(chip_layout_type, tpx3.chip_layout_type); }
 
-TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, tpx3.hits.size()); }
+TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, static_cast<int>(tpx3.hits.size())); }
 
 TEST(TPX3FuncTest, TestFindTPX3H) {
   // read the testing raw data
@@ -76,7 +76,8 @@ TEST(TPX3FuncTest, TestFindTPX3H) {
   auto batches = findTPX3H(rawdata);
 
   // check the size of the raw data
-  EXPECT_EQ(batches.size(), 150611);
+  const size_t size_reference = 150611;
+  EXPECT_EQ(batches.size(), size_reference);
 }
 
 TEST(TPX3FuncTest, TestExtractHits) {
