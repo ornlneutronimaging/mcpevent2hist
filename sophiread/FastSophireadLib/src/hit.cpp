@@ -1,6 +1,7 @@
 /**
  * @file hit.cpp
  * @author Chen Zhang (zhangc@orn.gov)
+ * @author Su-Ann Chong (chongs@ornl.gov)
  * @brief Implementation of Hit class
  * @version 0.1
  * @date 2023-09-04

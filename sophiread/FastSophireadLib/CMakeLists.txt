@@ -11,9 +11,12 @@ link_directories(
 )
 
 set(SRC_FAST_FILES
-    src/tpx3_fast.cpp
+    src/abs.cpp
+    src/centroid.cpp
     src/disk_io.cpp
+    src/fastgaussian.cpp
     src/hit.cpp
+    src/tpx3_fast.cpp
 )
 
 # ------------- SophireadLibFast -------------- #
