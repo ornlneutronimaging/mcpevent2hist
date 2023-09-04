@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - cmake
+  - ninja
   - clang-format
   - hdf5
   # - gmock
