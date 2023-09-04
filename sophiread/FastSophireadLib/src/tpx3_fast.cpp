@@ -1,6 +1,7 @@
 /**
  * @file tpx3_fast.cpp
  * @author Chen Zhang (zhangc@orn.gov)
+ * @author Su-Ann Chong (chongs@ornl.gov)
  * @brief Implementation for fast tpx3 data processing
  * @version 0.1
  * @date 2023-08-31
