@@ -41,6 +41,7 @@
 #include <iostream>
 
 #include "disk_io.h"
+#include "hit.h"
 #include "spdlog/spdlog.h"
 #include "tbb/tbb.h"
 #include "tpx3_fast.h"
