@@ -12,6 +12,8 @@ dependencies:
   - eigen
   - mlpack
   - cereal
+  - tbb-devel
+  - spdlog
 
   # Not Windows, OpenGL implementation:
   - mesalib>=18.0.0

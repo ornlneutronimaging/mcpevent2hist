@@ -313,3 +313,4 @@ $RECYCLE.BIN/
 
 # direnv
 .envrc
+sophiread/.vscode/settings.json
