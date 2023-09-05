@@ -17,6 +17,8 @@
  */
 class Hit {
  public:
+  // default constructor
+  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
   // copy constructor
   Hit(const Hit& hit)
       : m_x(hit.m_x),
@@ -36,6 +38,10 @@ class Hit {
         m_ftoa(ftoa),
         m_tof(tof),
         m_spidertime(spidertime){};
+
+  // special constructor that directly parse the raw packet from tpx3
+  // into a hit
+  Hit(const char* packet, const unsigned long long tdc, const unsigned long long gdc, const int chip_layout_type);
 
   Hit& operator=(const Hit& hit) {
     m_x = hit.m_x;
@@ -145,6 +151,8 @@ Hit packetToHitAlt(const std::vector<char>& packet,
                    unsigned long long* rollover_counter,
                    unsigned long long* previous_time,
                    const int chip_layout_type);
+// in memory processing
+std::vector<Hit> parseRawBytesToHits(const std::vector<char>& raw_bytes);
 //
 void saveHitsToHDF5(const std::string out_file_name,
                     const std::vector<Hit>& hits,
@@ -155,3 +163,15 @@ void saveEventsToHDF5(const std::string out_file_name,
 // parse user-defined param file 
 Params parseUserDefinedParams(const std::string& filepath);
 
+// for fast processing raw bytes into hit
+struct TPX3H {
+  std::size_t index;
+  const int packet_size;
+  const int num_packets;
+  const int chip_layout_type;
+
+  TPX3H(std::size_t index, int packet_size, int num_packets, int chip_layout_type)
+      : index(index), packet_size(packet_size), num_packets(num_packets), chip_layout_type(chip_layout_type){};
+};
+std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes);
+std::vector<Hit> processBatch(TPX3H batch, const std::vector<char>& raw_bytes);

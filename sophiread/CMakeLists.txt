@@ -13,6 +13,7 @@ set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 # Dependencies
 find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(spdlog REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
@@ -27,11 +28,23 @@ include(GoogleTest)
 file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 
 # Add compiler flags
-add_compile_options(-O3 -std=c++14 -march=native -ffast-math -pthread -Wall -Wextra ${OpenMP_CXX_FLAGS})
+add_compile_options(
+  -O3
+  -std=c++20
+  -march=native
+  -ffast-math
+  -pthread
+  -Wall
+  -Wextra
+  # ${OpenMP_CXX_FLAGS}
+)
 
 # Add Sophiread library
 # NOTE: this will take care of the testing as well
 add_subdirectory(SophireadLib)
+
+# Add FastSophiread library
+add_subdirectory(FastSophireadLib)
 
 # Add Sophiread command line interface
 add_subdirectory(SophireadCLI)
