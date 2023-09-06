@@ -162,11 +162,10 @@ std::vector<Neutron> ABS::get_events(const std::vector<Hit>& data) {
   int max_label = *max_label_it;
 
   // determine fitting algorithm
-  std::unique_ptr<PeakFittingAlgorithm> alg;
   if (m_method == "centroid") {
-    alg = std::make_unique<Centroid>(true);
+    m_alg = std::make_unique<Centroid>(true);
   } else if (m_method == "fast_gaussian") {
-    alg = std::make_unique<FastGaussian>();
+    m_alg = std::make_unique<FastGaussian>();
   } else {
     spdlog::critical("ERROR: peak fitting method not supported!");
     throw std::runtime_error("ERROR: peak fitting method not supported!");
@@ -188,7 +187,7 @@ std::vector<Neutron> ABS::get_events(const std::vector<Hit>& data) {
     }
 
     // get the neutron event
-    auto event = alg->fit(cluster);
+    auto event = m_alg->fit(cluster);
 
     // Add the event to the list
     if (event.getX() >= 0.0 && event.getY() >= 0.0) {

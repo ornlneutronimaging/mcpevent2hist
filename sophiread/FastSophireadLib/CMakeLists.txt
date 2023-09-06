@@ -71,6 +71,21 @@ target_link_libraries(
     GTest::Main
 )
 gtest_discover_tests(SophireadTests_tpx3)
+# ABS Test
+add_executable(
+    SophireadTests_abs
+    tests/test_abs.cpp
+)
+target_link_libraries(
+    SophireadTests_abs
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_abs)
 
 # ------------------ Benchmarks ------------------ #
 add_executable(
