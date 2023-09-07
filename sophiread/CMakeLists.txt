@@ -44,7 +44,7 @@ add_compile_options(
 # add_subdirectory(SophireadLib)
 
 # Add FastSophiread library
-add_subdirectory(FastSophireadLib)
+add_subdirectory(FastSophiread)
 
 # Add Sophiread command line interface
 # add_subdirectory(SophireadCLI)
