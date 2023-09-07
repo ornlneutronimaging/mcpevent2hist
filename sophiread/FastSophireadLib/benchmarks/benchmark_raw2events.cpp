@@ -98,13 +98,18 @@ int main(int argc, char* argv[]) {
   std::cout << "\nSingle thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
   auto batches = findTPX3H(raw_data);
-  ABS abs_alg(5.0, 1, 75);
+  auto abs_alg = std::make_unique<ABS>(5.0, 1, 75);
+  int total_events = 0;
   for (auto& tpx3 : batches) {
     extractHits(tpx3, raw_data);
+
+    abs_alg->reset();
     // fit hits into clusters
-    abs_alg.fit(tpx3.hits);
+    abs_alg->fit(tpx3.hits);
     // get neutron events
-    abs_alg.get_events(tpx3.hits);
+    auto events = abs_alg->get_events(tpx3.hits);
+
+    total_events += events.size();
   }
   end = std::chrono::high_resolution_clock::now();
   // -- gather statistics
@@ -114,6 +119,7 @@ int main(int argc, char* argv[]) {
     n_hits += hits.size();
   }
   std::cout << "Number of hits: " << n_hits << std::endl;
+  std::cout << "Number of events: " << total_events << std::endl;
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   std::cout << "Single thread processing: " << elapsed / 1e6 << " s" << std::endl;
   auto speed = n_hits / (elapsed / 1e6);
@@ -126,9 +132,16 @@ int main(int argc, char* argv[]) {
   auto batches_mt = findTPX3H(raw_data);
   // use tbb parallel_for to process batches
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
+    auto abs_alg_mt = std::make_unique<ABS>(5.0, 1, 75);
     for (size_t i = r.begin(); i != r.end(); ++i) {
       auto& tpx3 = batches_mt[i];
       extractHits(tpx3, raw_data);
+
+      abs_alg_mt->reset();
+      // fit hits into clusters
+      abs_alg_mt->fit(tpx3.hits);
+      // get neutron events
+      auto events = abs_alg_mt->get_events(tpx3.hits);
     }
   });
   end = std::chrono::high_resolution_clock::now();
