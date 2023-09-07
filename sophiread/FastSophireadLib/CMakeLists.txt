@@ -130,7 +130,6 @@ target_link_libraries(
     tbb
     spdlog::spdlog
 )
-# symlink executable to the build directory
 add_custom_command(TARGET SophireadBenchmarks_raw2hits POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
     ${PROJECT_BINARY_DIR}/FastSophireadLib/SophireadBenchmarks_raw2hits
@@ -148,9 +147,25 @@ target_link_libraries(
     tbb
     spdlog::spdlog
 )
-# symlink executable to the build directory
 add_custom_command(TARGET SophireadBenchmarks_hits2events POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
     ${PROJECT_BINARY_DIR}/FastSophireadLib/SophireadBenchmarks_hits2events
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_hits2events.app
+)
+# Raw2Events Benchmark
+add_executable(
+    SophireadBenchmarks_raw2events
+    benchmarks/benchmark_raw2events.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_raw2events
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+)
+add_custom_command(TARGET SophireadBenchmarks_raw2events POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/FastSophireadLib/SophireadBenchmarks_raw2events
+    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2events.app
 )

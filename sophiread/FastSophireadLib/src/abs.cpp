@@ -158,8 +158,13 @@ std::vector<Neutron> ABS::get_events(const std::vector<Hit>& data) {
   std::vector<Neutron> events;
 
   // find the highest label
-  auto max_label_it = std::max_element(clusterLabels_.begin(), clusterLabels_.end());
-  int max_label = *max_label_it;
+  int max_label = -1;
+  if (clusterLabels_.empty()) {
+    return events;
+  } else {
+    auto max_label_it = std::max_element(clusterLabels_.begin(), clusterLabels_.end());
+    max_label = *max_label_it;
+  }
 
   // determine fitting algorithm
   if (m_method == "centroid") {
