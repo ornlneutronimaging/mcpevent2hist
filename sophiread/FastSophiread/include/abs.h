@@ -38,6 +38,8 @@
  */
 #pragma once
 
+#include <memory>
+
 #include "clustering.h"
 #include "peakfitting.h"
 
