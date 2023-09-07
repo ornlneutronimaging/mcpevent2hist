@@ -86,6 +86,21 @@ target_link_libraries(
     GTest::Main
 )
 gtest_discover_tests(SophireadTests_abs)
+# Centroid Test
+add_executable(
+    SophireadTests_centroid
+    tests/test_centroid.cpp
+)
+target_link_libraries(
+    SophireadTests_centroid
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_centroid)
 
 # ------------------ Benchmarks ------------------ #
 add_executable(
