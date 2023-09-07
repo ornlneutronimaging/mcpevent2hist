@@ -34,6 +34,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT(INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @note Fast Gaussian peak fitting method works better when the number of hits
+ * is large. It is not suitable for fitting tiny clsuters as it will throw away
+ * the bottom 50% of the hits.
  */
 #include "fastgaussian.h"
 
@@ -75,9 +79,13 @@ Neutron FastGaussian::fit(const std::vector<Hit>& data) {
 
   // extract the x, y, tof, and tot into separate vectors
   std::vector<double> x;
+  x.reserve(data.size());
   std::vector<double> y;
+  y.reserve(data.size());
   std::vector<double> tof;
+  tof.reserve(data.size());
   std::vector<double> tot;
+  tot.reserve(data.size());
   for (const auto& hit : data) {
     x.push_back((double)m_super_resolution_factor * hit.getX());
     y.push_back((double)m_super_resolution_factor * hit.getY());
