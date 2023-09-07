@@ -118,6 +118,7 @@ target_link_libraries(
 gtest_discover_tests(SophireadTests_fastgaussian)
 
 # ------------------ Benchmarks ------------------ #
+# Raw2Hits Benchmark
 add_executable(
     SophireadBenchmarks_raw2hits
     benchmarks/benchmark_raw2hits.cpp
@@ -130,8 +131,26 @@ target_link_libraries(
     spdlog::spdlog
 )
 # symlink executable to the build directory
-add_custom_command(TARGET FastSophireadLib POST_BUILD
+add_custom_command(TARGET SophireadBenchmarks_raw2hits POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
     ${PROJECT_BINARY_DIR}/FastSophireadLib/SophireadBenchmarks_raw2hits
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2hits.app
+)
+# Hits2Events Benchmark
+add_executable(
+    SophireadBenchmarks_hits2events
+    benchmarks/benchmark_hits2events.cpp
+)
+target_link_libraries(
+    SophireadBenchmarks_hits2events
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+)
+# symlink executable to the build directory
+add_custom_command(TARGET SophireadBenchmarks_hits2events POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${PROJECT_BINARY_DIR}/FastSophireadLib/SophireadBenchmarks_hits2events
+    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_hits2events.app
 )
