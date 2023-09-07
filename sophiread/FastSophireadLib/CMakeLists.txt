@@ -101,6 +101,21 @@ target_link_libraries(
     GTest::Main
 )
 gtest_discover_tests(SophireadTests_centroid)
+# Fast Gaussian Test
+add_executable(
+    SophireadTests_fastgaussian
+    tests/test_fastgaussian.cpp
+)
+target_link_libraries(
+    SophireadTests_fastgaussian
+    FastSophireadLib
+    pthread
+    tbb
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(SophireadTests_fastgaussian)
 
 # ------------------ Benchmarks ------------------ #
 add_executable(

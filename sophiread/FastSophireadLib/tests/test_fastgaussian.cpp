@@ -1,7 +1,7 @@
 /**
- * @file test_centroid.cpp
+ * @file test_fastgaussian.cpp
  * @author Chen Zhang (zhangc@orn.gov)
- * @brief unit test for centroid peak finding
+ * @brief unit test for fast gaussian peak finding
  * @version 0.1
  * @date 2023-09-07
  *
@@ -37,49 +37,40 @@
  */
 #include <gtest/gtest.h>
 
-#include "centroid.h"
+#include <random>
+
+#include "fastgaussian.h"
 #include "spdlog/spdlog.h"
 
-class CentroidTest : public ::testing::Test {
+class FastGaussianTest : public ::testing::Test {
  protected:
   std::vector<Hit> data;
-  const double absolution_tolerance = 0.1;
+  const double absolution_tolerance = 1;
+  const int num_hit = 1000;
 
   void SetUp() override {
-    data.push_back(Hit(1750, 2038, 2445, 1428, 3989, 3026, 740));
-    data.push_back(Hit(3015, 2073, 3212, 718, 2842, 428, 422));
-    data.push_back(Hit(772, 3912, 3133, 2664, 236, 3334, 3134));
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> pos(200, 2);
+    std::normal_distribution<> tot(20, 5);
+    std::normal_distribution<> toa(1000, 200);
+    std::normal_distribution<> ftoa(16, 8);
+    std::normal_distribution<> tof(1000, 2);
+    std::normal_distribution<> spidertime(0, 10);
+
+    data.reserve(num_hit);
+    for (int i = 0; i < num_hit; i++) {
+      data.emplace_back(Hit(pos(gen), pos(gen), tot(gen), toa(gen), ftoa(gen), tof(gen), spidertime(gen)));
+    }
   }
 };
 
-TEST_F(CentroidTest, CentroidWeighted) {
-  auto alg = std::make_unique<Centroid>();
+TEST_F(FastGaussianTest, FastGaussianWeighted) {
+  auto alg = std::make_unique<FastGaussian>();
   auto event = alg->fit(data);
 
   // Check the centroid
-  EXPECT_NEAR(event.getX(), 1863.66, absolution_tolerance);
-  EXPECT_NEAR(event.getY(), 2718.74, absolution_tolerance);
-  EXPECT_NEAR(event.getTOF(), 2262.67, absolution_tolerance);
-}
-
-TEST_F(CentroidTest, CentroidWeightedWithScale) {
-  const double super_resolution_factor = 2.0;
-  auto alg = std::make_unique<Centroid>();
-  alg->set_super_resolution_factor(super_resolution_factor);
-  auto event = alg->fit(data);
-
-  // Check the centroid
-  EXPECT_NEAR(event.getX(), 1863.66 * super_resolution_factor, absolution_tolerance);
-  EXPECT_NEAR(event.getY(), 2718.74 * super_resolution_factor, absolution_tolerance);
-  EXPECT_NEAR(event.getTOF(), 2262.67, absolution_tolerance);
-}
-
-TEST_F(CentroidTest, CentroidUnweighted) {
-  auto alg = std::make_unique<Centroid>(false);
-  auto event = alg->fit(data);
-
-  // Check the centroid
-  EXPECT_NEAR(event.getX(), 1845.67, absolution_tolerance);
-  EXPECT_NEAR(event.getY(), 2674.33, absolution_tolerance);
-  EXPECT_NEAR(event.getTOF(), 2262.67, absolution_tolerance);
+  EXPECT_NEAR(event.getX(), 200.0, absolution_tolerance);
+  EXPECT_NEAR(event.getY(), 200.0, absolution_tolerance);
+  EXPECT_NEAR(event.getTOF(), 1000.0, absolution_tolerance);
 }

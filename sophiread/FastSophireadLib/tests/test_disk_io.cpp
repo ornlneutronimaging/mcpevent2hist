@@ -45,5 +45,6 @@ TEST(DiskIOTest, ReadTPX3RawToCharVec) {
   auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
 
   // check the size of the raw data
-  EXPECT_EQ(rawdata.size(), 9739597 * 8);
+  const unsigned long ref_size = 9739597 * 8;
+  EXPECT_EQ(rawdata.size(), ref_size);
 }
