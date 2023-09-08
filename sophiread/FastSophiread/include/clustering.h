@@ -1,9 +1,9 @@
 /**
- * @file test_disk_io.cpp
+ * @file clustering.h
  * @author Chen Zhang (zhangc@orn.gov)
- * @brief unit test for disk_io.h
+ * @brief Abstract base class for clustering algorithms
  * @version 0.1
- * @date 2023-09-01
+ * @date 2023-09-04
  *
  * @copyright Copyright (c) 2023
  * BSD 3-Clause License
@@ -35,15 +35,34 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <gtest/gtest.h>
+#pragma once
 
-#include "disk_io.h"
-#include "spdlog/spdlog.h"
+#include <string>
+#include <vector>
 
-TEST(DiskIOTest, ReadTPX3RawToCharVec) {
-  // read the testing raw data
-  auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
+#include "hit.h"
+#include "neutron.h"
 
-  // check the size of the raw data
-  EXPECT_EQ(rawdata.size(), 9739597 * 8);
-}
+/**
+ * @brief Abstract class for clustering algorithms
+ *
+ */
+class ClusteringAlgorithm {
+ public:
+  // set the peak finding method
+  virtual void set_method(std::string method) = 0;
+
+  // reset the clustering algorithm
+  virtual void reset() = 0;
+
+  // get the cluster labels for each hit
+  virtual std::vector<int> get_cluster_labels() = 0;
+
+  // generate cluster IDs for each hit within given vector
+  virtual void fit(const std::vector<Hit>& hits) = 0;
+
+  // generate neutron events with given hits and fitted cluster IDs
+  virtual std::vector<Neutron> get_events(const std::vector<Hit>& hits) = 0;
+
+  virtual ~ClusteringAlgorithm() {}
+};
