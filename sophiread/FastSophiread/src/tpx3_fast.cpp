@@ -72,14 +72,6 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
  * @brief Locate all TPX3H (chip dataset) in the raw data.
  *
  * @param raw_bytes
- * @return std::vector<TPX3>
- */
-std::vector<TPX3> findTPX3H(const char *raw_bytes) { return findTPX3H(std::begin(raw_bytes), std::end(raw_bytes)); }
-
-/**
- * @brief Locate all TPX3H (chip dataset) in the raw data.
- *
- * @param raw_bytes
  * @param size
  * @return std::vector<TPX3>
  */

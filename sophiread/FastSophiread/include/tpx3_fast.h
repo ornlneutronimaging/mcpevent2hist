@@ -51,5 +51,4 @@ template <typename ForwardIt>
 std::vector<TPX3> findTPX3H(ForwardIt first, ForwardIt last);
 std::vector<TPX3> findTPX3H(const std::vector<char>& raw_bytes);
 std::vector<TPX3> findTPX3H(char* raw_bytes, std::size_t size);
-std::vector<TPX3> findTPX3H(const char* raw_bytes);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
