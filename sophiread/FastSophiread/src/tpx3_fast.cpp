@@ -7,38 +7,56 @@
  * @date 2023-08-31
  *
  * @copyright Copyright (c) 2023
- * BSD 3-Clause License
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the distribution.
- *
- * 3. Neither the name of ORNL nor the names of its contributors may be used
- * to endorse or promote products derived from this software without
- * specific prior written permission.
- *
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES(INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT(INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "tpx3_fast.h"
 
 #include <numeric>
+
+/**
+ * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @tparam ForwardIter
+ * @param begin
+ * @param end
+ * @return std::vector<TPX3>
+ */
+template <typename ForwardIter>
+std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
+  std::vector<TPX3> batches;
+  batches.reserve(std::distance(begin, end) / 64);  // just a guess here, need more work
+
+  // local variables
+  int chip_layout_type = 0;
+  int data_packet_size = 0;
+  int data_packet_num = 0;
+
+  // find all batches
+  for (auto iter = begin; std::distance(iter, end) >= 8; std::advance(iter, 8)) {
+    const char *char_array = &(*iter);
+
+    // locate the data packet header
+    if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
+      data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
+      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
+      chip_layout_type = static_cast<int>(char_array[4]);
+      batches.emplace_back(static_cast<size_t>(std::distance(begin, iter)), data_packet_num, chip_layout_type);
+    }
+  }
+
+  return batches;
+}
 
 /**
  * @brief Locate all TPX3H (chip dataset) in the raw data.
@@ -47,31 +65,17 @@
  * @return std::vector<TPX3H>
  */
 std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
-  std::vector<TPX3> batches;
-  batches.reserve(raw_bytes.size() / 64);  // just a guess here, need more work
-
-  // local variables
-  int chip_layout_type = 0;
-  int data_packet_size = 0;
-  int data_packet_num = 0;
-
-  // find all batches
-  const auto iter_begin = raw_bytes.cbegin();
-  const auto iter_end = raw_bytes.cend();
-  for (auto iter = raw_bytes.cbegin(); iter + 8 < iter_end; iter += 8) {
-    const char *char_array = &(*iter);
-
-    // locate the data packet header
-    if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
-      data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
-      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
-      chip_layout_type = static_cast<int>(char_array[4]);
-      batches.emplace_back(static_cast<size_t>(std::distance(iter_begin, iter)), data_packet_num, chip_layout_type);
-    }
-  }
-
-  return batches;
+  return findTPX3H(raw_bytes.cbegin(), raw_bytes.cend());
 }
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param raw_bytes
+ * @param size
+ * @return std::vector<TPX3>
+ */
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
 
 void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
   // -- TDC
