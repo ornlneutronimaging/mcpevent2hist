@@ -77,7 +77,9 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
  */
 std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
 
-void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
+template <typename ForwardIter>
+void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
+  // Define the local variables
   // -- TDC
   unsigned long *tdclast;
   unsigned long long mytdc = 0;
@@ -91,17 +93,19 @@ void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
   unsigned long Timer_MSB16 = 0;
   unsigned long long int GDC_timestamp = 0;  // 48-bit
 
-  auto bytes_iter = raw_bytes.cbegin() + tpx3h.index;
+  // Move to the first packet
+  auto bytes_iter = bytes_begin;
+  std::advance(bytes_iter, tpx3h.index);
+
+  // Loop over all packets
   for (auto j = 0; j < tpx3h.num_packets; ++j) {
-    // check if there are enough bytes left
-    if (bytes_iter + 8 >= raw_bytes.cend()) {
+    if (std::next(bytes_iter, 8) >= bytes_end) {
       continue;
     }
 
-    // move the iterator to the next packet
     bytes_iter = std::next(bytes_iter, 8);
-    // convert the iterator to a char array for data extraction
     const char *char_array = &(*bytes_iter);
+
     // extract the data from the data packet
     if (char_array[7] == 0x6F) {  // TDC data packets
       tdclast = (unsigned long *)(&char_array[0]);
@@ -131,3 +135,22 @@ void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
     }
   }
 }
+
+/**
+ * @brief Extract all hits from a TPX3H (chip dataset).
+ *
+ * @param tpx3h
+ * @param raw_bytes
+ */
+void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
+  extractHits(tpx3h, raw_bytes.cbegin(), raw_bytes.cend());
+}
+
+/**
+ * @brief Extract all hits from a TPX3H (chip dataset).
+ *
+ * @param tpx3h
+ * @param raw_bytes
+ * @param size
+ */
+void extractHits(TPX3 &tpx3h, char *raw_bytes, std::size_t size) { extractHits(tpx3h, raw_bytes, raw_bytes + size); }
