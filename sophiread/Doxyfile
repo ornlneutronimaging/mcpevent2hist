@@ -4,6 +4,7 @@ PROJECT_BRIEF          = "An experimental data processing tool for TimePix3 imag
 WARNINGS               = YES
 INPUT                  = ../README.md
 INPUT                 += ../SophireadLib
+INPUT                 += ../FastSophiread
 INPUT                 += ../SophireadCLI
 INPUT                 += ../SophireadStreamCLI
 INPUT                 += ../SophireadGUI
