@@ -25,14 +25,17 @@
 #include <numeric>
 
 /**
- * @brief Locate all TPX3H (chip dataset) in the raw data.
+ * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
  *
- * @param raw_bytes
- * @return std::vector<TPX3H>
+ * @tparam ForwardIter
+ * @param begin
+ * @param end
+ * @return std::vector<TPX3>
  */
-std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
+template <typename ForwardIter>
+std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
   std::vector<TPX3> batches;
-  batches.reserve(raw_bytes.size() / 64);  // just a guess here, need more work
+  batches.reserve(std::distance(begin, end) / 64);  // just a guess here, need more work
 
   // local variables
   int chip_layout_type = 0;
@@ -40,9 +43,7 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
   int data_packet_num = 0;
 
   // find all batches
-  const auto iter_begin = raw_bytes.cbegin();
-  const auto iter_end = raw_bytes.cend();
-  for (auto iter = raw_bytes.cbegin(); iter + 8 < iter_end; iter += 8) {
+  for (auto iter = begin; std::distance(iter, end) >= 8; std::advance(iter, 8)) {
     const char *char_array = &(*iter);
 
     // locate the data packet header
@@ -50,12 +51,39 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
       data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
       data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
       chip_layout_type = static_cast<int>(char_array[4]);
-      batches.emplace_back(static_cast<size_t>(std::distance(iter_begin, iter)), data_packet_num, chip_layout_type);
+      batches.emplace_back(static_cast<size_t>(std::distance(begin, iter)), data_packet_num, chip_layout_type);
     }
   }
 
   return batches;
 }
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param raw_bytes
+ * @return std::vector<TPX3H>
+ */
+std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
+  return findTPX3H(raw_bytes.cbegin(), raw_bytes.cend());
+}
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param raw_bytes
+ * @return std::vector<TPX3>
+ */
+std::vector<TPX3> findTPX3H(const char *raw_bytes) { return findTPX3H(std::begin(raw_bytes), std::end(raw_bytes)); }
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param raw_bytes
+ * @param size
+ * @return std::vector<TPX3>
+ */
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
 
 void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
   // -- TDC
