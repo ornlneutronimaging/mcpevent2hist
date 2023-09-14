@@ -58,11 +58,11 @@ std::vector<TPX3> findTPX3H(char* raw_bytes, std::size_t size);
 
 template <typename ForwardIter>
 void extractTGDC(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long& tdc_timestamp,
-                 unsigned long long& gdc_timestamp);
+                 unsigned long long int& gdc_timestamp);
 void extractTGDC(TPX3& tpx3h, const std::vector<char>& raw_bytes, unsigned long& tdc_timestamp,
-                 unsigned long long& gdc_timestamp);
+                 unsigned long long int& gdc_timestamp);
 void extractTGDC(TPX3& tpx3h, char* raw_bytes, std::size_t size, unsigned long& tdc_timestamp,
-                 unsigned long long& gdc_timestamp);
+                 unsigned long long int& gdc_timestamp);
 
 template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);

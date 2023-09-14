@@ -19,6 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include <spdlog/spdlog.h>
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -41,14 +43,14 @@ std::vector<char> readTimepix3RawFile(const std::string& filepath) {
 
   // Check if file is open successfully
   if (!file.is_open()) {
-    std::cerr << "Failed to open file: " << filepath << std::endl;
+    spdlog::error("Failed to open file: {}", filepath);
     exit(EXIT_FAILURE);
   }
 
   // Get the size of the file
   std::streamsize fileSize = file.tellg();
   file.seekg(0, std::ios::beg);
-  std::cout << "File size (bytes): " << fileSize << std::endl;
+  spdlog::info("File size (bytes): {}", fileSize);
 
   // Create a vector to store the data
   std::vector<char> fileData(fileSize);
@@ -65,7 +67,7 @@ std::vector<char> readTimepix3RawFile(const std::string& filepath) {
 int main(int argc, char* argv[]) {
   // sanity check
   if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <input file>" << std::endl;
+    spdlog::error("Usage: {} <input file>", argv[0]);
     return 1;
   }
 
@@ -75,11 +77,11 @@ int main(int argc, char* argv[]) {
   auto raw_data = readTimepix3RawFile(in_tpx3);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  std::cout << "Read raw data: " << elapsed / 1e6 << " s" << std::endl;
+  spdlog::info("Read raw data: {} s", elapsed / 1e6);
 
   // single thread processing
   // -- run
-  std::cout << "\nSingle thread processing..." << std::endl;
+  spdlog::info("Single thread processing...");
   start = std::chrono::high_resolution_clock::now();
   // locate all the TPX3H (chip dataset) in the raw data
   auto batches = findTPX3H(raw_data);
@@ -112,16 +114,16 @@ int main(int argc, char* argv[]) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
-  std::cout << "Number of hits: " << n_hits << std::endl;
-  std::cout << "Number of events: " << total_events << std::endl;
+  spdlog::info("Number of hits: {}", n_hits);
+  spdlog::info("Number of events: {}", total_events);
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  std::cout << "Single thread processing: " << elapsed / 1e6 << " s" << std::endl;
+  spdlog::info("Single thread processing: {} s", elapsed / 1e6);
   auto speed = n_hits / (elapsed / 1e6);
-  std::cout << "Single thread processing speed: " << speed << " hits/s" << std::endl;
+  spdlog::info("Single thread processing speed: {} hits/s", speed);
 
   // multi-thread processing
   // -- run
-  std::cout << "\nMulti-thread processing..." << std::endl;
+  spdlog::info("Multi-thread processing...");
   start = std::chrono::high_resolution_clock::now();
   // locate all the TPX3H (chip dataset) in the raw data, single thread
   auto batches_mt = findTPX3H(raw_data);
@@ -152,9 +154,34 @@ int main(int argc, char* argv[]) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
-  std::cout << "Number of hits: " << n_hits << std::endl;
+  spdlog::info("Number of hits: {}", n_hits);
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  std::cout << "Multi-thread processing: " << elapsed / 1e6 << " s" << std::endl;
+  spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
   speed = n_hits / (elapsed / 1e6);
-  std::cout << "Multi-thread processing speed: " << speed << " hits/s" << std::endl;
+  spdlog::info("Multi-thread processing speed: {} hits/s", speed);
+
+  // sanity check: hit.getTOF() should be smaller than 666,667 clock, which is
+  //               equivalent to 16.67 ms
+  int n_bad_hits = 0;
+  for (const auto& tpx3 : batches_mt) {
+    for (const auto& hit : tpx3.hits) {
+      auto tof_ms = hit.getTOF_ns() * 1e-6;
+      if (tof_ms > 16.67) {
+        spdlog::error("TOF: {} ms", tof_ms);
+        n_bad_hits++;
+      }
+    }
+  }
+  spdlog::info("bad/total hits: {}/{}", n_bad_hits, n_hits);
+
+  // sanity check: the size of hits, tdcs and gdcs should be the same for all
+  //               batches
+  int bad_batches = 0;
+  for (const auto& tpx3 : batches_mt) {
+    if (tpx3.hits.size() != tpx3.tdcs.size() || tpx3.hits.size() != tpx3.gdcs.size()) {
+      spdlog::error("hits: {}, tdcs: {}, gdcs: {}", tpx3.hits.size(), tpx3.tdcs.size(), tpx3.gdcs.size());
+      bad_batches++;
+    }
+  }
+  spdlog::info("bad/total batches: {}/{}", bad_batches, batches_mt.size());
 }
