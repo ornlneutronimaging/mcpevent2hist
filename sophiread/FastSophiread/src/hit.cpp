@@ -66,9 +66,14 @@ Hit::Hit(const char *packet, const unsigned long long tdc, const unsigned long l
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
   if (m_spidertime < TDC_timestamp) {
-    m_tof = m_spidertime - TDC_timestamp + 16666667;  // 1E9 / 60.0 is approximately 16666667
+    m_tof = m_spidertime - TDC_timestamp + 666667;  // 1E9 / 60.0 is approximately 16666667
   } else {
     m_tof = m_spidertime - TDC_timestamp;
+  }
+
+  // some error in SPIDR_timestamp (revisit this fix)
+  if (m_tof*25E-6 > 16.67){
+    m_tof = m_tof - 1073741824;
   }
 
   // pixel address
