@@ -81,7 +81,17 @@ int main(int argc, char* argv[]) {
   // -- run
   std::cout << "\nSingle thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
+  // locate all the TPX3H (chip dataset) in the raw data
   auto batches = findTPX3H(raw_data);
+
+  // extract all tdc and gdc timestamps
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  for (auto& tpx3 : batches) {
+    extractTGDC(tpx3, raw_data.cbegin(), raw_data.cend(), tdc_timestamp, gdc_timestamp);
+  }
+
+  // process all batches to get neutron events
   auto abs_alg = std::make_unique<ABS>(5.0, 1, 75);
   int total_events = 0;
   for (auto& tpx3 : batches) {
@@ -113,7 +123,14 @@ int main(int argc, char* argv[]) {
   // -- run
   std::cout << "\nMulti-thread processing..." << std::endl;
   start = std::chrono::high_resolution_clock::now();
+  // locate all the TPX3H (chip dataset) in the raw data, single thread
   auto batches_mt = findTPX3H(raw_data);
+  // extract all tdc and gdc timestamps, single thread
+  tdc_timestamp = 0;
+  gdc_timestamp = 0;
+  for (auto& tpx3 : batches_mt) {
+    extractTGDC(tpx3, raw_data.cbegin(), raw_data.cend(), tdc_timestamp, gdc_timestamp);
+  }
   // use tbb parallel_for to process batches
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
     auto abs_alg_mt = std::make_unique<ABS>(5.0, 1, 75);
