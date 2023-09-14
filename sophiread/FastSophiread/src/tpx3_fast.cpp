@@ -89,7 +89,7 @@ std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3
  */
 template <typename ForwardIter>
 void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long &tdc_timestamp,
-                 unsigned long long &gdc_timestamp) {
+                 unsigned long long int &gdc_timestamp) {
   // Define the local variables
   // -- TDC
   unsigned long *tdclast;
@@ -132,10 +132,14 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
       if (((mygdc >> 40) & 0xF) == 0x4) {
         Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
       } else if (((mygdc >> 40) & 0xF) == 0x5) {
-        Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
-        gdc_timestamp = Timer_MSB16;
-        gdc_timestamp = (gdc_timestamp << 32) & 0xFFFF00000000;
-        gdc_timestamp = gdc_timestamp | Timer_LSB32;
+        // Serval sometimes report 0 GDC during experiment, so we need to check
+        // if the GDC is 0, if so, we use the previous GDC
+        auto gdc_tmp = (Timer_MSB16 << 32) & 0xFFFF00000000;
+        gdc_tmp = gdc_tmp | Timer_LSB32;
+
+        if (gdc_tmp != 0) {
+          gdc_timestamp = gdc_tmp;
+        }
       }
     } else if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
       tpx3h.tdcs.emplace_back(tdc_timestamp);
@@ -153,7 +157,7 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
  * @param gdc_timestamp: global-tracked GDC timestamp
  */
 void extractTGDC(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned long &tdc_timestamp,
-                 unsigned long long &gdc_timestamp) {
+                 unsigned long long int &gdc_timestamp) {
   extractTGDC(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(), tdc_timestamp, gdc_timestamp);
 }
 
@@ -167,7 +171,7 @@ void extractTGDC(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned long 
  * @param gdc_timestamp: global-tracked GDC timestamp
  */
 void extractTGDC(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned long &tdc_timestamp,
-                 unsigned long long &gdc_timestamp) {
+                 unsigned long long int &gdc_timestamp) {
   extractTGDC(tpx3h, raw_bytes, raw_bytes + size, tdc_timestamp, gdc_timestamp);
 }
 
