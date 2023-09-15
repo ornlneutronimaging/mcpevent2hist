@@ -210,7 +210,9 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
     if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
       // NOTE: we are implicitly calling the Hit constructor directly within the
       //       vector for speed.
-      tpx3h.emplace_back(char_array, tpx3h.tdcs[hit_idx], tpx3h.gdcs[hit_idx]);
+      if ( tpx3h.tdcs[hit_idx] != 0 && tpx3h.gdcs[hit_idx] != 0){
+         tpx3h.emplace_back(char_array, tpx3h.tdcs[hit_idx], tpx3h.gdcs[hit_idx]);
+      }
       ++hit_idx;
     }
   }
