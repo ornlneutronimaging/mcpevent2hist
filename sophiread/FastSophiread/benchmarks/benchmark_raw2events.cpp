@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
         spdlog::error("TOF: {} ms", tof_ms);
         n_bad_hits++;
       } else {
-        spdlog::info("TOF: {} ms", tof_ms);
+        // spdlog::info("TOF: {} ms", tof_ms);
       }
     }
   }
