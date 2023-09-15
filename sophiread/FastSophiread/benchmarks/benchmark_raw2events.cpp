@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
 
   // extract all tdc and gdc timestamps
   unsigned long tdc_timestamp = 0;
-  unsigned long long gdc_timestamp = 0;
+  unsigned long long int gdc_timestamp = 0;
   for (auto& tpx3 : batches) {
     extractTGDC(tpx3, raw_data.cbegin(), raw_data.cend(), tdc_timestamp, gdc_timestamp);
   }
@@ -169,6 +169,8 @@ int main(int argc, char* argv[]) {
       if (tof_ms > 16.67) {
         spdlog::error("TOF: {} ms", tof_ms);
         n_bad_hits++;
+      } else {
+        spdlog::info("TOF: {} ms", tof_ms);
       }
     }
   }
@@ -184,4 +186,14 @@ int main(int argc, char* argv[]) {
     }
   }
   spdlog::info("bad/total batches: {}/{}", bad_batches, batches_mt.size());
+
+  // // print out tdc and gdc timestamps
+  // for (const auto& tpx3 : batches_mt) {
+  //   // for (const auto& tdc : tpx3.tdcs) {
+  //   //   spdlog::info("tdc: {}", tdc);
+  //   // }
+  //   for (const auto& gdc : tpx3.gdcs) {
+  //     spdlog::info("gdc: {}", gdc);
+  //   }
+  // }
 }
