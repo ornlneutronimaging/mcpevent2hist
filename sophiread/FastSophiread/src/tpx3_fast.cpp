@@ -127,8 +127,10 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
       tdc_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
       tdc_timestamp = tdc_timestamp | mytdc;
     } else if ((char_array[7] & 0xF0) == 0x40) {  // GDC data packet
+
       gdclast = (unsigned long *)(&char_array[0]);
       mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+
       if (((mygdc >> 40) & 0xF) == 0x4) {
         Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
       } else if (((mygdc >> 40) & 0xF) == 0x5) {
@@ -145,6 +147,7 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
           gdc_timestamp = gdc_tmp;
         }
       }
+
     } else if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
       tpx3h.tdcs.emplace_back(tdc_timestamp);
       tpx3h.gdcs.emplace_back(gdc_timestamp);
