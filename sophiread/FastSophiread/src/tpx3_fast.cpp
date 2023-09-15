@@ -134,7 +134,11 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
       } else if (((mygdc >> 40) & 0xF) == 0x5) {
         // Serval sometimes report 0 GDC during experiment, so we need to check
         // if the GDC is 0, if so, we use the previous GDC
-        auto gdc_tmp = (Timer_MSB16 << 32) & 0xFFFF00000000;
+        auto gdc_tmp = gdc_timestamp;
+
+        Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
+        gdc_tmp = Timer_MSB16;
+        gdc_tmp = (gdc_tmp << 32) & 0xFFFF00000000;
         gdc_tmp = gdc_tmp | Timer_LSB32;
 
         if (gdc_tmp != 0) {
