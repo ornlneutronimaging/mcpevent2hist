@@ -194,6 +194,7 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
   std::advance(bytes_iter, tpx3h.index);
 
   // Loop over all packets
+  auto hit_idx = 0;
   for (auto j = 0; j < tpx3h.num_packets; ++j) {
     if (std::next(bytes_iter, 8) >= bytes_end) {
       continue;
@@ -206,7 +207,8 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
     if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
       // NOTE: we are implicitly calling the Hit constructor directly within the
       //       vector for speed.
-      tpx3h.emplace_back(char_array, tpx3h.tdcs[j], tpx3h.gdcs[j]);
+      tpx3h.emplace_back(char_array, tpx3h.tdcs[hit_idx], tpx3h.gdcs[hit_idx]);
+      ++hit_idx;
     }
   }
 }
