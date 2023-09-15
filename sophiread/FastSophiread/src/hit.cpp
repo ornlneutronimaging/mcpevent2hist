@@ -30,13 +30,16 @@
  * @param gdc
  * @param chip_layout_type
  */
-Hit::Hit(const char *packet, const unsigned long long tdc, const unsigned long long gdc, const int chip_layout_type) {
+Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsigned long long GDC_timestamp,
+         const int chip_layout_type) {
+  // local variables
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   unsigned int spidertime = 0;
+
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
   nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
@@ -46,14 +49,9 @@ Hit::Hit(const char *packet, const unsigned long long tdc, const unsigned long l
   m_toa = (*nTOA >> 6) & 0x3FFF;
   spidertime = 16384 * (*spider_time) + m_toa;
 
-  // rename variables for clarity
-  unsigned long long int GDC_timestamp = gdc;
-  unsigned long long TDC_timestamp = tdc;
-
   // convert spidertime to global timestamp
   unsigned long SPDR_LSB30 = 0;
   unsigned long SPDR_MSB18 = 0;
-  //   unsigned long long SPDR_timestamp = 0;
 
   SPDR_LSB30 = GDC_timestamp & 0x3FFFFFFF;
   SPDR_MSB18 = (GDC_timestamp >> 30) & 0x3FFFF;
@@ -66,7 +64,7 @@ Hit::Hit(const char *packet, const unsigned long long tdc, const unsigned long l
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
   if (m_spidertime < TDC_timestamp) {
-    m_tof = m_spidertime - TDC_timestamp + 666667;  // 1E9 / 60.0 is approximately 16666667
+    m_tof = m_spidertime - TDC_timestamp + 666667;
   } else {
     m_tof = m_spidertime - TDC_timestamp;
   }

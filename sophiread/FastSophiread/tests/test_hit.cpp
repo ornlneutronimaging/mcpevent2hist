@@ -44,7 +44,7 @@ class HitTest : public ::testing::Test {
  protected:
  protected:
   char packet[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-  unsigned long long tdc = 1000;
+  unsigned long long tdc = 8411155;
   unsigned long long gdc = 2000;
   int chip_layout_type = 0;
   Hit hit;
@@ -63,12 +63,12 @@ TEST_F(HitTest, CheckSpidertimens) {
 }
 
 TEST_F(HitTest, CheckTOF) {
-  unsigned long long expectedTOF = 8410156;  // Expected TOF
+  unsigned long long expectedTOF = 1;  // Expected TOF
   ASSERT_EQ(expectedTOF, hit.getTOF());
 }
 
 TEST_F(HitTest, CheckTOFns) {
-  double expectedTOFns = 210253900;  // Expected TOFns
+  double expectedTOFns = 25;  // Expected TOFns
   ASSERT_DOUBLE_EQ(expectedTOFns, hit.getTOF_ns());
 }
 
