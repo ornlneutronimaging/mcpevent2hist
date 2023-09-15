@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
   unsigned long tdc_timestamp = 0;
   unsigned long long int gdc_timestamp = 0;
   for (auto& tpx3 : batches) {
-    extractTGDC(tpx3, raw_data.cbegin(), raw_data.cend(), tdc_timestamp, gdc_timestamp);
+    extractTGDC(tpx3, raw_data, tdc_timestamp, gdc_timestamp);
   }
 
   // process all batches to get neutron events
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
   tdc_timestamp = 0;
   gdc_timestamp = 0;
   for (auto& tpx3 : batches_mt) {
-    extractTGDC(tpx3, raw_data.cbegin(), raw_data.cend(), tdc_timestamp, gdc_timestamp);
+    extractTGDC(tpx3, raw_data, tdc_timestamp, gdc_timestamp);
   }
   // use tbb parallel_for to process batches
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
