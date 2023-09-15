@@ -170,30 +170,9 @@ int main(int argc, char* argv[]) {
         spdlog::error("TOF: {} ms", tof_ms);
         n_bad_hits++;
       } else {
-        spdlog::info("TOF: {} ms", tof_ms);
+        spdlog::debug("TOF: {} ms", tof_ms);
       }
     }
   }
   spdlog::info("bad/total hits: {}/{}", n_bad_hits, n_hits);
-
-  // // sanity check: the size of hits, tdcs and gdcs should be the same for all
-  // //               batches
-  // int bad_batches = 0;
-  // for (const auto& tpx3 : batches_mt) {
-  //   if (tpx3.hits.size() != tpx3.tdcs.size() || tpx3.hits.size() != tpx3.gdcs.size()) {
-  //     spdlog::error("hits: {}, tdcs: {}, gdcs: {}", tpx3.hits.size(), tpx3.tdcs.size(), tpx3.gdcs.size());
-  //     bad_batches++;
-  //   }
-  // }
-  // spdlog::info("bad/total batches: {}/{}", bad_batches, batches_mt.size());
-
-  // // print out tdc and gdc timestamps
-  // for (const auto& tpx3 : batches_mt) {
-  //   // for (const auto& tdc : tpx3.tdcs) {
-  //   //   spdlog::info("tdc: {}", tdc);
-  //   // }
-  //   for (const auto& gdc : tpx3.gdcs) {
-  //     spdlog::info("gdc: {}", gdc);
-  //   }
-  // }
 }
