@@ -70,32 +70,52 @@ TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, static_cast<int>(tpx3.h
 
 TEST(TPX3FuncTest, TestFindTPX3H) {
   // read the testing raw data
-  auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
+  auto rawdata = readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
 
   //
   auto batches = findTPX3H(rawdata);
 
   // check the size of the raw data
-  const size_t size_reference = 150611;
+  const size_t size_reference = 81399;
   EXPECT_EQ(batches.size(), size_reference);
 }
 
 TEST(TPX3FuncTest, TestExtractHits) {
   // read the testing raw data
-  auto rawdata = readTPX3RawToCharVec("../data/frames_flood_1M.tpx3");
+  auto rawdata = readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
 
-  //
+  // locate all headers
   auto batches = findTPX3H(rawdata);
+
+  // locate gdc and tdc
+  unsigned long tdc_timestamp = 0;
+  unsigned long long int gdc_timestamp = 0;
+  for (auto& tpx3 : batches) {
+    extractTGDC(tpx3, rawdata, tdc_timestamp, gdc_timestamp);
+  }
+
+  // extract hits
   for (auto& tpx3 : batches) {
     extractHits(tpx3, rawdata);
   }
+
   //
   int n_hits = 0;
   for (const auto& tpx3 : batches) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
-  EXPECT_EQ(n_hits, 9647818);
+  const int n_hits_reference = 98533;
+  EXPECT_EQ(n_hits, n_hits_reference);
+
+  // make sure no tof is above 16.67 ms
+  for (const auto& tpx3 : batches) {
+    auto hits = tpx3.hits;
+    for (const auto& hit : hits) {
+      auto tof_ms = hit.getTOF_ns() * 1e-6;
+      EXPECT_LT(tof_ms, 16670);
+    }
+  }
 }
 
 int main(int argc, char **argv) {
