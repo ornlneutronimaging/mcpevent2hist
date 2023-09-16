@@ -22,6 +22,7 @@
  */
 #include "tpx3_fast.h"
 
+#include <iostream>
 #include <numeric>
 
 /**
@@ -31,6 +32,7 @@
  * @param begin
  * @param end
  * @return std::vector<TPX3>
+ * @note must be run in a single thread for all the data
  */
 template <typename ForwardIter>
 std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
@@ -78,24 +80,18 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
 std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
 
 /**
- * @brief Extract the TDC and GDC timestamps from a TPX3H (chip dataset).
+ * @brief Quickly find the GDC timestamp from a TPX3H (chip dataset).
  *
  * @tparam ForwardIter
  * @param tpx3h
  * @param bytes_begin
  * @param bytes_end
- * @param tdc_timestamp: global-tracked TDC timestamp
- * @param gdc_timestamp: global-tracked GDC timestamp
+ * @param gdc_timestamp
+ * @note must be run in a single thread for all the data
  */
 template <typename ForwardIter>
-void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long &tdc_timestamp,
-                 unsigned long long int &gdc_timestamp) {
+void findGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long long int &gdc_timestamp) {
   // Define the local variables
-  // -- TDC
-  unsigned long *tdclast;
-  unsigned long long mytdc = 0;
-  unsigned long TDC_MSB16 = 0;
-  unsigned long TDC_LSB32 = 0;
   // -- GDC
   unsigned long *gdclast;
   unsigned long long mygdc = 0;
@@ -105,6 +101,101 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
   // Move to the first packet
   auto bytes_iter = bytes_begin;
   std::advance(bytes_iter, tpx3h.index);
+
+  // Record the starting GDC timestamp
+  tpx3h.gdcs.emplace_back(gdc_timestamp);
+
+  // Loop over all packets
+  for (auto j = 0; j < tpx3h.num_packets; ++j) {
+    if (std::next(bytes_iter, 8) >= bytes_end) {
+      continue;
+    }
+
+    bytes_iter = std::next(bytes_iter, 8);
+    const char *char_array = &(*bytes_iter);
+
+    // extract the data from the data packet
+    if ((char_array[7] & 0xF0) == 0x40) {  // GDC data packet
+
+      gdclast = (unsigned long *)(&char_array[0]);
+      mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+
+      if (((mygdc >> 40) & 0xF) == 0x4) {
+        Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
+      } else if (((mygdc >> 40) & 0xF) == 0x5) {
+        // Serval sometimes report 0 GDC during experiment, so we need to check
+        // if the GDC is 0, if so, we use the previous GDC
+        auto gdc_tmp = gdc_timestamp;
+
+        Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
+        gdc_tmp = Timer_MSB16;
+        gdc_tmp = (gdc_tmp << 32) & 0xFFFF00000000;
+        gdc_tmp = gdc_tmp | Timer_LSB32;
+
+        if (gdc_tmp != 0) {
+          gdc_timestamp = gdc_tmp;
+        }
+
+        // record the gdc timestamp
+        tpx3h.gdcs.emplace_back(gdc_timestamp);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Find the GDC timestamp from a TPX3H (chip dataset).
+ *
+ * @param tpx3h
+ * @param raw_bytes
+ * @param gdc_timestamp
+ */
+void findGDC(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned long long int &gdc_timestamp) {
+  findGDC(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(), gdc_timestamp);
+}
+
+/**
+ * @brief Find the GDC timestamp from a TPX3H (chip dataset).
+ *
+ * @param tpx3h
+ * @param raw_bytes
+ * @param size
+ * @param gdc_timestamp
+ */
+void findGDC(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned long long int &gdc_timestamp) {
+  findGDC(tpx3h, raw_bytes, raw_bytes + size, gdc_timestamp);
+}
+
+/**
+ * @brief Get the Hits object for each header
+ *
+ * @tparam ForwardIter
+ * @param tpx3h
+ * @param bytes_begin
+ * @param bytes_end
+ */
+template <typename ForwardIter>
+void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
+  // Define the local variables
+  // -- TDC
+  unsigned long *tdclast;
+  unsigned long long mytdc = 0;
+  unsigned long TDC_MSB16 = 0;
+  unsigned long TDC_LSB32 = 0;
+  unsigned long tdc_timestamp = 0;
+  // -- GDC
+  unsigned long *gdclast;
+  unsigned long long mygdc = 0;
+  unsigned long Timer_LSB32 = 0;
+  unsigned long Timer_MSB16 = 0;
+  unsigned long long gdc_timestamp = 0;
+
+  // Move to the first packet
+  auto bytes_iter = bytes_begin;
+  std::advance(bytes_iter, tpx3h.index);
+
+  // Get the first GDC timestamp
+  gdc_timestamp = tpx3h.gdcs[0];
 
   // Loop over all packets
   for (auto j = 0; j < tpx3h.num_packets; ++j) {
@@ -149,87 +240,23 @@ void extractTGDC(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, un
       }
 
     } else if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
-      tpx3h.tdcs.emplace_back(tdc_timestamp);
-      tpx3h.gdcs.emplace_back(gdc_timestamp);
-    }
-  }
-}
-
-/**
- * @brief Extract the TDC and GDC timestamps from a TPX3H (chip dataset).
- *
- * @param tpx3h
- * @param raw_bytes
- * @param tdc_timestamp: global-tracked TDC timestamp
- * @param gdc_timestamp: global-tracked GDC timestamp
- */
-void extractTGDC(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned long &tdc_timestamp,
-                 unsigned long long int &gdc_timestamp) {
-  extractTGDC(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(), tdc_timestamp, gdc_timestamp);
-}
-
-/**
- * @brief Extract the TDC and GDC timestamps from a TPX3H (chip dataset).
- *
- * @param tpx3h
- * @param raw_bytes
- * @param size
- * @param tdc_timestamp: global-tracked TDC timestamp
- * @param gdc_timestamp: global-tracked GDC timestamp
- */
-void extractTGDC(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned long &tdc_timestamp,
-                 unsigned long long int &gdc_timestamp) {
-  extractTGDC(tpx3h, raw_bytes, raw_bytes + size, tdc_timestamp, gdc_timestamp);
-}
-
-/**
- * @brief Extract all hits from a TPX3H (chip dataset).
- *
- * @tparam ForwardIter
- * @param tpx3h
- * @param bytes_begin
- * @param bytes_end
- */
-template <typename ForwardIter>
-void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
-  // Move to the first packet
-  auto bytes_iter = bytes_begin;
-  std::advance(bytes_iter, tpx3h.index);
-
-  // Loop over all packets
-  auto hit_idx = 0;
-  for (auto j = 0; j < tpx3h.num_packets; ++j) {
-    if (std::next(bytes_iter, 8) >= bytes_end) {
-      continue;
-    }
-
-    bytes_iter = std::next(bytes_iter, 8);
-    const char *char_array = &(*bytes_iter);
-
-    // extract the data from the data packet
-    if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
-      // NOTE: we are implicitly calling the Hit constructor directly within the
-      //       vector for speed.
-      if ( tpx3h.tdcs[hit_idx] != 0 && tpx3h.gdcs[hit_idx] != 0){
-         tpx3h.emplace_back(char_array, tpx3h.tdcs[hit_idx], tpx3h.gdcs[hit_idx]);
+      if (tdc_timestamp != 0 && gdc_timestamp != 0) {
+        tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
       }
-      ++hit_idx;
     }
   }
 }
 
 /**
- * @brief Extract all hits from a TPX3H (chip dataset).
+ * @brief Get the Hits object for each header
  *
  * @param tpx3h
  * @param raw_bytes
  */
-void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
-  extractHits(tpx3h, raw_bytes.cbegin(), raw_bytes.cend());
-}
+void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) { extractHits(tpx3h, raw_bytes.cbegin(), raw_bytes.cend()); }
 
 /**
- * @brief Extract all hits from a TPX3H (chip dataset).
+ * @brief Get the Hits object for each header
  *
  * @param tpx3h
  * @param raw_bytes
