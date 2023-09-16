@@ -33,6 +33,10 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
+  // set up spdlog
+  // NOTE: toggle debug level here to see debug messages
+  // spdlog::set_level(spdlog::level::debug);
+
   // sanity check
   if (argc < 2) {
     spdlog::error("Usage: {} <input file>", argv[0]);
@@ -50,20 +54,57 @@ int main(int argc, char* argv[]) {
   // single thread processing
   // -- run
   spdlog::info("Single thread processing...");
+  double total_time = 0;
+  // locate all headers
   start = std::chrono::high_resolution_clock::now();
-  // locate all the TPX3H (chip dataset) in the raw data
   auto batches = findTPX3H(raw_data);
-
-  // extract all tdc and gdc timestamps
-  unsigned long tdc_timestamp = 0;
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Locate all headers: {} s", elapsed / 1e6);
+  total_time += elapsed / 1e6;
+  // locate all gdc timestamps
+  start = std::chrono::high_resolution_clock::now();
   unsigned long long int gdc_timestamp = 0;
   for (auto& tpx3 : batches) {
-    extractTGDC(tpx3, raw_data, tdc_timestamp, gdc_timestamp);
+    findGDC(tpx3, raw_data, gdc_timestamp);
   }
-
-  // process all batches to get neutron events
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Locate all gdc timestamps: {} s", elapsed / 1e6);
+  total_time += elapsed / 1e6;
+  // print all gdc timestamps
+  for (const auto& tpx3 : batches) {
+    auto gdcs = tpx3.gdcs;
+    for (const auto& gdc : gdcs) {
+      spdlog::debug("GDC: {}", gdc);
+    }
+    spdlog::debug("--------------------");
+  }
+  /*
+  The output below tells us that
+  - some header contains more than 1 gdc timestamp
+  - some header contains 0 gdc timestamp, therefore relies on the one
+    from previous block
+  ...
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600041423
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600020997
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600020997
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600056518
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600056518
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600056518
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600056518
+  [2023-09-15 20:09:00.407] [debug] --------------------
+  [2023-09-15 20:09:00.407] [debug] GDC: 4600056518
+  ...
+  */
+  // get all hits
+  start = std::chrono::high_resolution_clock::now();
   auto abs_alg = std::make_unique<ABS>(5.0, 1, 75);
-  int total_events = 0;
   for (auto& tpx3 : batches) {
     extractHits(tpx3, raw_data);
 
@@ -72,21 +113,26 @@ int main(int argc, char* argv[]) {
     abs_alg->fit(tpx3.hits);
     // get neutron events
     auto events = abs_alg->get_events(tpx3.hits);
-
-    total_events += events.size();
   }
   end = std::chrono::high_resolution_clock::now();
-  // -- gather statistics
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Get all hits: {} s", elapsed / 1e6);
+  total_time += elapsed / 1e6;
+  // find out total number of hits
   int n_hits = 0;
   for (const auto& tpx3 : batches) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
+
+    // debug print
+    for (const auto& hit : hits) {
+      spdlog::debug("TOF: {}", hit.getTOF_ns() / 1e6);
+    }
+    spdlog::debug("--------------------");
   }
+  spdlog::info("Total time: {} s", total_time);
   spdlog::info("Number of hits: {}", n_hits);
-  spdlog::info("Number of events: {}", total_events);
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Single thread processing: {} s", elapsed / 1e6);
-  auto speed = n_hits / (elapsed / 1e6);
+  auto speed = n_hits / total_time;
   spdlog::info("Single thread processing speed: {} hits/s", speed);
 
   // multi-thread processing
@@ -95,11 +141,10 @@ int main(int argc, char* argv[]) {
   start = std::chrono::high_resolution_clock::now();
   // locate all the TPX3H (chip dataset) in the raw data, single thread
   auto batches_mt = findTPX3H(raw_data);
-  // extract all tdc and gdc timestamps, single thread
-  tdc_timestamp = 0;
+  // find all gdc timestamps, single thread
   gdc_timestamp = 0;
   for (auto& tpx3 : batches_mt) {
-    extractTGDC(tpx3, raw_data, tdc_timestamp, gdc_timestamp);
+    findGDC(tpx3, raw_data, gdc_timestamp);
   }
   // use tbb parallel_for to process batches
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {

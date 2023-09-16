@@ -43,7 +43,7 @@ struct TPX3 {
       : index(index), num_packets(num_packets), chip_layout_type(chip_layout_type) {
     hits.reserve(num_packets);
     tdcs.reserve(num_packets);
-    gdcs.reserve(num_packets);
+    gdcs.reserve(num_packets);  // assuming 1 gdc per 100 data packets
   };
 
   void emplace_back(const char* packet, const unsigned long long tdc, const unsigned long long gdc) {
@@ -57,12 +57,9 @@ std::vector<TPX3> findTPX3H(const std::vector<char>& raw_bytes);
 std::vector<TPX3> findTPX3H(char* raw_bytes, std::size_t size);
 
 template <typename ForwardIter>
-void extractTGDC(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
-void extractTGDC(TPX3& tpx3h, const std::vector<char>& raw_bytes, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
-void extractTGDC(TPX3& tpx3h, char* raw_bytes, std::size_t size, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
+void findGDC(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long long int& gdc_timestamp);
+void findGDC(TPX3& tpx3h, const std::vector<char>& raw_bytes, unsigned long long int& gdc_timestamp);
+void findGDC(TPX3& tpx3h, char* raw_bytes, std::size_t size, unsigned long long int& gdc_timestamp);
 
 template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
