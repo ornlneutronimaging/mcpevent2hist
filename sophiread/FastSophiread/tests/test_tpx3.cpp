@@ -88,9 +88,11 @@ TEST(TPX3FuncTest, TestExtractHits) {
   auto batches = findTPX3H(rawdata);
 
   // locate gdc and tdc
+  unsigned long tdc_timestamp = 0;
   unsigned long long int gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches) {
-    findGDC(tpx3, rawdata, gdc_timestamp);
+    updateTimestamp(tpx3, rawdata, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
 
   // extract hits
