@@ -30,56 +30,58 @@
 #include "tbb/tbb.h"
 #include "tpx3_fast.h"
 
-using namespace std;
-
-int main(int argc, char* argv[]) {
-  // set up spdlog
-  // NOTE: toggle debug level here to see debug messages
-  // spdlog::set_level(spdlog::level::debug);
-
-  // sanity check
-  if (argc < 2) {
-    spdlog::error("Usage: {} <input file>", argv[0]);
-    return 1;
+/**
+ * @brief check if any hit has TOF larger than 16.67 ms
+ *
+ * @param batches
+ */
+void check_bad_tof(const std::vector<TPX3> batches) {
+  // sanity check: hit.getTOF() should be smaller than 666,667 clock, which is
+  //               equivalent to 16.67 ms
+  int n_bad_hits = 0;
+  int n_hits = 0;
+  for (const auto& tpx3 : batches) {
+    n_hits += tpx3.hits.size();
+    for (const auto& hit : tpx3.hits) {
+      auto tof_ms = hit.getTOF_ns() * 1e-6;
+      if (tof_ms > 16.67) {
+        spdlog::error("TOF: {} ms", tof_ms);
+        n_bad_hits++;
+      } else {
+        spdlog::debug("TOF: {} ms", tof_ms);
+      }
+    }
   }
+  spdlog::info("bad/total hits: {}/{}", n_bad_hits, n_hits);
+}
 
-  // read raw data
-  std::string in_tpx3 = argv[1];
-  auto start = std::chrono::high_resolution_clock::now();
-  auto raw_data = readTPX3RawToCharVec(in_tpx3);
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Read raw data: {} s", elapsed / 1e6);
-
-  // single thread processing
-  // -- run
+/**
+ * @brief benchmark converting raw data to neutron events performance, single thread.
+ *
+ * @param raw_data
+ */
+void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
   spdlog::info("Single thread processing...");
   double total_time = 0;
   // locate all headers
-  start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
   auto batches = findTPX3H(raw_data);
-  end = std::chrono::high_resolution_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Locate all headers: {} s", elapsed / 1e6);
   total_time += elapsed / 1e6;
   // locate all gdc timestamps
   start = std::chrono::high_resolution_clock::now();
-  unsigned long long int gdc_timestamp = 0;
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches) {
-    findGDC(tpx3, raw_data, gdc_timestamp);
+    updateTimestamp(tpx3, raw_data, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
   end = std::chrono::high_resolution_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Locate all gdc timestamps: {} s", elapsed / 1e6);
   total_time += elapsed / 1e6;
-  // print all gdc timestamps
-  for (const auto& tpx3 : batches) {
-    auto gdcs = tpx3.gdcs;
-    for (const auto& gdc : gdcs) {
-      spdlog::debug("GDC: {}", gdc);
-    }
-    spdlog::debug("--------------------");
-  }
   /*
   The output below tells us that
   - some header contains more than 1 gdc timestamp
@@ -123,28 +125,28 @@ int main(int argc, char* argv[]) {
   for (const auto& tpx3 : batches) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
-
-    // debug print
-    for (const auto& hit : hits) {
-      spdlog::debug("TOF: {}", hit.getTOF_ns() / 1e6);
-    }
-    spdlog::debug("--------------------");
   }
   spdlog::info("Total time: {} s", total_time);
   spdlog::info("Number of hits: {}", n_hits);
   auto speed = n_hits / total_time;
   spdlog::info("Single thread processing speed: {} hits/s", speed);
 
-  // multi-thread processing
-  // -- run
+  if (check_tof) {
+    check_bad_tof(batches);
+  }
+}
+
+void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
   spdlog::info("Multi-thread processing...");
-  start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
   // locate all the TPX3H (chip dataset) in the raw data, single thread
   auto batches_mt = findTPX3H(raw_data);
-  // find all gdc timestamps, single thread
-  gdc_timestamp = 0;
+  // update starting time stamp for all headers, single thread
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches_mt) {
-    findGDC(tpx3, raw_data, gdc_timestamp);
+    updateTimestamp(tpx3, raw_data, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
   // use tbb parallel_for to process batches
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
@@ -160,32 +162,46 @@ int main(int argc, char* argv[]) {
       auto events = abs_alg_mt->get_events(tpx3.hits);
     }
   });
-  end = std::chrono::high_resolution_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
   // -- gather statistics
-  n_hits = 0;
+  auto n_hits = 0;
   for (const auto& tpx3 : batches_mt) {
     auto hits = tpx3.hits;
     n_hits += hits.size();
   }
   spdlog::info("Number of hits: {}", n_hits);
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
-  speed = n_hits / (elapsed / 1e6);
+  auto speed = n_hits / (elapsed / 1e6);
   spdlog::info("Multi-thread processing speed: {} hits/s", speed);
 
-  // sanity check: hit.getTOF() should be smaller than 666,667 clock, which is
-  //               equivalent to 16.67 ms
-  int n_bad_hits = 0;
-  for (const auto& tpx3 : batches_mt) {
-    for (const auto& hit : tpx3.hits) {
-      auto tof_ms = hit.getTOF_ns() * 1e-6;
-      if (tof_ms > 16.67) {
-        spdlog::error("TOF: {} ms", tof_ms);
-        n_bad_hits++;
-      } else {
-        spdlog::debug("TOF: {} ms", tof_ms);
-      }
-    }
+  if (check_tof) {
+    check_bad_tof(batches_mt);
   }
-  spdlog::info("bad/total hits: {}/{}", n_bad_hits, n_hits);
+}
+
+int main(int argc, char* argv[]) {
+  // set up spdlog
+  // NOTE: toggle debug level here to see debug messages
+  // spdlog::set_level(spdlog::level::debug);
+
+  // sanity check
+  if (argc < 2) {
+    spdlog::error("Usage: {} <input file>", argv[0]);
+    return 1;
+  }
+
+  // read raw data
+  std::string in_tpx3 = argv[1];
+  auto start = std::chrono::high_resolution_clock::now();
+  auto raw_data = readTPX3RawToCharVec(in_tpx3);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Read raw data: {} s", elapsed / 1e6);
+
+  // single thread processing
+  run_single_thread(raw_data, true);
+
+  // multi-thread processing
+  run_multi_thread(raw_data, true);
 }
