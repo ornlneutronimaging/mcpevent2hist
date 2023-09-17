@@ -29,8 +29,8 @@
  * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
  *
  * @tparam ForwardIter
- * @param begin
- * @param end
+ * @param[in] begin
+ * @param[in] end
  * @return std::vector<TPX3>
  * @note must be run in a single thread for all the data
  */
@@ -63,7 +63,7 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
 /**
  * @brief Locate all TPX3H (chip dataset) in the raw data.
  *
- * @param raw_bytes
+ * @param[in] raw_bytes
  * @return std::vector<TPX3H>
  */
 std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
@@ -84,12 +84,12 @@ std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3
  * of the dataset batch.
  *
  * @tparam ForwardIter
- * @param tpx3h
- * @param bytes_begin
- * @param bytes_end
- * @param gdc_timestamp
- * @param tdc_timestamp
- * @param timer_lsb32
+ * @param[in, out] tpx3h
+ * @param[in] bytes_begin
+ * @param[in] bytes_end
+ * @param[in, out] gdc_timestamp
+ * @param[in, out] tdc_timestamp
+ * @param[in, out] timer_lsb32
  */
 template <typename ForwardIter>
 void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long &tdc_timestamp,
@@ -98,17 +98,6 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end
   tpx3h.tdc_timestamp = tdc_timestamp;
   tpx3h.gdc_timestamp = gdc_timestamp;
   tpx3h.timer_lsb32 = timer_lsb32;
-
-  // start evolving the timestamp till the end of the dataset batch
-  // -- TDC
-  unsigned long *tdclast;
-  unsigned long long mytdc = 0;
-  unsigned long TDC_MSB16 = 0;
-  unsigned long TDC_LSB32 = 0;
-  // -- GDC
-  unsigned long *gdclast;
-  unsigned long long mygdc = 0;
-  unsigned long Timer_MSB16 = 0;
 
   // Move to the first packet
   auto bytes_iter = bytes_begin;
@@ -124,39 +113,14 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end
     const char *char_array = &(*bytes_iter);
 
     // extract the data from the data packet
-    if (char_array[7] == 0x6F) {  // TDC data packets
-      tdclast = (unsigned long *)(&char_array[0]);
-      mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
-      TDC_LSB32 = gdc_timestamp & 0xFFFFFFFF;
-      TDC_MSB16 = (gdc_timestamp >> 32) & 0xFFFF;
-      if (mytdc < TDC_LSB32) {
-        TDC_MSB16++;
-      }
-      tdc_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
-      tdc_timestamp = tdc_timestamp | mytdc;
-    } else if ((char_array[7] & 0xF0) == 0x40) {  // GDC data packet
-
-      gdclast = (unsigned long *)(&char_array[0]);
-      mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
-
-      if (((mygdc >> 40) & 0xF) == 0x4) {
-        timer_lsb32 = mygdc & 0xFFFFFFFF;  // 32-bit
-      } else if (((mygdc >> 40) & 0xF) == 0x5) {
-        // Serval sometimes report 0 GDC during experiment, so we need to check
-        // if the GDC is 0, if so, we use the previous GDC
-        auto gdc_tmp = gdc_timestamp;
-
-        Timer_MSB16 = mygdc & 0xFFFF;  // 16-bit
-        gdc_tmp = Timer_MSB16;
-        gdc_tmp = (gdc_tmp << 32) & 0xFFFF00000000;
-        gdc_tmp = gdc_tmp | timer_lsb32;
-
-        if (gdc_tmp != 0) {
-          gdc_timestamp = gdc_tmp;
-        }
-      }
-
-    } else if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
+    if (char_array[7] == 0x6F) {
+      // TDC data packets
+      update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0x40) {
+      // GDC data packet
+      update_gdc_timestamp_and_timer_lsb32(char_array, timer_lsb32, gdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0xb0) {
+      // Data packet
       // if (tdc_timestamp != 0 && gdc_timestamp != 0) {
       //   // do nothing
       // }
@@ -168,10 +132,11 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end
  * @brief record the given timestamp as starting timestamp of the dataset batch, and evolve the timestamp till the end
  * of the dataset batch.
  *
- * @param tpx3h
- * @param raw_bytes
- * @param gdc_timestamp
- * @param timer_lsb32
+ * @param[in, out] tpx3h
+ * @param[in] raw_bytes
+ * @param[in, out] tdc_timestamp
+ * @param[in, out] gdc_timestamp
+ * @param[in, out] timer_lsb32
  */
 void updateTimestamp(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned long &tdc_timestamp,
                      unsigned long long int &gdc_timestamp, unsigned long &timer_lsb32) {
@@ -182,11 +147,12 @@ void updateTimestamp(TPX3 &tpx3h, const std::vector<char> &raw_bytes, unsigned l
  * @brief record the given timestamp as starting timestamp of the dataset batch, and evolve the timestamp till the end
  * of the dataset batch.
  *
- * @param tpx3h
- * @param raw_bytes
- * @param size
- * @param gdc_timestamp
- * @param timer_lsb32
+ * @param[in, out] tpx3h
+ * @param[in] raw_bytes
+ * @param[in] size
+ * @param[in, out] tdc_timestamp
+ * @param[in, out] gdc_timestamp
+ * @param[in, out] timer_lsb32
  */
 void updateTimestamp(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned long &tdc_timestamp,
                      unsigned long long int &gdc_timestamp, unsigned long &timer_lsb32) {
@@ -197,22 +163,16 @@ void updateTimestamp(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned lo
  * @brief Get the Hits object
  *
  * @tparam ForwardIter
- * @param tpx3h
- * @param bytes_begin
- * @param bytes_end
+ * @param[in, out] tpx3h
+ * @param[in] bytes_begin
+ * @param[in] bytes_end
  */
 template <typename ForwardIter>
 void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
   // Define the local variables
   // -- TDC
-  unsigned long *tdclast;
-  unsigned long long mytdc = 0;
-  unsigned long TDC_MSB16 = 0;
-  unsigned long TDC_LSB32 = 0;
   unsigned long tdc_timestamp = tpx3h.tdc_timestamp;
   // -- GDC
-  unsigned long *gdclast;
-  unsigned long long mygdc = 0;
   unsigned long Timer_LSB32 = tpx3h.timer_lsb32;
   unsigned long long gdc_timestamp = tpx3h.gdc_timestamp;
 
@@ -230,36 +190,14 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
     const char *char_array = &(*bytes_iter);
 
     // extract the data from the data packet
-    if (char_array[7] == 0x6F) {  // TDC data packets
-      tdclast = (unsigned long *)(&char_array[0]);
-      mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
-      TDC_LSB32 = gdc_timestamp & 0xFFFFFFFF;
-      TDC_MSB16 = (gdc_timestamp >> 32) & 0xFFFF;
-      if (mytdc < TDC_LSB32) {
-        TDC_MSB16++;
-      }
-      tdc_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
-      tdc_timestamp = tdc_timestamp | mytdc;
-    } else if ((char_array[7] & 0xF0) == 0x40) {  // GDC data packet
-
-      gdclast = (unsigned long *)(&char_array[0]);
-      mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
-
-      if (((mygdc >> 40) & 0xF) == 0x4) {
-        Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
-      } else if (((mygdc >> 40) & 0xF) == 0x5) {
-        // Serval sometimes report 0 GDC during experiment, so we need to check
-        // if the GDC is 0, if so, we use the previous GDC
-        unsigned long long gdc_tmp = mygdc & 0xFFFF;
-        gdc_tmp = (gdc_tmp << 32) & 0xFFFF00000000;
-        gdc_tmp = gdc_tmp | Timer_LSB32;
-
-        if (gdc_tmp != 0) {
-          gdc_timestamp = gdc_tmp;
-        }
-      }
-
-    } else if ((char_array[7] & 0xF0) == 0xb0) {  // data packet
+    if (char_array[7] == 0x6F) {
+      // TDC data packets
+      update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0x40) {
+      // GDC data packet
+      update_gdc_timestamp_and_timer_lsb32(char_array, Timer_LSB32, gdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0xb0) {
+      // Data packet
       if (tdc_timestamp != 0 && gdc_timestamp != 0) {
         tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
       }
@@ -270,16 +208,81 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
 /**
  * @brief Get the Hits object
  *
- * @param tpx3h
- * @param raw_bytes
+ * @param[in, out] tpx3h
+ * @param[in] raw_bytes
  */
-void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) { extractHits(tpx3h, raw_bytes.cbegin(), raw_bytes.cend()); }
+void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
+  extractHits(tpx3h, raw_bytes.cbegin(), raw_bytes.cend());
+}
 
 /**
  * @brief Get the Hits object
  *
- * @param tpx3h
- * @param raw_bytes
- * @param size
+ * @param[in, out] tpx3h
+ * @param[in] raw_bytes
+ * @param[in] size
  */
 void extractHits(TPX3 &tpx3h, char *raw_bytes, std::size_t size) { extractHits(tpx3h, raw_bytes, raw_bytes + size); }
+
+/**
+ * @brief Update the tdc_timestamp with given char_array and gdc_timestamp
+ *
+ * @param[in] char_array: the char array of the data packet
+ * @param[in] gdc_timestamp: the reference gdc_timestamp
+ * @param[out] tdc_timestamp: the target to update
+ */
+void update_tdc_timestamp(const char *char_array, const unsigned long long &gdc_timestamp,
+                          unsigned long &tdc_timestamp) {
+  // local var for updating tdc_timestamp
+  unsigned long *tdclast;
+  unsigned long long mytdc = 0;
+  unsigned long TDC_MSB16 = 0;
+  unsigned long TDC_LSB32 = 0;
+
+  // extract the data from the data packet
+  tdclast = (unsigned long *)(&char_array[0]);
+  mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+  TDC_LSB32 = gdc_timestamp & 0xFFFFFFFF;
+  TDC_MSB16 = (gdc_timestamp >> 32) & 0xFFFF;
+  if (mytdc < TDC_LSB32) {
+    TDC_MSB16++;
+  }
+  tdc_timestamp = (TDC_MSB16 << 32) & 0xFFFF00000000;
+  tdc_timestamp = tdc_timestamp | mytdc;
+}
+
+/**
+ * @brief Update the gdc_timestamp and timer_lsb34 with given char_array
+ *
+ * @param[in] char_array
+ * @param[in, out] timer_lsb32
+ * @param[out] gdc_timestamp
+ */
+void update_gdc_timestamp_and_timer_lsb32(const char *char_array, unsigned long &timer_lsb32,
+                                          unsigned long long &gdc_timestamp) {
+  // local var for updating gdc_timestamp and timer_lsb32
+  unsigned long *gdclast;
+  unsigned long long mygdc = 0;
+
+  // process given GDC packet
+  gdclast = (unsigned long *)(&char_array[0]);
+  mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+
+  switch (((mygdc >> 40) & 0xF)) {
+    case 0x4:
+      timer_lsb32 = mygdc & 0xFFFFFFFF;  // 32-bit
+      break;
+
+    case 0x5:
+      // Serval sometimes report 0 GDC during experiment, so we need to check
+      // if the GDC is 0, if so, we use the previous GDC
+      unsigned long long gdc_tmp = mygdc & 0xFFFF;
+      gdc_tmp = (gdc_tmp << 32) & 0xFFFF00000000;
+      gdc_tmp = gdc_tmp | timer_lsb32;
+
+      if (gdc_tmp != 0) {
+        gdc_timestamp = gdc_tmp;
+      }
+      break;
+  }
+}
