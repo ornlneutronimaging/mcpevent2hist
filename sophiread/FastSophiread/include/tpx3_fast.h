@@ -36,7 +36,6 @@ struct TPX3 {
   const int num_packets;       // number of packets in the dataset batch (time packet and data packet)
   const int chip_layout_type;  // data source (sub-chip ID)
   std::vector<Hit> hits;       // hits extracted from the dataset batch
-  std::vector<unsigned long long int> gdcs;  // gdc extracted from the dataset batch
 
   unsigned long tdc_timestamp;       // starting tdc timestamp of the dataset batch
   unsigned long long gdc_timestamp;  // starting gdc timestamp of the dataset batch
@@ -45,7 +44,6 @@ struct TPX3 {
   TPX3(std::size_t index, int num_packets, int chip_layout_type)
       : index(index), num_packets(num_packets), chip_layout_type(chip_layout_type) {
     hits.reserve(num_packets);  // assuming 1 hit per data packet
-    gdcs.reserve(num_packets);  // assuming 1 gdc per 100 data packets
   };
 
   void emplace_back(const char* packet, const unsigned long long tdc, const unsigned long long gdc) {

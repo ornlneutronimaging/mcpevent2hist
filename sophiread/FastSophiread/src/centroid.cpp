@@ -25,7 +25,7 @@
 /**
  * @brief Perform centroid fitting on the hits.
  *
- * @param data: a vector of hits.
+ * @param[in] data: a vector of hits.
  * @return NeutronEvent: a neutron event.
  */
 Neutron Centroid::fit(const std::vector<Hit>& data) {

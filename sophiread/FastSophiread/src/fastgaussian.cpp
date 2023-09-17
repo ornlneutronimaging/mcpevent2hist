@@ -32,7 +32,7 @@
 /**
  * @brief Get the Median of a vector of doubles.
  *
- * @param data: a vector of doubles.
+ * @param[in] data: a vector of doubles.
  * @return double
  */
 double getMedian(const std::vector<double>& data) {
@@ -48,7 +48,7 @@ double getMedian(const std::vector<double>& data) {
 /**
  * @brief Perform gaussian fitting on the hits.
  *
- * @param data: a vector of hits.
+ * @param[in] data: a vector of hits.
  * @return NeutronEvent
  */
 Neutron FastGaussian::fit(const std::vector<Hit>& data) {

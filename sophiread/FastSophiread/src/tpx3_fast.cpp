@@ -143,14 +143,8 @@ void updateTimestamp(TPX3 &tpx3h, char *raw_bytes, std::size_t size, unsigned lo
  */
 template <typename ForwardIter>
 void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
-  // Define the local variables
-  // -- TDC
-  unsigned long tdc_timestamp = tpx3h.tdc_timestamp;
-  // -- GDC
-  unsigned long Timer_LSB32 = tpx3h.timer_lsb32;
-  unsigned long long gdc_timestamp = tpx3h.gdc_timestamp;
-
-  process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tdc_timestamp, gdc_timestamp, Timer_LSB32, true);
+  process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tpx3h.tdc_timestamp, tpx3h.gdc_timestamp, tpx3h.timer_lsb32,
+                       true);
 }
 
 /**
