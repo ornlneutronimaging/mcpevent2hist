@@ -129,7 +129,7 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
   spdlog::info("Total time: {} s", total_time);
   spdlog::info("Number of hits: {}", n_hits);
   auto speed = n_hits / total_time;
-  spdlog::info("Single thread processing speed: {} hits/s", speed);
+  spdlog::info("Single thread processing speed: {:<e} hits/s", speed);
 
   if (check_tof) {
     check_bad_tof(batches);
@@ -173,7 +173,7 @@ void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
   auto speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Multi-thread processing speed: {} hits/s", speed);
+  spdlog::info("Multi-thread processing speed: {:<e} hits/s", speed);
 
   if (check_tof) {
     check_bad_tof(batches_mt);
