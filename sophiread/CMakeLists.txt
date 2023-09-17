@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
-# find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(GTest REQUIRED)
@@ -31,17 +31,17 @@ file(COPY ${CMAKE_SOURCE_DIR}/resources/data DESTINATION ${CMAKE_BINARY_DIR})
 add_compile_options(
   -O3
   -std=c++20
-  -march=native
+#  -march=native
   -ffast-math
   -pthread
   -Wall
   -Wextra
-  # ${OpenMP_CXX_FLAGS}
+  ${OpenMP_CXX_FLAGS}
 )
 
 # Add Sophiread library
 # NOTE: this will take care of the testing as well
-# add_subdirectory(SophireadLib)
+add_subdirectory(SophireadLib)
 
 # Add FastSophiread library
 add_subdirectory(FastSophiread)
@@ -50,7 +50,7 @@ add_subdirectory(FastSophiread)
 # add_subdirectory(SophireadCLI)
 
 # Add Sophiread stream command line interface
-# add_subdirectory(SophireadStreamCLI)
+add_subdirectory(SophireadStreamCLI)
 
 # Add Sophiread GUI application
 # add_subdirectory(SophireadGUI)
