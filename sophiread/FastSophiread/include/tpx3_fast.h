@@ -70,3 +70,9 @@ template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
+
+void update_tdc_timestamp(const char* char_array, const unsigned long long& gdc_timestamp,
+                          unsigned long& tdc_timestamp);
+
+void update_gdc_timestamp_and_timer_lsb32(const char* char_array, unsigned long& timer_lsb32,
+                                          unsigned long long& gdc_timestamp);
