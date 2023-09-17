@@ -99,33 +99,7 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end
   tpx3h.gdc_timestamp = gdc_timestamp;
   tpx3h.timer_lsb32 = timer_lsb32;
 
-  // Move to the first packet
-  auto bytes_iter = bytes_begin;
-  std::advance(bytes_iter, tpx3h.index);
-
-  // Loop over all packets
-  for (auto j = 0; j < tpx3h.num_packets; ++j) {
-    if (std::next(bytes_iter, 8) >= bytes_end) {
-      continue;
-    }
-
-    bytes_iter = std::next(bytes_iter, 8);
-    const char *char_array = &(*bytes_iter);
-
-    // extract the data from the data packet
-    if (char_array[7] == 0x6F) {
-      // TDC data packets
-      update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
-    } else if ((char_array[7] & 0xF0) == 0x40) {
-      // GDC data packet
-      update_gdc_timestamp_and_timer_lsb32(char_array, timer_lsb32, gdc_timestamp);
-    } else if ((char_array[7] & 0xF0) == 0xb0) {
-      // Data packet
-      // if (tdc_timestamp != 0 && gdc_timestamp != 0) {
-      //   // do nothing
-      // }
-    }
-  }
+  process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tdc_timestamp, gdc_timestamp, timer_lsb32, false);
 }
 
 /**
@@ -176,33 +150,7 @@ void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end) {
   unsigned long Timer_LSB32 = tpx3h.timer_lsb32;
   unsigned long long gdc_timestamp = tpx3h.gdc_timestamp;
 
-  // Move to the first packet
-  auto bytes_iter = bytes_begin;
-  std::advance(bytes_iter, tpx3h.index);
-
-  // Loop over all packets
-  for (auto j = 0; j < tpx3h.num_packets; ++j) {
-    if (std::next(bytes_iter, 8) >= bytes_end) {
-      continue;
-    }
-
-    bytes_iter = std::next(bytes_iter, 8);
-    const char *char_array = &(*bytes_iter);
-
-    // extract the data from the data packet
-    if (char_array[7] == 0x6F) {
-      // TDC data packets
-      update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
-    } else if ((char_array[7] & 0xF0) == 0x40) {
-      // GDC data packet
-      update_gdc_timestamp_and_timer_lsb32(char_array, Timer_LSB32, gdc_timestamp);
-    } else if ((char_array[7] & 0xF0) == 0xb0) {
-      // Data packet
-      if (tdc_timestamp != 0 && gdc_timestamp != 0) {
-        tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
-      }
-    }
-  }
+  process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tdc_timestamp, gdc_timestamp, Timer_LSB32, true);
 }
 
 /**
@@ -284,5 +232,51 @@ void update_gdc_timestamp_and_timer_lsb32(const char *char_array, unsigned long 
         gdc_timestamp = gdc_tmp;
       }
       break;
+  }
+}
+
+/**
+ * @brief Main function to process packets (time&data) in the given TPX3 batch
+ *
+ * @tparam ForwardIter
+ * @param[in, out] tpx3h
+ * @param[in] bytes_begin
+ * @param[in] bytes_end
+ * @param[in, out] tdc_timestamp
+ * @param[in, out] gdc_timestamp
+ * @param[in, out] timer_lsb32
+ * @param[in] extract_hits: whether to extract hits from the data packets, or just scan&update the timestamp
+ */
+template <typename ForwardIter>
+void process_tpx3_packets(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long &tdc_timestamp,
+                          unsigned long long int &gdc_timestamp, unsigned long &timer_lsb32, bool extract_hits) {
+  // Move to the first packet
+  auto bytes_iter = bytes_begin;
+  std::advance(bytes_iter, tpx3h.index);
+
+  // Loop over all packets
+  for (auto j = 0; j < tpx3h.num_packets; ++j) {
+    if (std::next(bytes_iter, 8) >= bytes_end) {
+      continue;
+    }
+
+    bytes_iter = std::next(bytes_iter, 8);
+    const char *char_array = &(*bytes_iter);
+
+    // extract the data from the data packet
+    if (char_array[7] == 0x6F) {
+      // TDC data packets
+      update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0x40) {
+      // GDC data packet
+      update_gdc_timestamp_and_timer_lsb32(char_array, timer_lsb32, gdc_timestamp);
+    } else if ((char_array[7] & 0xF0) == 0xb0) {
+      if (extract_hits) {
+        // Data packet
+        if (tdc_timestamp != 0 && gdc_timestamp != 0) {
+          tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
+        }
+      }
+    }
   }
 }
