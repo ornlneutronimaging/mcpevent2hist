@@ -30,6 +30,54 @@
 #include "tbb/tbb.h"
 #include "tpx3_fast.h"
 
+void run_single_thread(const std::vector<char>& raw_data) {
+  // -- run
+  spdlog::info("***Single thread processing***");
+  auto start = std::chrono::high_resolution_clock::now();
+  auto batches = findTPX3H(raw_data);
+  for (auto& tpx3 : batches) {
+    extractHits(tpx3, raw_data);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  // -- gather statistics
+  int n_hits = 0;
+  for (const auto& tpx3 : batches) {
+    auto hits = tpx3.hits;
+    n_hits += hits.size();
+  }
+  spdlog::info("Number of hits: {}", n_hits);
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Single thread processing: {} s", elapsed / 1e6);
+  auto speed = n_hits / (elapsed / 1e6);
+  spdlog::info("Single thread processing speed: {:<e} hits/s", speed);
+}
+
+void run_multi_thread(const std::vector<char>& raw_data) {
+  // -- run
+  spdlog::info("***Multi-thread processing***");
+  auto start = std::chrono::high_resolution_clock::now();
+  auto batches_mt = findTPX3H(raw_data);
+  // use tbb parallel_for to process batches
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      auto& tpx3 = batches_mt[i];
+      extractHits(tpx3, raw_data);
+    }
+  });
+  auto end = std::chrono::high_resolution_clock::now();
+  // -- gather statistics
+  auto n_hits = 0;
+  for (const auto& tpx3 : batches_mt) {
+    auto hits = tpx3.hits;
+    n_hits += hits.size();
+  }
+  spdlog::info("Number of hits: {}", n_hits);
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
+  auto speed = n_hits / (elapsed / 1e6);
+  spdlog::info("Multi-thread processing speed: {:<e} hits/s", speed);
+}
+
 int main(int argc, char* argv[]) {
   // sanity check
   if (argc < 2) {
@@ -47,48 +95,8 @@ int main(int argc, char* argv[]) {
   spdlog::info("Read raw data: {} s", elapsed / 1e6);
 
   // single thread processing
-  // -- run
-  spdlog::info("***Single thread processing***");
-  start = std::chrono::high_resolution_clock::now();
-  auto batches = findTPX3H(raw_data);
-  for (auto& tpx3 : batches) {
-    extractHits(tpx3, raw_data);
-  }
-  end = std::chrono::high_resolution_clock::now();
-  // -- gather statistics
-  int n_hits = 0;
-  for (const auto& tpx3 : batches) {
-    auto hits = tpx3.hits;
-    n_hits += hits.size();
-  }
-  spdlog::info("Number of hits: {}", n_hits);
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Single thread processing: {} s", elapsed / 1e6);
-  auto speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Single thread processing speed: {:<e} hits/s", speed);
+  run_single_thread(raw_data);
 
   // multi-thread processing
-  // -- run
-  spdlog::info("***Multi-thread processing***");
-  start = std::chrono::high_resolution_clock::now();
-  auto batches_mt = findTPX3H(raw_data);
-  // use tbb parallel_for to process batches
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
-    for (size_t i = r.begin(); i != r.end(); ++i) {
-      auto& tpx3 = batches_mt[i];
-      extractHits(tpx3, raw_data);
-    }
-  });
-  end = std::chrono::high_resolution_clock::now();
-  // -- gather statistics
-  n_hits = 0;
-  for (const auto& tpx3 : batches_mt) {
-    auto hits = tpx3.hits;
-    n_hits += hits.size();
-  }
-  spdlog::info("Number of hits: {}", n_hits);
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
-  speed = n_hits / (elapsed / 1e6);
-  spdlog::info("Multi-thread processing speed: {:<e} hits/s", speed);
+  run_multi_thread(raw_data);
 }
