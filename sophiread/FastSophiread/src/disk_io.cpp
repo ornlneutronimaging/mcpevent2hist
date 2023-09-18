@@ -26,7 +26,7 @@
 /**
  * @brief Read Timepix3 raw data from file into memory as a vector of char for subsequent analysis.
  *
- * @param tpx3file
+ * @param[in] tpx3file
  * @return std::vector<char>
  */
 std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
