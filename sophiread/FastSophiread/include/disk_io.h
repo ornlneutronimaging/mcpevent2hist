@@ -40,13 +40,18 @@ void writeDatasetToGroup(H5::Group& group, const std::string& dataset_name, Forw
 
 std::string generateGroupName(H5::H5File& file, const std::string& baseName);
 
+template <typename T, typename ForwardIterator>
+void saveOrAppendToHDF5(
+    const std::string& out_file_name, ForwardIterator data_begin, ForwardIterator data_end,
+    const std::string& baseGroupName,
+    const std::vector<std::pair<std::string, std::function<T(const decltype(*data_begin)&)>>>& attributes, bool append);
+
 template <typename ForwardIterator>
 void saveOrAppendHitsToHDF5(const std::string& out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
                             bool appendMode = false);
 template <typename ForwardIterator>
 void saveHitsToHDF5(const std::string& out_file_path, ForwardIterator hits_begin, ForwardIterator hits_end);
 void saveHitsToHDF5(const std::string& out_file_path, const std::vector<Hit>& hits);
-
 template <typename ForwardIterator>
 void appendHitsToHDF5(const std::string& out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end);
 void appendHitsToHDF5(const std::string& out_file_name, const std::vector<Hit>& hits);
@@ -57,7 +62,6 @@ void saveOrAppendNeutronToHDF5(const std::string& out_file_name, ForwardIterator
 template <typename ForwardIterator>
 void saveNeutronToHDF5(const std::string& out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end);
 void saveNeutronToHDF5(const std::string& out_file_name, const std::vector<Neutron>& neutrons);
-
 template <typename ForwardIterator>
 void appendNeutronToHDF5(const std::string& out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end);
 void appendNeutronToHDF5(const std::string& out_file_name, const std::vector<Neutron>& neutrons);
