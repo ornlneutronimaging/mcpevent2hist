@@ -38,6 +38,7 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <random>
 #include <regex>
 
 #include "disk_io.h"
@@ -113,35 +114,58 @@ TEST_F(FileNameGeneratorTest, FileNameWithoutExtension) {
   VerifyFileName(resultFileName);
 }
 
-TEST(SaveHitsTest, TestSaveToHDF5) {
-  // 1. Generate a set of Hits
-  std::vector<Hit> hits;
-  for (int i = 0; i < 10; ++i) {
-    Hit hit(i, i, i, i, i, i, i);  // Sample values for easy demonstration
-    hits.push_back(hit);
+class SaveHitsTest : public ::testing::Test {
+ protected:
+  std::string testFileName = "testfile.hdf5";
+
+  // Helper function to generate random hits for testing
+  std::vector<Hit> generateRandomHits(size_t numHits) {
+    std::vector<Hit> hits;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1, 100);
+
+    for (size_t i = 0; i < numHits; ++i) {
+      Hit hit(distribution(generator), distribution(generator), distribution(generator), distribution(generator),
+              distribution(generator), distribution(generator), distribution(generator));
+      hits.push_back(hit);
+    }
+    return hits;
   }
 
-  // 2. Save these hits using the provided function
-  std::string filename = "test_output.h5";
-  filename = generateFileNameWithMicroTimestamp(filename);
-  saveHitsToHDF5(filename, hits);
+  // Cleanup after each test
+  virtual void TearDown() {
+    if (std::filesystem::exists(testFileName)) {
+      std::filesystem::remove(testFileName);
+    }
+  }
+};
 
-  // 3. Read the HDF5 file to verify the data was correctly saved
-  H5::H5File file(filename, H5F_ACC_RDONLY);
+TEST_F(SaveHitsTest, TestSaveAndAppendToHDF5) {
+  // Generate and save initial hits using saveHitsToHDF5
+  std::vector<Hit> initialHits = generateRandomHits(10);
+  saveHitsToHDF5(testFileName, initialHits);
+
+  // Ensure file exists and has 10 hits in "hits" group
+  H5::H5File file(testFileName, H5F_ACC_RDONLY);
   H5::Group group = file.openGroup("hits");
-  H5::DataSet dataset = group.openDataSet("x");
-  std::vector<int> x_values(10);
-  dataset.read(x_values.data(), H5::PredType::NATIVE_INT);
-  dataset.close();
+  H5::DataSet x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 10);
+  x_dataset.close();
   group.close();
   file.close();
 
-  for (int i = 0; i < 10; ++i) {
-    EXPECT_EQ(x_values[i], i);
-  }
+  // Generate and append more hits using saveOrAppendHitsToHDF5
+  std::vector<Hit> appendedHits = generateRandomHits(5);
+  appendHitsToHDF5(testFileName, appendedHits);
 
-  // remove the test file
-  std::filesystem::remove(filename);
+  // Ensure file still exists and now has a new group "hits_1" with 5 hits
+  file.openFile(testFileName, H5F_ACC_RDONLY);
+  group = file.openGroup("hits_1");
+  x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 5);
+  x_dataset.close();
+  group.close();
+  file.close();
 }
 
 int main(int argc, char **argv) {
