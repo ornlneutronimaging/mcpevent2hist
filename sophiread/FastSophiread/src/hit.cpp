@@ -25,10 +25,10 @@
 /**
  * @brief Special constructor that construct a Hit from raw bytes.
  *
- * @param packet
- * @param tdc
- * @param gdc
- * @param chip_layout_type
+ * @param[in] packet
+ * @param[in] tdc
+ * @param[in] gdc
+ * @param[in] chip_layout_type
  */
 Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsigned long long GDC_timestamp,
          const int chip_layout_type) {

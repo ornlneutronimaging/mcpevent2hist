@@ -30,7 +30,7 @@
 /**
  * @brief Generate cluster labels for the hits.
  *
- * @param data: a vector of hits.
+ * @param[in] data: a vector of hits.
  */
 void ABS::fit(const std::vector<Hit>& data) {
   // reserve space for the cluster labels and initialize to -1
@@ -128,7 +128,7 @@ void ABS::fit(const std::vector<Hit>& data) {
 /**
  * @brief Predict the clusters by retrieving the labels of the hits.
  *
- * @param data: a vector of hits.
+ * @param[in] data: a vector of hits.
  * @return std::vector<NeutronEvent>: a vector of neutron events.
  */
 std::vector<Neutron> ABS::get_events(const std::vector<Hit>& data) {

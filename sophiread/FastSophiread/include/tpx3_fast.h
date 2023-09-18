@@ -36,14 +36,14 @@ struct TPX3 {
   const int num_packets;       // number of packets in the dataset batch (time packet and data packet)
   const int chip_layout_type;  // data source (sub-chip ID)
   std::vector<Hit> hits;       // hits extracted from the dataset batch
-  std::vector<unsigned long> tdcs;           // tdc extracted from the dataset batch
-  std::vector<unsigned long long int> gdcs;  // gdc extracted from the dataset batch
+
+  unsigned long tdc_timestamp;       // starting tdc timestamp of the dataset batch
+  unsigned long long gdc_timestamp;  // starting gdc timestamp of the dataset batch
+  unsigned long timer_lsb32;         // starting Timer_LSB32 of the dataset batch
 
   TPX3(std::size_t index, int num_packets, int chip_layout_type)
       : index(index), num_packets(num_packets), chip_layout_type(chip_layout_type) {
-    hits.reserve(num_packets);
-    tdcs.reserve(num_packets);
-    gdcs.reserve(num_packets);
+    hits.reserve(num_packets);  // assuming 1 hit per data packet
   };
 
   void emplace_back(const char* packet, const unsigned long long tdc, const unsigned long long gdc) {
@@ -57,14 +57,24 @@ std::vector<TPX3> findTPX3H(const std::vector<char>& raw_bytes);
 std::vector<TPX3> findTPX3H(char* raw_bytes, std::size_t size);
 
 template <typename ForwardIter>
-void extractTGDC(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
-void extractTGDC(TPX3& tpx3h, const std::vector<char>& raw_bytes, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
-void extractTGDC(TPX3& tpx3h, char* raw_bytes, std::size_t size, unsigned long& tdc_timestamp,
-                 unsigned long long int& gdc_timestamp);
+void updateTimestamp(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long& tdc_timestamp,
+                     unsigned long long int& gdc_timestamp, unsigned long& timer_lsb32);
+void updateTimestamp(TPX3& tpx3h, const std::vector<char>& raw_bytes, unsigned long& tdc_timestamp,
+                     unsigned long long int& gdc_timestamp, unsigned long& timer_lsb32);
+void updateTimestamp(TPX3& tpx3h, char* raw_bytes, std::size_t size, unsigned long& tdc_timestamp,
+                     unsigned long long int& gdc_timestamp, unsigned long& timer_lsb32);
 
 template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
+
+void update_tdc_timestamp(const char* char_array, const unsigned long long& gdc_timestamp,
+                          unsigned long& tdc_timestamp);
+
+void update_gdc_timestamp_and_timer_lsb32(const char* char_array, unsigned long& timer_lsb32,
+                                          unsigned long long& gdc_timestamp);
+
+template <typename ForwardIter>
+void process_tpx3_packets(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, unsigned long& tdc_timestamp,
+                          unsigned long long int& gdc_timestamp, unsigned long& timer_lsb32, bool extract_hits = true);
