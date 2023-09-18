@@ -14,9 +14,11 @@ set(CMAKE_CXX_STANDARD 14)
 find_package(Eigen3 REQUIRED)
 # find_package(OpenMP REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(HDF5 REQUIRED)
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 find_package(GTest REQUIRED)
 # find_package(Qt5 COMPONENTS Widgets REQUIRED)
+
+include_directories(${HDF5_INCLUDE_DIRS})
 
 link_directories(
     $ENV{CONDA_PREFIX}/lib
