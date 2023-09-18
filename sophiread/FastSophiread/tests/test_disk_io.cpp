@@ -37,6 +37,8 @@
  */
 #include <gtest/gtest.h>
 
+#include <regex>
+
 #include "disk_io.h"
 #include "spdlog/spdlog.h"
 
@@ -47,4 +49,65 @@ TEST(DiskIOTest, ReadTPX3RawToCharVec) {
   // check the size of the raw data
   const unsigned long ref_size = 9739597 * 8;
   EXPECT_EQ(rawdata.size(), ref_size);
+}
+
+class FileNameGeneratorTest : public ::testing::Test {
+ protected:
+  std::regex expectedPattern;
+  std::string generatedBaseName;
+  std::string extension;
+
+  void SetUp() override {
+    // Allow a short sleep to avoid immediate timestamps
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  void VerifyFileName(const std::string &resultFileName) {
+    std::filesystem::path resultPath(resultFileName);
+    generatedBaseName = resultPath.stem().string();
+    extension = resultPath.extension().string();
+
+    expectedPattern = std::regex(R"(.*_\d{6}\..*)");
+    ASSERT_TRUE(std::regex_match(generatedBaseName + extension, expectedPattern));
+
+    // Check that the timestamp is recent (within the last second).
+    auto position = generatedBaseName.find_last_of('_');
+    auto timestampStr = generatedBaseName.substr(position + 1);
+    auto timestamp = std::stoi(timestampStr);
+    ASSERT_GE(timestamp, 0);
+    ASSERT_LT(timestamp, 1000000);
+  }
+};
+
+TEST_F(FileNameGeneratorTest, FileNameWithPathAndExtension) {
+  // Arrange
+  std::string originalFileName = "/path/to/myfile.txt";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
+}
+
+TEST_F(FileNameGeneratorTest, FileNameWithoutPath) {
+  // Arrange
+  std::string originalFileName = "myfile.txt";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
+}
+
+TEST_F(FileNameGeneratorTest, FileNameWithoutExtension) {
+  // Arrange
+  std::string originalFileName = "/path/to/myfile";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
 }
