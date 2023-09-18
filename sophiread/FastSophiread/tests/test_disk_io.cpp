@@ -168,6 +168,60 @@ TEST_F(SaveHitsTest, TestSaveAndAppendToHDF5) {
   file.close();
 }
 
+class SaveNeutronTest : public ::testing::Test {
+ protected:
+  std::string testFileName = "testfile.hdf5";
+
+  // Helper function to generate random neutrons for testing
+  std::vector<Neutron> generateRandomNeutrons(size_t numNeutrons) {
+    std::vector<Neutron> neutrons;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1, 100);
+
+    for (size_t i = 0; i < numNeutrons; ++i) {
+      Neutron neutron(distribution(generator), distribution(generator), distribution(generator),
+                      distribution(generator), distribution(generator));
+      neutrons.push_back(neutron);
+    }
+    return neutrons;
+  }
+
+  // Cleanup after each test
+  virtual void TearDown() {
+    if (std::filesystem::exists(testFileName)) {
+      std::filesystem::remove(testFileName);
+    }
+  }
+};
+
+TEST_F(SaveNeutronTest, TestSaveAndAppendToHDF5) {
+  // Generate and save initial neutrons using saveNeutronToHDF5
+  std::vector<Neutron> initialNeutrons = generateRandomNeutrons(10);
+  saveNeutronToHDF5(testFileName, initialNeutrons);
+
+  // Ensure file exists and has 10 neutrons in "neutrons" group
+  H5::H5File file(testFileName, H5F_ACC_RDONLY);
+  H5::Group group = file.openGroup("neutrons");
+  H5::DataSet x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 10);
+  x_dataset.close();
+  group.close();
+  file.close();
+
+  // Generate and append more neutrons using saveOrAppendNeutronToHDF5
+  std::vector<Neutron> appendedNeutrons = generateRandomNeutrons(5);
+  appendNeutronToHDF5(testFileName, appendedNeutrons);
+
+  // Ensure file still exists and now has a new group "neutrons_1" with 5 neutrons
+  file.openFile(testFileName, H5F_ACC_RDONLY);
+  group = file.openGroup("neutrons_1");
+  x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 5);
+  x_dataset.close();
+  group.close();
+  file.close();
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
