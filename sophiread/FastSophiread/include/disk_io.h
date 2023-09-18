@@ -36,7 +36,7 @@ std::string generateFileNameWithMicroTimestamp(const std::string& originalFileNa
 
 template <typename ForwardIterator>
 void saveHitsToHDF5(const std::string& out_file_path, ForwardIterator hits_begin, ForwardIterator hits_end);
+
 void saveHitsToHDF5(const std::string& out_file_path, const std::vector<Hit>& hits);
-void saveHitsToHDF5(const std::string& out_file_path, const Hit* hits, const size_t num_hits);
 
 void saveNeutronToHDF5(const std::string out_file_path, const std::vector<Neutron>& neutrons);

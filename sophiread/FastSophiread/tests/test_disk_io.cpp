@@ -37,6 +37,7 @@
  */
 #include <gtest/gtest.h>
 
+#include <filesystem>
 #include <regex>
 
 #include "disk_io.h"
@@ -110,4 +111,40 @@ TEST_F(FileNameGeneratorTest, FileNameWithoutExtension) {
 
   // Assert
   VerifyFileName(resultFileName);
+}
+
+TEST(SaveHitsTest, TestSaveToHDF5) {
+  // 1. Generate a set of Hits
+  std::vector<Hit> hits;
+  for (int i = 0; i < 10; ++i) {
+    Hit hit(i, i, i, i, i, i, i);  // Sample values for easy demonstration
+    hits.push_back(hit);
+  }
+
+  // 2. Save these hits using the provided function
+  std::string filename = "test_output.h5";
+  filename = generateFileNameWithMicroTimestamp(filename);
+  saveHitsToHDF5(filename, hits);
+
+  // 3. Read the HDF5 file to verify the data was correctly saved
+  H5::H5File file(filename, H5F_ACC_RDONLY);
+  H5::Group group = file.openGroup("hits");
+  H5::DataSet dataset = group.openDataSet("x");
+  std::vector<int> x_values(10);
+  dataset.read(x_values.data(), H5::PredType::NATIVE_INT);
+  dataset.close();
+  group.close();
+  file.close();
+
+  for (int i = 0; i < 10; ++i) {
+    EXPECT_EQ(x_values[i], i);
+  }
+
+  // remove the test file
+  std::filesystem::remove(filename);
+}
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }

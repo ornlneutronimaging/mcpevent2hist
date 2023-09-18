@@ -20,10 +20,7 @@ set(SRC_FAST_FILES
 )
 
 # ------------- SophireadLibFast -------------- #
-add_library(
-    FastSophiread
-    ${SRC_FAST_FILES}
-)
+add_library(FastSophiread ${SRC_FAST_FILES})
 
 # ----------------- TESTS ----------------- #
 # DiskIO Tests
@@ -34,11 +31,11 @@ add_executable(
 target_link_libraries(
     SophireadTests_diskio
     FastSophiread
-    pthread
     tbb
     spdlog::spdlog
     GTest::GTest
     GTest::Main
+    ${HDF5_LIBRARIES}
 )
 gtest_discover_tests(SophireadTests_diskio)
 # Hit Test
@@ -69,6 +66,7 @@ target_link_libraries(
     spdlog::spdlog
     GTest::GTest
     GTest::Main
+    ${HDF5_LIBRARIES}
 )
 gtest_discover_tests(SophireadTests_tpx3)
 # ABS Test
@@ -129,6 +127,7 @@ target_link_libraries(
     pthread
     tbb
     spdlog::spdlog
+    ${HDF5_LIBRARIES}
 )
 add_custom_command(TARGET SophireadBenchmarks_raw2hits POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
@@ -163,6 +162,7 @@ target_link_libraries(
     pthread
     tbb
     spdlog::spdlog
+    ${HDF5_LIBRARIES}
 )
 add_custom_command(TARGET SophireadBenchmarks_raw2events POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
