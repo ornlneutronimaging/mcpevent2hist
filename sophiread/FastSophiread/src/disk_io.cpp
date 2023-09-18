@@ -21,6 +21,8 @@
  */
 #include "disk_io.h"
 
+#include <filesystem>
+
 #include "spdlog/spdlog.h"
 
 /**
