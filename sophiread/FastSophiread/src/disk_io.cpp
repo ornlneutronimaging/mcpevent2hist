@@ -239,3 +239,109 @@ void appendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_beg
 void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hits) {
   appendHitsToHDF5(out_file_name, hits.cbegin(), hits.cend());
 }
+
+/**
+ * @brief Base function to save or append a neutron vector to HDF5 file as a group.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] neutron_begin
+ * @param[in] neutron_end
+ * @param[in] append
+ */
+template <typename ForwardIterator>
+void saveOrAppendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin,
+                               ForwardIterator neutron_end, bool append) {
+  const size_t num_neutrons = std::distance(neutron_begin, neutron_end);
+
+  if (num_neutrons == 0) {
+    spdlog::warn("No neutrons to process. Exiting function.");
+    return;
+  }
+
+  H5::H5File out_file;
+  if (!std::filesystem::exists(out_file_name) || !append) {
+    out_file = H5::H5File(out_file_name, H5F_ACC_TRUNC);
+  } else {
+    out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
+  }
+
+  std::string groupName = append ? generateGroupName(out_file, "neutrons") : "neutrons";
+  H5::Group group = out_file.createGroup(groupName);
+
+  H5::IntType int_type(H5::PredType::NATIVE_INT);
+  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
+
+  // Use the existing writeDatasetToGroup function with appropriate data types
+  writeDatasetToGroup<double>(
+      group, "x", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getX(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "y", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getY(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "tof", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getTOF(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "tot", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getTOT(); }, float_type);
+
+  writeDatasetToGroup<int>(
+      group, "nHits", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getNHits(); }, int_type);
+
+  group.close();
+  out_file.close();
+}
+
+/**
+ * @brief Save a neutron vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp
+ * as suffix.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] neutron_begin
+ * @param[in] neutron_end
+ */
+template <typename ForwardIterator>
+void saveNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end) {
+  std::string finalFileName = out_file_name;
+  if (std::filesystem::exists(out_file_name)) {
+    spdlog::warn("File '{}' already exists. Renaming the output file.", out_file_name);
+    finalFileName = generateFileNameWithMicroTimestamp(out_file_name);
+    spdlog::info("New output file: '{}'", finalFileName);
+  }
+  saveOrAppendNeutronToHDF5(finalFileName, neutron_begin, neutron_end, false);
+}
+
+/**
+ * @brief Save neutrons to HDF5 file (wrapper function)
+ *
+ * @param[in] out_file_name
+ * @param[in] neutrons
+ */
+void saveNeutronToHDF5(const std::string &out_file_name, const std::vector<Neutron> &neutrons) {
+  saveNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
+}
+
+/**
+ * @brief Append a neutron vector to a HDF5 file. If group "neutrons" already exists, append the neutrons as a new
+ * group.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] neutron_begin
+ * @param[in] neutron_end
+ */
+template <typename ForwardIterator>
+void appendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end) {
+  saveOrAppendNeutronToHDF5(out_file_name, neutron_begin, neutron_end, true);
+}
+
+/**
+ * @brief Append neutrons to HDF5 file (wrapper function)
+ *
+ * @param[in] out_file_name
+ * @param[in] neutrons
+ */
+void appendNeutronToHDF5(const std::string &out_file_name, const std::vector<Neutron> &neutrons) {
+  appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
+}

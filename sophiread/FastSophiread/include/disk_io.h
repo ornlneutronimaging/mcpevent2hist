@@ -51,4 +51,13 @@ template <typename ForwardIterator>
 void appendHitsToHDF5(const std::string& out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end);
 void appendHitsToHDF5(const std::string& out_file_name, const std::vector<Hit>& hits);
 
-void saveNeutronToHDF5(const std::string out_file_path, const std::vector<Neutron>& neutrons);
+template <typename ForwardIterator>
+void saveOrAppendNeutronToHDF5(const std::string& out_file_name, ForwardIterator neutron_begin,
+                               ForwardIterator neutron_end, bool append = false);
+template <typename ForwardIterator>
+void saveNeutronToHDF5(const std::string& out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end);
+void saveNeutronToHDF5(const std::string& out_file_name, const std::vector<Neutron>& neutrons);
+
+template <typename ForwardIterator>
+void appendNeutronToHDF5(const std::string& out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end);
+void appendNeutronToHDF5(const std::string& out_file_name, const std::vector<Neutron>& neutrons);
