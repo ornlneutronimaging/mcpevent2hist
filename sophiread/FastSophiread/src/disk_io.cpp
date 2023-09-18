@@ -88,7 +88,108 @@ std::string generateFileNameWithMicroTimestamp(const std::string& originalFileNa
 }
 
 /**
- * @brief Save hits to HDF5 file.
+ * @brief Helper function to write a dataset to the given group.
+ *
+ * @tparam T
+ * @tparam ForwardIterator
+ * @tparam Func
+ * @param[in, out] group
+ * @param[in] dataset_name
+ * @param[in] begin
+ * @param[in] end
+ * @param[in] transform_func
+ * @param[in] data_type
+ */
+template <typename T, typename ForwardIterator, typename Func>
+void writeDatasetToGroup(H5::Group &group, const std::string &dataset_name, ForwardIterator begin, ForwardIterator end,
+                         Func transform_func, const H5::DataType &data_type) {
+  std::vector<T> data;
+  data.reserve(std::distance(begin, end));
+  std::transform(begin, end, std::back_inserter(data), transform_func);
+  hsize_t dims[1] = {data.size()};
+  H5::DataSpace dataspace(1, dims);
+  H5::DataSet dataset = group.createDataSet(dataset_name, data_type, dataspace);
+  dataset.write(data.data(), data_type);
+  dataset.close();
+}
+
+/**
+ * @brief Generate a group name that has a suffix of "_n" where n is an integer.
+ *
+ * @param[in] file
+ * @param[in] baseName
+ * @return std::string
+ */
+std::string generateGroupName(H5::H5File &file, const std::string &baseName) {
+  std::string groupName = baseName;
+  int counter = 1;
+  while (H5Lexists(file.getId(), groupName.c_str(), H5P_DEFAULT)) {
+    groupName = baseName + "_" + std::to_string(counter);
+    counter++;
+  }
+  return groupName;
+}
+
+/**
+ * @brief Base function to save or append a hit vector to HDF5 file as a group.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] hits_begin
+ * @param[in] hits_end
+ * @param[in] appendMode
+ */
+template <typename ForwardIterator>
+void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
+                            bool appendMode) {
+  const size_t num_hits = std::distance(hits_begin, hits_end);
+
+  if (num_hits == 0) {
+    spdlog::warn("No hits to process. Exiting function.");
+    return;
+  }
+
+  H5::H5File out_file;
+  if (appendMode && std::filesystem::exists(out_file_name)) {
+    out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
+  } else {
+    out_file = H5::H5File(out_file_name, H5F_ACC_TRUNC);
+  }
+
+  std::string groupName = appendMode ? generateGroupName(out_file, "hits") : "hits";
+  H5::Group group = out_file.createGroup(groupName);
+
+  H5::IntType int_type(H5::PredType::NATIVE_INT);
+  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
+
+  writeDatasetToGroup<int>(
+      group, "x", hits_begin, hits_end, [](const auto &hit) { return hit.getX(); }, int_type);
+
+  writeDatasetToGroup<int>(
+      group, "y", hits_begin, hits_end, [](const auto &hit) { return hit.getY(); }, int_type);
+
+  writeDatasetToGroup<double>(
+      group, "tot_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOT_ns(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "toa_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOA_ns(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "ftoa_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getFTOA_ns(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "tof_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOF_ns(); }, float_type);
+
+  writeDatasetToGroup<double>(
+      group, "spidertime_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getSPIDERTIME_ns(); }, float_type);
+
+  group.close();
+  out_file.close();
+}
+
+/**
+ * @brief Save a hit vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp as
+ * suffix.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -97,96 +198,44 @@ std::string generateFileNameWithMicroTimestamp(const std::string& originalFileNa
  */
 template <typename ForwardIterator>
 void saveHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end) {
-  // Determine the number of hits
-  const size_t num_hits = std::distance(hits_begin, hits_end);
-
-  // Sanity check
-  if (num_hits == 0) {
-    spdlog::warn("No hits to save. Exiting function.");
-    return;  // Gracefully exit
-  }
-
-  // Decide file name
   std::string finalFileName = out_file_name;
   if (std::filesystem::exists(out_file_name)) {
     spdlog::warn("File '{}' already exists. Renaming the output file.", out_file_name);
     finalFileName = generateFileNameWithMicroTimestamp(out_file_name);
     spdlog::info("New output file: '{}'", finalFileName);
   }
-  // Use finalFileName instead of out_file_name throughout the rest of the function
-  H5::H5File out_file(finalFileName, H5F_ACC_TRUNC);
-
-  // Preparation
-  hsize_t dims[1] = {num_hits};
-
-  H5::DataSpace dataspace(1, dims);
-  H5::IntType int_type(H5::PredType::NATIVE_INT);
-  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
-
-  // Make hits as a group
-  H5::Group group = out_file.createGroup("hits");
-
-  // Write x
-  std::vector<int> x(num_hits);
-  std::transform(hits_begin, hits_end, x.begin(), [](const auto &hit) { return hit.getX(); });
-  H5::DataSet x_dataset = group.createDataSet("x", int_type, dataspace);
-  x_dataset.write(x.data(), int_type);
-  x_dataset.close();
-
-  // Write y
-  std::vector<int> y(num_hits);
-  std::transform(hits_begin, hits_end, y.begin(), [](const auto &hit) { return hit.getY(); });
-  H5::DataSet y_dataset = group.createDataSet("y", int_type, dataspace);
-  y_dataset.write(y.data(), int_type);
-  y_dataset.close();
-
-  // Write tot_ns
-  std::vector<double> tot_ns(num_hits);
-  std::transform(hits_begin, hits_end, tot_ns.begin(), [](const auto &hit) { return hit.getTOT_ns(); });
-  H5::DataSet tot_ns_dataset = group.createDataSet("tot_ns", float_type, dataspace);
-  tot_ns_dataset.write(tot_ns.data(), float_type);
-  tot_ns_dataset.close();
-
-  // Write toa_ns
-  std::vector<double> toa_ns(num_hits);
-  std::transform(hits_begin, hits_end, toa_ns.begin(), [](const auto &hit) { return hit.getTOA_ns(); });
-  H5::DataSet toa_ns_dataset = group.createDataSet("toa_ns", float_type, dataspace);
-  toa_ns_dataset.write(toa_ns.data(), float_type);
-  toa_ns_dataset.close();
-
-  // Write ftoa_ns
-  std::vector<double> ftoa_ns(num_hits);
-  std::transform(hits_begin, hits_end, ftoa_ns.begin(), [](const auto &hit) { return hit.getFTOA_ns(); });
-  H5::DataSet ftoa_ns_dataset = group.createDataSet("ftoa_ns", float_type, dataspace);
-  ftoa_ns_dataset.write(ftoa_ns.data(), float_type);
-  ftoa_ns_dataset.close();
-
-  // Write tof_ns
-  std::vector<double> tof_ns(num_hits);
-  std::transform(hits_begin, hits_end, tof_ns.begin(), [](const auto &hit) { return hit.getTOF_ns(); });
-  H5::DataSet tof_ns_dataset = group.createDataSet("tof_ns", float_type, dataspace);
-  tof_ns_dataset.write(tof_ns.data(), float_type);
-  tof_ns_dataset.close();
-
-  // Write spidertime_ns
-  std::vector<double> spidertime_ns(num_hits);
-  std::transform(hits_begin, hits_end, spidertime_ns.begin(), [](const auto &hit) { return hit.getSPIDERTIME_ns(); });
-  H5::DataSet spidertime_ns_dataset = group.createDataSet("spidertime_ns", float_type, dataspace);
-  spidertime_ns_dataset.write(spidertime_ns.data(), float_type);
-  spidertime_ns_dataset.close();
-
-  group.close();
-
-  // Close file
-  out_file.close();
+  saveOrAppendHitsToHDF5(finalFileName, hits_begin, hits_end, false);
 }
 
 /**
- * @brief Save hits to HDF5 file.
+ * @brief Save hits to HDF5 file (wrapper function)
  *
  * @param[in] out_file_name
  * @param[in] hits
  */
 void saveHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hits) {
   saveHitsToHDF5(out_file_name, hits.cbegin(), hits.cend());
+}
+
+/**
+ * @brief Append a hit vector to a HDF5 file. If the file already exists, append the hits to the existing file.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] hits_begin
+ * @param[in] hits_end
+ */
+template <typename ForwardIterator>
+void appendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end) {
+  saveOrAppendHitsToHDF5(out_file_name, hits_begin, hits_end, true);
+}
+
+/**
+ * @brief Append hits to HDF5 file (wrapper function)
+ *
+ * @param[in] out_file_name
+ * @param[in] hits
+ */
+void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hits) {
+  appendHitsToHDF5(out_file_name, hits.cbegin(), hits.cend());
 }

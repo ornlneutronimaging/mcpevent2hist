@@ -34,9 +34,21 @@ std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file);
 
 std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName);
 
+template <typename T, typename ForwardIterator>
+void writeDatasetToGroup(H5::Group& group, const std::string& dataset_name, ForwardIterator begin, ForwardIterator end,
+                         const H5::DataType& data_type);
+
+std::string generateGroupName(H5::H5File& file, const std::string& baseName);
+
+template <typename ForwardIterator>
+void saveOrAppendHitsToHDF5(const std::string& out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
+                            bool appendMode = false);
 template <typename ForwardIterator>
 void saveHitsToHDF5(const std::string& out_file_path, ForwardIterator hits_begin, ForwardIterator hits_end);
-
 void saveHitsToHDF5(const std::string& out_file_path, const std::vector<Hit>& hits);
+
+template <typename ForwardIterator>
+void appendHitsToHDF5(const std::string& out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end);
+void appendHitsToHDF5(const std::string& out_file_name, const std::vector<Hit>& hits);
 
 void saveNeutronToHDF5(const std::string out_file_path, const std::vector<Neutron>& neutrons);
