@@ -24,6 +24,7 @@
 #include <H5Cpp.h>
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <vector>
 
