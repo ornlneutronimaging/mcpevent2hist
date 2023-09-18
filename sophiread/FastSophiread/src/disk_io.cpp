@@ -55,3 +55,34 @@ std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
 
   return vec;
 }
+
+/**
+ * @brief Append microsecond timestamp to the file name.
+ *
+ * @param[in] originalFileName
+ * @return std::string
+ */
+std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName) {
+  auto now = std::chrono::high_resolution_clock::now();
+  auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
+  auto micros = std::chrono::duration_cast<std::chrono::microseconds>(now - seconds);
+
+  std::filesystem::path filePath(originalFileName);
+  std::string baseName = filePath.stem().string();
+  std::string extension = filePath.extension().string();
+  std::filesystem::path parentPath = filePath.parent_path();
+
+  // use h5 as extention if not specified
+  if (extension.empty()) {
+    extension = ".h5";
+  }
+
+  std::stringstream newFileName;
+  newFileName << baseName << "_" << std::setfill('0') << std::setw(6) << micros.count() << extension;
+
+  if (!parentPath.empty()) {
+    return (parentPath / newFileName.str()).string();
+  } else {
+    return newFileName.str();
+  }
+}

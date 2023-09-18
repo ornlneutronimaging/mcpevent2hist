@@ -21,8 +21,22 @@
  */
 #pragma once
 
+#include <H5Cpp.h>
+
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+#include "hit.h"
+#include "neutron.h"
+
 std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file);
+
+std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName);
+
+template <typename ForwardIterator>
+void saveHitsToHDF5(const std::string& out_file_path, ForwardIterator hits_begin, ForwardIterator hits_end);
+void saveHitsToHDF5(const std::string& out_file_path, const std::vector<Hit>& hits);
+void saveHitsToHDF5(const std::string& out_file_path, const Hit* hits, const size_t num_hits);
+
+void saveNeutronToHDF5(const std::string out_file_path, const std::vector<Neutron>& neutrons);
