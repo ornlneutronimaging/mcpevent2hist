@@ -131,65 +131,81 @@ std::string generateGroupName(H5::H5File &file, const std::string &baseName) {
 }
 
 /**
- * @brief Base function to save or append a hit vector to HDF5 file as a group.
+ * @brief Universal function to save or append data to a HDF5 file.
  *
+ * @tparam T
  * @tparam ForwardIterator
  * @param[in] out_file_name
- * @param[in] hits_begin
- * @param[in] hits_end
- * @param[in] appendMode
+ * @param[in] data_begin
+ * @param[in] data_end
+ * @param[in] baseGroupName
+ * @param[in] attributes
+ * @param[in] append
  */
-template <typename ForwardIterator>
-void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
-                            bool appendMode) {
-  const size_t num_hits = std::distance(hits_begin, hits_end);
+template <typename T, typename ForwardIterator>
+void saveOrAppendToHDF5(
+    const std::string &out_file_name, ForwardIterator data_begin, ForwardIterator data_end,
+    const std::string &baseGroupName,
+    const std::vector<std::pair<std::string, std::function<T(const decltype(*data_begin) &)>>> &attributes,
+    bool append) {
+  const size_t num_data = std::distance(data_begin, data_end);
 
-  if (num_hits == 0) {
-    spdlog::warn("No hits to process. Exiting function.");
+  if (num_data == 0) {
+    spdlog::warn("No data to process. Exiting function.");
     return;
   }
 
   H5::H5File out_file;
-  if (appendMode && std::filesystem::exists(out_file_name)) {
-    out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
-  } else {
+  if (!std::filesystem::exists(out_file_name) || !append) {
     out_file = H5::H5File(out_file_name, H5F_ACC_TRUNC);
+  } else {
+    out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
   }
 
-  std::string groupName = appendMode ? generateGroupName(out_file, "hits") : "hits";
+  std::string groupName = append ? generateGroupName(out_file, baseGroupName) : baseGroupName;
   H5::Group group = out_file.createGroup(groupName);
 
-  H5::IntType int_type(H5::PredType::NATIVE_INT);
-  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
-
-  writeDatasetToGroup<int>(
-      group, "x", hits_begin, hits_end, [](const auto &hit) { return hit.getX(); }, int_type);
-
-  writeDatasetToGroup<int>(
-      group, "y", hits_begin, hits_end, [](const auto &hit) { return hit.getY(); }, int_type);
-
-  writeDatasetToGroup<double>(
-      group, "tot_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOT_ns(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "toa_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOA_ns(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "ftoa_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getFTOA_ns(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "tof_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getTOF_ns(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "spidertime_ns", hits_begin, hits_end, [](const auto &hit) { return hit.getSPIDERTIME_ns(); }, float_type);
+  for (const auto &[dataset_name, func] : attributes) {
+    if constexpr (std::is_same_v<T, int>) {
+      writeDatasetToGroup<int>(group, dataset_name, data_begin, data_end, func, H5::IntType(H5::PredType::NATIVE_INT));
+    } else if constexpr (std::is_same_v<T, double>) {
+      writeDatasetToGroup<double>(group, dataset_name, data_begin, data_end, func,
+                                  H5::FloatType(H5::PredType::NATIVE_DOUBLE));
+    }
+  }
 
   group.close();
   out_file.close();
 }
 
 /**
- * @brief Save a hit vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp as
- * suffix.
+ * @brief Specialized function to save or append hits to a HDF5 file.
+ *
+ * @tparam ForwardIterator
+ * @param[in] out_file_name
+ * @param[in] hits_begin
+ * @param[in] hits_end
+ * @param[in] append
+ */
+template <typename ForwardIterator>
+void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
+                            bool append) {
+  saveOrAppendToHDF5<int>(out_file_name, hits_begin, hits_end, "hits",
+                          {
+                              {"x", [](const auto &hit) { return hit.getX(); }},
+                              {"y", [](const auto &hit) { return hit.getY(); }},
+                              {"tot_ns", [](const auto &hit) { return hit.getTOT_ns(); }},
+                              {"toa_ns", [](const auto &hit) { return hit.getTOA_ns(); }},
+                              {"ftoa_ns", [](const auto &hit) { return hit.getFTOA_ns(); }},
+                              {"tof_ns", [](const auto &hit) { return hit.getTOF_ns(); }},
+                              {"spidertime_ns", [](const auto &hit) { return hit.getSPIDERTIME_ns(); }},
+                          },
+                          append);
+}
+
+/**
+ * @brief Save a hit vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp
+ as suffix.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -241,7 +257,7 @@ void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &
 }
 
 /**
- * @brief Base function to save or append a neutron vector to HDF5 file as a group.
+ * @brief Specialized function to save or append neutrons to a HDF5 file.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -252,48 +268,20 @@ void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &
 template <typename ForwardIterator>
 void saveOrAppendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin,
                                ForwardIterator neutron_end, bool append) {
-  const size_t num_neutrons = std::distance(neutron_begin, neutron_end);
-
-  if (num_neutrons == 0) {
-    spdlog::warn("No neutrons to process. Exiting function.");
-    return;
-  }
-
-  H5::H5File out_file;
-  if (!std::filesystem::exists(out_file_name) || !append) {
-    out_file = H5::H5File(out_file_name, H5F_ACC_TRUNC);
-  } else {
-    out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
-  }
-
-  std::string groupName = append ? generateGroupName(out_file, "neutrons") : "neutrons";
-  H5::Group group = out_file.createGroup(groupName);
-
-  H5::IntType int_type(H5::PredType::NATIVE_INT);
-  H5::FloatType float_type(H5::PredType::NATIVE_DOUBLE);
-
-  // Use the existing writeDatasetToGroup function with appropriate data types
-  writeDatasetToGroup<double>(
-      group, "x", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getX(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "y", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getY(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "tof", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getTOF(); }, float_type);
-
-  writeDatasetToGroup<double>(
-      group, "tot", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getTOT(); }, float_type);
-
-  writeDatasetToGroup<int>(
-      group, "nHits", neutron_begin, neutron_end, [](const Neutron &neutron) { return neutron.getNHits(); }, int_type);
-
-  group.close();
-  out_file.close();
+  saveOrAppendToHDF5<double>(out_file_name, neutron_begin, neutron_end, "neutrons",
+                             {
+                                 {"x", [](const Neutron &neutron) { return neutron.getX(); }},
+                                 {"y", [](const Neutron &neutron) { return neutron.getY(); }},
+                                 {"tof", [](const Neutron &neutron) { return neutron.getTOF(); }},
+                                 {"tot", [](const Neutron &neutron) { return neutron.getTOT(); }},
+                                 {"nHits", [](const Neutron &neutron) { return neutron.getNHits(); }},
+                             },
+                             append);
 }
 
 /**
- * @brief Save a neutron vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp
+ * @brief Save a neutron vector to a HDF5 file. If the file already exists, rename the file with a microsecond
+ timestamp
  * as suffix.
  *
  * @tparam ForwardIterator
