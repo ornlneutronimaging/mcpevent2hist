@@ -47,7 +47,7 @@ add_compile_options(
 add_subdirectory(FastSophiread)
 
 # Add Sophiread command line interface
-# add_subdirectory(SophireadCLI)
+add_subdirectory(SophireadCLI)
 
 # Add Sophiread stream command line interface
 # add_subdirectory(SophireadStreamCLI)
