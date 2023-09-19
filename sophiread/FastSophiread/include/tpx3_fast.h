@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "hit.h"
+#include "neutron.h"
 
 /**
  * @brief Special struct to hold the information about chip dataset position in
@@ -36,6 +37,7 @@ struct TPX3 {
   const int num_packets;       // number of packets in the dataset batch (time packet and data packet)
   const int chip_layout_type;  // data source (sub-chip ID)
   std::vector<Hit> hits;       // hits extracted from the dataset batch
+  std::vector<Neutron> neutrons;  // neutrons from clustering hits
 
   unsigned long tdc_timestamp;       // starting tdc timestamp of the dataset batch
   unsigned long long gdc_timestamp;  // starting gdc timestamp of the dataset batch

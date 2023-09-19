@@ -1,11 +1,13 @@
-# Configure the commandline application
-set(SRC_FILES
-    src/sophiread.cpp
-)
-
 # Include the headers
 include_directories(
-    ${PROJECT_SOURCE_DIR}/SophireadLib/include
+    include
+    ${PROJECT_SOURCE_DIR}/FastSophiread/include
+)
+
+# Configure the commandline application
+set(SRC_FILES
+    src/user_config.cpp
+    src/sophiread.cpp
 )
 
 # ----------------- CLI APPLICATION ----------------- #
@@ -13,8 +15,31 @@ add_executable(Sophiread
     ${SRC_FILES}
 )
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
-target_link_libraries(Sophiread SophireadLib hdf5 hdf5_cpp OpenMP::OpenMP_CXX)
+target_link_libraries(
+    Sophiread
+    FastSophiread
+    tbb
+    spdlog::spdlog
+    ${HDF5_LIBRARIES}
+)
 
+# ----------------- TESTS ----------------- #
+# UserConfig tests
+add_executable(
+    UserConfigTest
+    tests/test_user_config.cpp
+    src/user_config.cpp
+)
+target_link_libraries(
+    UserConfigTest
+    FastSophiread
+    spdlog::spdlog
+    GTest::GTest
+    GTest::Main
+)
+gtest_discover_tests(UserConfigTest)
+
+# ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
 add_custom_command(TARGET Sophiread POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink 

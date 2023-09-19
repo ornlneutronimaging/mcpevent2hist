@@ -3,15 +3,144 @@
  * files and a tiff image (for visual inspection).
  *
  */
+#include <spdlog/spdlog.h>
+#include <tbb/tbb.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include "abs.h"
-#include "dbscan.h"
-#include "tpx3.h"
+#include "disk_io.h"
+#include "tpx3_fast.h"
+#include "user_config.h"
 
+/**
+ * @brief Timed read raw data to char vector.
+ *
+ * @param[in] in_tpx3
+ * @return std::vector<char>
+ */
+std::vector<char> timedReadDataToCharVec(const std::string &in_tpx3) {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto raw_data = readTPX3RawToCharVec(in_tpx3);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Read raw data: {} s", elapsed / 1e6);
+
+  return raw_data;
+}
+
+/**
+ * @brief Timed find TPX3H.
+ *
+ * @param[in] rawdata
+ * @return std::vector<TPX3>
+ */
+std::vector<TPX3> timedFindTPX3H(const std::vector<char> &rawdata) {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto batches = findTPX3H(rawdata);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Locate all headers: {} s", elapsed / 1e6);
+
+  return batches;
+}
+
+/**
+ * @brief Timed locate timestamp.
+ *
+ * @param[in, out] batches
+ * @param[in] rawdata
+ */
+void timedLocateTimeStamp(std::vector<TPX3> &batches, const std::vector<char> &rawdata) {
+  auto start = std::chrono::high_resolution_clock::now();
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
+  for (auto &tpx3 : batches) {
+    updateTimestamp(tpx3, rawdata, tdc_timestamp, gdc_timestamp, timer_lsb32);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Locate all timestamps: {} s", elapsed / 1e6);
+}
+
+/**
+ * @brief Timed hits extraction and clustering via multi-threading.
+ *
+ * @param[in, out] batches
+ * @param[in] rawdata
+ * @param[in] config
+ */
+void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_data, const UserConfig &config) {
+  auto start = std::chrono::high_resolution_clock::now();
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
+    // Define ABS algorithm with user-defined parameters for each thread
+    auto abs_alg_mt =
+        std::make_unique<ABS>(config.getABSRadius(), config.getABSMinClusterSize(), config.getABSSpidertimeRange());
+
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      auto &tpx3 = batches[i];
+      extractHits(tpx3, raw_data);
+
+      abs_alg_mt->reset();
+      abs_alg_mt->set_method("centroid");
+      abs_alg_mt->fit(tpx3.hits);
+
+      tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+    }
+  });
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Process all hits -> neutrons: {} s", elapsed / 1e6);
+}
+
+/**
+ * @brief Timed save hits to HDF5.
+ *
+ * @param[in] out_hits
+ * @param[in] hits
+ */
+void timedSaveHitsToHDF5(const std::string &out_hits, std::vector<TPX3> &batches) {
+  auto start = std::chrono::high_resolution_clock::now();
+  // move all hits into a single vector
+  std::vector<Hit> hits;
+  for (const auto &tpx3 : batches) {
+    auto tpx3_hits = tpx3.hits;
+    hits.insert(hits.end(), tpx3_hits.begin(), tpx3_hits.end());
+  }
+  // save hits to HDF5 file
+  saveHitsToHDF5(out_hits, hits);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Save hits to HDF5: {} s", elapsed / 1e6);
+}
+
+void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &batches) {
+  auto start = std::chrono::high_resolution_clock::now();
+  // move all events into a single vector
+  std::vector<Neutron> events;
+  for (const auto &tpx3 : batches) {
+    auto tpx3_events = tpx3.neutrons;
+    events.insert(events.end(), tpx3_events.begin(), tpx3_events.end());
+  }
+  // save events to HDF5 file
+  saveNeutronToHDF5(out_events, events);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Save events to HDF5: {} s", elapsed / 1e6);
+}
+
+/**
+ * @brief Main function.
+ *
+ * @param[in] argc
+ * @param[in] argv
+ * @return int
+ */
 int main(int argc, char *argv[]) {
   // processing command line arguments
   std::string in_tpx3;
@@ -19,14 +148,11 @@ int main(int argc, char *argv[]) {
   std::string out_events;
   std::string user_defined_params;
   bool verbose = false;
-  bool use_abs_algorithm = true;
   int opt;
 
   // help message string
-  std::string help_msg = "Usage: " + std::string(argv[0]) +
-                         " [-i input_tpx3] " + " [-H output_hits_HDF5] " +
-                         " [-E output_event_HDF5] " + 
-                         " [-u user_defined_params]" + " [-v]";
+  std::string help_msg = "Usage: " + std::string(argv[0]) + " [-i input_tpx3] " + " [-H output_hits_HDF5] " +
+                         " [-E output_event_HDF5] " + " [-u user_defined_params]" + " [-v]";
 
   // parse command line arguments
   while ((opt = getopt(argc, argv, "i:H:E:u:v")) != -1) {
@@ -47,62 +173,53 @@ int main(int argc, char *argv[]) {
         verbose = true;
         break;
       default:
-        std::cerr << help_msg << std::endl;
+        spdlog::error(help_msg);
         return 1;
     }
   }
 
-  auto p = parseUserDefinedParams(user_defined_params);
+  // If provided user-defined params, parse it
+  UserConfig config;
+  if (!user_defined_params.empty()) {
+    config = parseUserDefinedConfigurationFile(user_defined_params);
+  }
 
   // recap
   if (verbose) {
-    std::cout << "Input file: " << in_tpx3 << std::endl;
-    std::cout << "Output hits file: " << out_hits << std::endl;
-    std::cout << "Output events file: " << out_events << std::endl;
+    spdlog::info("Input file: {}", in_tpx3);
+    spdlog::info("Output hits file: {}", out_hits);
+    spdlog::info("Output events file: {}", out_events);
   }
 
   // read raw data
   if (in_tpx3.empty()) {
-    std::cerr << "Error: no input file specified." << std::endl;
-    std::cerr << help_msg << std::endl;
+    spdlog::error("Error: no input file specified.");
+    spdlog::error(help_msg);
     return 1;
   }
-  auto hits = readTimepix3RawData(in_tpx3);
 
-  // clustering and fitting
-  ClusteringAlgorithm *alg;
-  if (use_abs_algorithm) {
-    alg = new ABS(p.getABSRadius(),p.getABSMinClusterSize(),p.getABSSpidertimeRange());
-    alg->set_method("centroid");
-    // alg->set_method("fast_gaussian");
-  } else {
-    // parameters for DBSCAN were chosen based on the results from the
-    // frames_pinhole_3mm_1s_RESOLUTION_000001.tpx3 file
-    alg = new DBSCAN(3.0 /*eps time*/, 10 /*min_points time*/, 2.0 /*eps xy*/,
-                     5 /*min_points xy*/);
-    alg->set_method("centroid");
-  }
+  // process file to hits
+  auto start = std::chrono::high_resolution_clock::now();
+  auto raw_data = timedReadDataToCharVec(in_tpx3);
+  auto batches = timedFindTPX3H(raw_data);
+  timedLocateTimeStamp(batches, raw_data);
+  timedProcessing(batches, raw_data, config);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Total processing time: {} s", elapsed / 1e6);
 
-  alg->fit(hits);
-  auto labels = alg->get_cluster_labels();
-  // print out labeled hits
-  if (verbose) {
-    std::cout << "Found " << labels.size() << " hits." << std::endl;
-  }
-  // Save labeled hits to HDF5 file
+  // release memory of raw data
+  std::vector<char>().swap(raw_data);
+
+  // save hits to HDF5 file
   if (!out_hits.empty()) {
-    saveHitsToHDF5(out_hits, hits, labels);
+    timedSaveHitsToHDF5(out_hits, batches);
   }
 
-  // generate events
-  auto events = alg->get_events(hits);
-  // print out events
-  if (verbose) {
-    std::cout << "Found " << events.size() << " events." << std::endl;
-  }
   // save events to HDF5 file
   if (!out_events.empty()) {
-    saveEventsToHDF5(out_events, events);
+    timedSaveEventsToHDF5(out_events, batches);
   }
+
   return 0;
 }
