@@ -20,6 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <spdlog/spdlog.h>
+#include <tbb/tbb.h>
 
 #include <chrono>
 #include <fstream>
@@ -27,7 +28,6 @@
 
 #include "abs.h"
 #include "disk_io.h"
-#include "tbb/tbb.h"
 #include "tpx3_fast.h"
 
 /**
