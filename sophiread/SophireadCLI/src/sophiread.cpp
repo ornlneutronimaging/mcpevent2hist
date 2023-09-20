@@ -69,13 +69,41 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches, const std::vector<char> &r
 }
 
 /**
- * @brief Timed hits extraction and clustering via multi-threading.
+ * @brief Timed hits extraction and clustering via single thread.
  *
  * @param[in, out] batches
  * @param[in] rawdata
  * @param[in] config
  */
 void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_data, const UserConfig &config) {
+  auto start = std::chrono::high_resolution_clock::now();
+  // Define ABS algorithm with user-defined parameters for each thread
+  auto abs_alg_mt =
+      std::make_unique<ABS>(config.getABSRadius(), config.getABSMinClusterSize(), config.getABSSpidertimeRange());
+
+  for (auto& tpx3 : batches){
+    extractHits(tpx3, raw_data);
+
+    abs_alg_mt->reset();
+    abs_alg_mt->set_method("centroid");
+    abs_alg_mt->fit(tpx3.hits);
+
+    tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  spdlog::info("Process all hits -> neutrons: {} s", elapsed / 1e6);
+}
+
+
+/**
+ * @brief Timed hits extraction and clustering via multi-threading.
+ *
+ * @param[in, out] batches
+ * @param[in] rawdata
+ * @param[in] config
+ */
+void timedMultiProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_data, const UserConfig &config) {
   auto start = std::chrono::high_resolution_clock::now();
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
     // Define ABS algorithm with user-defined parameters for each thread
@@ -131,7 +159,22 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
   saveNeutronToHDF5(out_events, events);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
   spdlog::info("Save events to HDF5: {} s", elapsed / 1e6);
+}
+
+void printHitsAndEvents(std::vector<TPX3> &batches){
+  std::vector<Hit> hits;
+  std::vector<Neutron> events;
+  for (const auto &tpx3 : batches){
+    auto tpx3_hits = tpx3.hits;
+    hits.insert(hits.end(), tpx3_hits.begin(), tpx3_hits.end());
+
+    auto tpx3_events = tpx3.neutrons;
+    events.insert(events.end(), tpx3_events.begin(), tpx3_events.end());
+  }
+  spdlog::info("Number of hits: {}", hits.size());
+  spdlog::info("Number of events: {}", events.size());
 }
 
 /**
@@ -184,13 +227,6 @@ int main(int argc, char *argv[]) {
     config = parseUserDefinedConfigurationFile(user_defined_params);
   }
 
-  // recap
-  if (verbose) {
-    spdlog::info("Input file: {}", in_tpx3);
-    spdlog::info("Output hits file: {}", out_hits);
-    spdlog::info("Output events file: {}", out_events);
-  }
-
   // read raw data
   if (in_tpx3.empty()) {
     spdlog::error("Error: no input file specified.");
@@ -219,6 +255,15 @@ int main(int argc, char *argv[]) {
   // save events to HDF5 file
   if (!out_events.empty()) {
     timedSaveEventsToHDF5(out_events, batches);
+  }
+
+  // recap
+  if (verbose) {
+    spdlog::info("User-defined configuration: {}", config.toString());
+    spdlog::info("Input file: {}", in_tpx3);
+    spdlog::info("Output hits file: {}", out_hits);
+    spdlog::info("Output events file: {}", out_events);
+    printHitsAndEvents(batches);
   }
 
   return 0;
