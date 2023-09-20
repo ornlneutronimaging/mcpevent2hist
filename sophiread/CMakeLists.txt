@@ -7,16 +7,17 @@ execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 # set(CMAKE_BUILD_TYPE DEBUG)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
-# find_package(OpenMP REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(HDF5 REQUIRED)
+find_package(HDF5 REQUIRED COMPONENTS CXX)
 find_package(GTest REQUIRED)
 # find_package(Qt5 COMPONENTS Widgets REQUIRED)
+
+include_directories(${HDF5_INCLUDE_DIRS})
 
 link_directories(
     $ENV{CONDA_PREFIX}/lib
@@ -36,7 +37,6 @@ add_compile_options(
   -pthread
   -Wall
   -Wextra
-  # ${OpenMP_CXX_FLAGS}
 )
 
 # Add Sophiread library
@@ -47,7 +47,7 @@ add_compile_options(
 add_subdirectory(FastSophiread)
 
 # Add Sophiread command line interface
-# add_subdirectory(SophireadCLI)
+add_subdirectory(SophireadCLI)
 
 # Add Sophiread stream command line interface
 # add_subdirectory(SophireadStreamCLI)
