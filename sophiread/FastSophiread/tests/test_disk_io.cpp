@@ -37,6 +37,10 @@
  */
 #include <gtest/gtest.h>
 
+#include <filesystem>
+#include <random>
+#include <regex>
+
 #include "disk_io.h"
 #include "spdlog/spdlog.h"
 
@@ -47,4 +51,178 @@ TEST(DiskIOTest, ReadTPX3RawToCharVec) {
   // check the size of the raw data
   const unsigned long ref_size = 9739597 * 8;
   EXPECT_EQ(rawdata.size(), ref_size);
+}
+
+class FileNameGeneratorTest : public ::testing::Test {
+ protected:
+  std::regex expectedPattern;
+  std::string generatedBaseName;
+  std::string extension;
+
+  void SetUp() override {
+    // Allow a short sleep to avoid immediate timestamps
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  void VerifyFileName(const std::string &resultFileName) {
+    std::filesystem::path resultPath(resultFileName);
+    generatedBaseName = resultPath.stem().string();
+    extension = resultPath.extension().string();
+
+    expectedPattern = std::regex(R"(.*_\d{6}\..*)");
+    ASSERT_TRUE(std::regex_match(generatedBaseName + extension, expectedPattern));
+
+    // Check that the timestamp is recent (within the last second).
+    auto position = generatedBaseName.find_last_of('_');
+    auto timestampStr = generatedBaseName.substr(position + 1);
+    auto timestamp = std::stoi(timestampStr);
+    ASSERT_GE(timestamp, 0);
+    ASSERT_LT(timestamp, 1000000);
+  }
+};
+
+TEST_F(FileNameGeneratorTest, FileNameWithPathAndExtension) {
+  // Arrange
+  std::string originalFileName = "/path/to/myfile.txt";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
+}
+
+TEST_F(FileNameGeneratorTest, FileNameWithoutPath) {
+  // Arrange
+  std::string originalFileName = "myfile.txt";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
+}
+
+TEST_F(FileNameGeneratorTest, FileNameWithoutExtension) {
+  // Arrange
+  std::string originalFileName = "/path/to/myfile";
+
+  // Act
+  auto resultFileName = generateFileNameWithMicroTimestamp(originalFileName);
+
+  // Assert
+  VerifyFileName(resultFileName);
+}
+
+class SaveHitsTest : public ::testing::Test {
+ protected:
+  std::string testFileName = "testfile.hdf5";
+
+  // Helper function to generate random hits for testing
+  std::vector<Hit> generateRandomHits(size_t numHits) {
+    std::vector<Hit> hits;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1, 100);
+
+    for (size_t i = 0; i < numHits; ++i) {
+      Hit hit(distribution(generator), distribution(generator), distribution(generator), distribution(generator),
+              distribution(generator), distribution(generator), distribution(generator));
+      hits.push_back(hit);
+    }
+    return hits;
+  }
+
+  // Cleanup after each test
+  virtual void TearDown() {
+    if (std::filesystem::exists(testFileName)) {
+      std::filesystem::remove(testFileName);
+    }
+  }
+};
+
+TEST_F(SaveHitsTest, TestSaveAndAppendToHDF5) {
+  // Generate and save initial hits using saveHitsToHDF5
+  std::vector<Hit> initialHits = generateRandomHits(10);
+  saveHitsToHDF5(testFileName, initialHits);
+
+  // Ensure file exists and has 10 hits in "hits" group
+  H5::H5File file(testFileName, H5F_ACC_RDONLY);
+  H5::Group group = file.openGroup("hits");
+  H5::DataSet x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 10);
+  x_dataset.close();
+  group.close();
+  file.close();
+
+  // Generate and append more hits using saveOrAppendHitsToHDF5
+  std::vector<Hit> appendedHits = generateRandomHits(5);
+  appendHitsToHDF5(testFileName, appendedHits);
+
+  // Ensure file still exists and now has a new group "hits_1" with 5 hits
+  file.openFile(testFileName, H5F_ACC_RDONLY);
+  group = file.openGroup("hits_1");
+  x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 5);
+  x_dataset.close();
+  group.close();
+  file.close();
+}
+
+class SaveNeutronTest : public ::testing::Test {
+ protected:
+  std::string testFileName = "testfile.hdf5";
+
+  // Helper function to generate random neutrons for testing
+  std::vector<Neutron> generateRandomNeutrons(size_t numNeutrons) {
+    std::vector<Neutron> neutrons;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1, 100);
+
+    for (size_t i = 0; i < numNeutrons; ++i) {
+      Neutron neutron(distribution(generator), distribution(generator), distribution(generator),
+                      distribution(generator), distribution(generator));
+      neutrons.push_back(neutron);
+    }
+    return neutrons;
+  }
+
+  // Cleanup after each test
+  virtual void TearDown() {
+    if (std::filesystem::exists(testFileName)) {
+      std::filesystem::remove(testFileName);
+    }
+  }
+};
+
+TEST_F(SaveNeutronTest, TestSaveAndAppendToHDF5) {
+  // Generate and save initial neutrons using saveNeutronToHDF5
+  std::vector<Neutron> initialNeutrons = generateRandomNeutrons(10);
+  saveNeutronToHDF5(testFileName, initialNeutrons);
+
+  // Ensure file exists and has 10 neutrons in "neutrons" group
+  H5::H5File file(testFileName, H5F_ACC_RDONLY);
+  H5::Group group = file.openGroup("neutrons");
+  H5::DataSet x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 10);
+  x_dataset.close();
+  group.close();
+  file.close();
+
+  // Generate and append more neutrons using saveOrAppendNeutronToHDF5
+  std::vector<Neutron> appendedNeutrons = generateRandomNeutrons(5);
+  appendNeutronToHDF5(testFileName, appendedNeutrons);
+
+  // Ensure file still exists and now has a new group "neutrons_1" with 5 neutrons
+  file.openFile(testFileName, H5F_ACC_RDONLY);
+  group = file.openGroup("neutrons_1");
+  x_dataset = group.openDataSet("x");
+  ASSERT_EQ(x_dataset.getSpace().getSimpleExtentNpoints(), 5);
+  x_dataset.close();
+  group.close();
+  file.close();
+}
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
