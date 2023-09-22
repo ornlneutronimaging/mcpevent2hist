@@ -192,17 +192,17 @@ void saveOrAppendToHDF5(
 template <typename ForwardIterator>
 void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
                             bool append) {
-  saveOrAppendToHDF5<int>(out_file_name, hits_begin, hits_end, "hits",
-                          {
-                              {"x", [](const auto &hit) { return hit.getX(); }},
-                              {"y", [](const auto &hit) { return hit.getY(); }},
-                              {"tot_ns", [](const auto &hit) { return hit.getTOT_ns(); }},
-                              {"toa_ns", [](const auto &hit) { return hit.getTOA_ns(); }},
-                              {"ftoa_ns", [](const auto &hit) { return hit.getFTOA_ns(); }},
-                              {"tof_ns", [](const auto &hit) { return hit.getTOF_ns(); }},
-                              {"spidertime_ns", [](const auto &hit) { return hit.getSPIDERTIME_ns(); }},
-                          },
-                          append);
+  saveOrAppendToHDF5<double>(out_file_name, hits_begin, hits_end, "hits",
+                             {
+                                 {"x", [](const auto &hit) { return static_cast<double>(hit.getX()); }},
+                                 {"y", [](const auto &hit) { return static_cast<double>(hit.getY()); }},
+                                 {"tot_ns", [](const auto &hit) { return hit.getTOT_ns(); }},
+                                 {"toa_ns", [](const auto &hit) { return hit.getTOA_ns(); }},
+                                 {"ftoa_ns", [](const auto &hit) { return hit.getFTOA_ns(); }},
+                                 {"tof_ns", [](const auto &hit) { return hit.getTOF_ns(); }},
+                                 {"spidertime_ns", [](const auto &hit) { return hit.getSPIDERTIME_ns(); }},
+                             },
+                             append);
 }
 
 /**
