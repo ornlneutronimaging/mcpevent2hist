@@ -134,6 +134,46 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
   if (check_tof) {
     check_bad_tof(batches);
   }
+
+  // find the highest spidertime_ns from all hits
+  double max_spidertime_ns = 0;
+  for (const auto& tpx3 : batches) {
+    for (const auto& hit : tpx3.hits) {
+      const auto spi_time_ns = hit.getSPIDERTIME_ns();
+      if (spi_time_ns > max_spidertime_ns) {
+        max_spidertime_ns = spi_time_ns;
+      }
+    }
+  }
+  spdlog::info("Max spidertime_ns: {} / s", max_spidertime_ns / 1e9);
+
+  // save all hits to a tmp file, load the spiderTime from the file, and find
+  // the max spidertime
+  std::string tmp_file = "verify_spidertime.h5";
+  // consolidate all hits into a single vector
+  std::vector<Hit> hits;
+  for (const auto& tpx3 : batches) {
+    auto tpx3_hits = tpx3.hits;
+    hits.insert(hits.end(), tpx3_hits.begin(), tpx3_hits.end());
+  }
+  // save hits to HDF5 file
+  saveHitsToHDF5(tmp_file, hits);
+  // load spiderTime_ns from HDF5 file
+  H5::H5File file(tmp_file, H5F_ACC_RDONLY);
+  H5::Group group = file.openGroup("hits");
+  H5::DataSet spidertime_dataset = group.openDataSet("spidertime_ns");
+  // read data
+  std::vector<double> spidertime_ns;
+  spidertime_ns.resize(spidertime_dataset.getSpace().getSimpleExtentNpoints());
+  spidertime_dataset.read(spidertime_ns.data(), H5::PredType::NATIVE_DOUBLE);
+  // find the max spidertime
+  double max_spidertime_ns_from_file = 0;
+  for (const auto& spi_time_ns : spidertime_ns) {
+    if (spi_time_ns > max_spidertime_ns_from_file) {
+      max_spidertime_ns_from_file = spi_time_ns;
+    }
+  }
+  spdlog::info("Max spidertime_ns from file: {} / s", max_spidertime_ns_from_file / 1e9);
 }
 
 void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
@@ -203,5 +243,5 @@ int main(int argc, char* argv[]) {
   run_single_thread(raw_data, true);
 
   // multi-thread processing
-  run_multi_thread(raw_data, true);
+  // run_multi_thread(raw_data, true);
 }
