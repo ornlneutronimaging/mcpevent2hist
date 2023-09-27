@@ -63,27 +63,17 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   m_spidertime = m_spidertime | spidertime;
 
   // additional check to make sure rollover of spidertime is correct 
+  // 4e7 is roughly 1 second in the units of 25 ns
+  // 1073741824 is 2^30 (in units of 25 ns)
   if ((m_spidertime-GDC_timestamp)>=4e7){
     m_spidertime -= 1073741824;
   }
 
   // tof calculation
   m_tof = m_spidertime - TDC_timestamp;
-
   while (m_tof*25E-6 > 16.67){
     m_tof -= 666667;
   }
-  // // TDC packets not always arrive before corresponding data packets
-  // if (m_spidertime < TDC_timestamp) {
-  //   m_tof = m_spidertime - TDC_timestamp + 666667;
-  // } else {
-  //   m_tof = m_spidertime - TDC_timestamp;
-  // }
-
-  // // some error in SPIDR_timestamp (revisit this fix)
-  // if (m_tof*25E-6 > 16.67){
-  //   m_tof = m_tof - 1073741824;
-  // }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
