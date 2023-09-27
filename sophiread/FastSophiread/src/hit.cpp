@@ -68,12 +68,17 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   }
 
   // tof calculation
-  // TDC packets not always arrive before corresponding data packets
-  if (m_spidertime < TDC_timestamp) {
-    m_tof = m_spidertime - TDC_timestamp + 666667;
-  } else {
-    m_tof = m_spidertime - TDC_timestamp;
+  m_tof = m_spidertime - TDC_timestamp;
+
+  while (m_tof*25E-6 > 16.67){
+    m_tof -= 666667;
   }
+  // // TDC packets not always arrive before corresponding data packets
+  // if (m_spidertime < TDC_timestamp) {
+  //   m_tof = m_spidertime - TDC_timestamp + 666667;
+  // } else {
+  //   m_tof = m_spidertime - TDC_timestamp;
+  // }
 
   // // some error in SPIDR_timestamp (revisit this fix)
   // if (m_tof*25E-6 > 16.67){
