@@ -73,7 +73,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   // attempt to update incorrect SPIDR_timestamp (revisit this fix)
   if (m_tof*25E-6 > 16.67){
     m_tof = m_tof - 1073741824;
-    m_spidertime -= 1073741824;
   }
 
   // pixel address
