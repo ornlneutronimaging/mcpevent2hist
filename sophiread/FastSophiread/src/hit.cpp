@@ -21,6 +21,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "hit.h"
+#include <iostream>
 
 /**
  * @brief Special constructor that construct a Hit from raw bytes.
@@ -62,8 +63,13 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   m_spidertime = m_spidertime | spidertime;
 
   // additional check to make sure rollover of spidertime is correct 
-  if (abs(m_spidertime-GDC_timestamp)=>1.0){
+  if ((m_spidertime-GDC_timestamp)>=4e7){
+    // std::cout << "potentially incorrect rollover\n"; 
+    // std::cout << "spidertime: " << m_spidertime*25e-9 
+    //           << "\t gdc: " << GDC_timestamp*25e-9 
+    //           << std::endl;
     m_spidertime -= 1073741824;
+    // std::cout << "updated spidertime: " << m_spidertime*25e-9 << std::endl;
   }
 
   // tof calculation
