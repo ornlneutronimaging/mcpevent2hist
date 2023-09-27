@@ -61,6 +61,11 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   m_spidertime = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
   m_spidertime = m_spidertime | spidertime;
 
+  // additional check to make sure rollover of spidertime is correct 
+  if (abs(m_spidertime-GDC_timestamp)=>1.0){
+    m_spidertime -= 1073741824;
+  }
+
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
   if (m_spidertime < TDC_timestamp) {
