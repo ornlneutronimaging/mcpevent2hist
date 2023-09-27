@@ -263,6 +263,7 @@ void process_tpx3_packets(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter byte
       update_tdc_timestamp(char_array, gdc_timestamp, tdc_timestamp);
     } else if ((char_array[7] & 0xF0) == 0x40) {
       // GDC data packet
+//	std::cout << "gdc :" << gdc_timestamp*25e-9 << std::endl;
       update_gdc_timestamp_and_timer_lsb32(char_array, timer_lsb32, gdc_timestamp);
     } else if ((char_array[7] & 0xF0) == 0xb0) {
       if (extract_hits) {

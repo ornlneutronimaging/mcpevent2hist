@@ -55,7 +55,7 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
 
   SPDR_LSB30 = GDC_timestamp & 0x3FFFFFFF;
   SPDR_MSB18 = (GDC_timestamp >> 30) & 0x3FFFF;
-  if (spidertime < SPDR_LSB30) {
+  if (spidertime <= SPDR_LSB30) {
     SPDR_MSB18++;
   }
   m_spidertime = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
@@ -73,7 +73,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   // attempt to update incorrect SPIDR_timestamp (revisit this fix)
   if (m_tof*25E-6 > 16.67){
     m_tof = m_tof - 1073741824;
-    m_spidertime -= 1073741824;
   }
 
   // pixel address
