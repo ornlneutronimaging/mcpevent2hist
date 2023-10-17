@@ -31,7 +31,7 @@ std::string NeutronEvent::toString() const {
 
 std::string Params::toString() const {
   std::stringstream ss;
-  ss << "ABS: radius=" << m_abs_radius 
+  ss << "ABS: radius=" << m_abs_radius
      << ", min_cluster_size=" << m_abs_min_cluster_size
      << ", spider_time_range=" << m_abs_spider_time_range;
 
@@ -172,7 +172,7 @@ Hit packetToHitAlt(const std::vector<char> &packet,
   // a consistent round off error of 10ns due to using integer for modulus
   // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
-  
+
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;

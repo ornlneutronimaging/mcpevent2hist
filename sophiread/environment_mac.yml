@@ -22,3 +22,6 @@ dependencies:
   # documentation
   - doxygen
   - graphviz
+
+    # util
+  - pre-commit

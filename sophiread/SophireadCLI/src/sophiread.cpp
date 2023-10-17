@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
       case 'E':  // output event file
         out_events = optarg;
         break;
-      case 'u':  // user-defined params 
+      case 'u':  // user-defined params
         user_defined_params = optarg;
         break;
       case 'v':

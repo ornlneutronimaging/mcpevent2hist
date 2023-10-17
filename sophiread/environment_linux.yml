@@ -30,3 +30,6 @@ dependencies:
   - graphviz
   # Mac users should use its native version, MacTex
   - texlive-core
+
+  # util
+  - pre-commit

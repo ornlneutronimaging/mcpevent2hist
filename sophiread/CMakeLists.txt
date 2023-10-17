@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE SOPHIREAD_VERSION)
+execute_process(
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE SOPHIREAD_VERSION)
 
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
@@ -19,9 +20,7 @@ find_package(GTest REQUIRED)
 
 include_directories(${HDF5_INCLUDE_DIRS})
 
-link_directories(
-    $ENV{CONDA_PREFIX}/lib
-)
+link_directories($ENV{CONDA_PREFIX}/lib)
 
 # Testing setup
 enable_testing()
@@ -36,11 +35,9 @@ add_compile_options(
   -ffast-math
   -pthread
   -Wall
-  -Wextra
-)
+  -Wextra)
 
-# Add Sophiread library
-# NOTE: this will take care of the testing as well
+# Add Sophiread library NOTE: this will take care of the testing as well
 # add_subdirectory(SophireadLib)
 
 # Add FastSophiread library
@@ -52,23 +49,22 @@ add_subdirectory(SophireadCLI)
 # Add Sophiread stream command line interface
 # add_subdirectory(SophireadStreamCLI)
 
-# Add Sophiread GUI application
-# add_subdirectory(SophireadGUI)
+# Add Sophiread GUI application add_subdirectory(SophireadGUI)
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
+       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
-  add_custom_target(docs
-  COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-  COMMENT "Generating API documentation with Doxygen"
-  VERBATIM
-  )
-  add_custom_command(TARGET docs POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E chdir
-        ${CMAKE_BINARY_DIR}/docs/html
-        open
-        index.html
-  )
+  add_custom_target(
+    docs
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+    COMMENT "Generating API documentation with Doxygen"
+    VERBATIM)
+  add_custom_command(
+    TARGET docs
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR}/docs/html open
+            index.html)
 endif(DOXYGEN_FOUND)

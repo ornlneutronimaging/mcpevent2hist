@@ -117,28 +117,28 @@ class NeutronEvent {
 };
 
 /**
- *  @brief Class to store user-defined parameters for clustering algorithms 
+ *  @brief Class to store user-defined parameters for clustering algorithms
  * */
 class Params {
 public:
-  Params(const double abs_radius, 
+  Params(const double abs_radius,
     unsigned long int abs_min_cluster_size,
     unsigned long int abs_spider_time_range) :
-    m_abs_radius(abs_radius), 
+    m_abs_radius(abs_radius),
     m_abs_min_cluster_size(abs_min_cluster_size),
     m_abs_spider_time_range(abs_spider_time_range){};
 
   double getABSRadius() const {return m_abs_radius;};
-  unsigned long int getABSMinClusterSize() 
+  unsigned long int getABSMinClusterSize()
         const {return m_abs_min_cluster_size;};
-  unsigned long int getABSSpidertimeRange() 
+  unsigned long int getABSSpidertimeRange()
         const {return m_abs_spider_time_range;};
 
   std::string toString() const;
 
 private:
   // ABS members (see abs.h for details)
-  double m_abs_radius;                            
+  double m_abs_radius;
   unsigned long int m_abs_min_cluster_size;
   unsigned long int m_abs_spider_time_range;
 };
@@ -160,7 +160,7 @@ void saveHitsToHDF5(const std::string out_file_name,
 void saveEventsToHDF5(const std::string out_file_name,
                       const std::vector<NeutronEvent>& events);
 
-// parse user-defined param file 
+// parse user-defined param file
 Params parseUserDefinedParams(const std::string& filepath);
 
 // for fast processing raw bytes into hit

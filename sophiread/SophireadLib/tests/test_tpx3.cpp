@@ -55,14 +55,14 @@ TEST(FileHandlingTest, VerifyTiming) {
 }
 
 TEST(FileHandlingTest, VerifyRollover){
-  // reading the testing raw data 
+  // reading the testing raw data
   auto hits =
       readTimepix3RawData("../data/rollover_test_data.tpx3");
 
   // check the number of hits
   EXPECT_EQ(hits.size(),26);
 
-  // check disordered pixels: increment counter 
+  // check disordered pixels: increment counter
   EXPECT_EQ(hits[0].getSPIDERTIME(),1006649343);               // 25.1662, 1006649343
   EXPECT_EQ(hits[1].getSPIDERTIME(),1069563903);               // 26.7391, 1069563903
   EXPECT_EQ(hits[2].getSPIDERTIME(),1073741823);               // 26.8435, 1073741823
@@ -74,12 +74,12 @@ TEST(FileHandlingTest, VerifyRollover){
   // check disordered pixels: do nothing to counter
   EXPECT_EQ(hits[7].getSPIDERTIME(),262143 + 1073741824);      // 0.00655357, 262143
   EXPECT_EQ(hits[8].getSPIDERTIME(),268435455 + 1073741824);   // 6.71089, 268435455
-  EXPECT_EQ(hits[9].getSPIDERTIME(),4194303 + 1073741824);     // 0.104858, 4194303   
+  EXPECT_EQ(hits[9].getSPIDERTIME(),4194303 + 1073741824);     // 0.104858, 4194303
   EXPECT_EQ(hits[10].getSPIDERTIME(),67108863 + 1073741824);   // 1.67772, 67108863
   EXPECT_EQ(hits[11].getSPIDERTIME(),134217727 + 1073741824);  // 3.35544, 134217727
   EXPECT_EQ(hits[12].getSPIDERTIME(),201326591 + 1073741824);  // 5.03316, 201326591
 
-  // check order pixels: decrement counter 
+  // check order pixels: decrement counter
   EXPECT_EQ(hits[13].getSPIDERTIME(),262143 + 1073741824);         // 0.00655357, 262143
   EXPECT_EQ(hits[14].getSPIDERTIME(),4194303 + 1073741824);        // 0.104858, 4194303
   EXPECT_EQ(hits[15].getSPIDERTIME(),67108863 + 1073741824);       // 1.67772, 67108863
@@ -88,7 +88,7 @@ TEST(FileHandlingTest, VerifyRollover){
   EXPECT_EQ(hits[18].getSPIDERTIME(),1069563903);     // 26.7391, 1069563903
   EXPECT_EQ(hits[19].getSPIDERTIME(),1073741823);     // 26.8435, 1073741823
 
-  // check ordered pixels: do nothing to counter 
+  // check ordered pixels: do nothing to counter
   EXPECT_EQ(hits[20].getSPIDERTIME(),262143 + 1073741824);     // 0.00655357, 262143
   EXPECT_EQ(hits[21].getSPIDERTIME(),4194303 + 1073741824);    // 0.104858, 4194303
   EXPECT_EQ(hits[22].getSPIDERTIME(),67108863 + 1073741824);   // 1.67772, 67108863
@@ -101,11 +101,11 @@ TEST(FileHandlingTest, VerifyRollover){
 // Test the parseUserDefinedParams function
 TEST(FileHandlingTest, ParseUserDefinedParams) {
 
-  // read user-defined param files 
+  // read user-defined param files
   auto p1 = parseUserDefinedParams("../data/user_defined_params.txt");
   auto p2 = parseUserDefinedParams("../data/user_defined_params_1.txt");
 
-  // check user-defined params 
+  // check user-defined params
   EXPECT_EQ(p1.getABSRadius(), 5.0);
   EXPECT_EQ(p1.getABSMinClusterSize(),1);
   EXPECT_EQ(p1.getABSSpidertimeRange(), 75);
