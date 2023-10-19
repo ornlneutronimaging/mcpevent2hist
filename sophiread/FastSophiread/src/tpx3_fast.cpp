@@ -208,7 +208,7 @@ void update_gdc_timestamp_and_timer_lsb32(const char *char_array, unsigned long 
 
   // process given GDC packet
   gdclast = (unsigned long *)(&char_array[0]);
-  mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+  mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFFF);
 
   switch (((mygdc >> 40) & 0xF)) {
     case 0x4:

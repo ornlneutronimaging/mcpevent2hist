@@ -370,7 +370,7 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
         } else if ((data_packet[7] & 0xF0) == 0x40) {
           // GDC data packet
           gdclast = (unsigned long *)(&data_packet[0]);
-          mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFF);
+          mygdc = (((*gdclast) >> 16) & 0xFFFFFFFFFFFF);
           if (((mygdc >> 40) & 0xF) == 0x4) {
             Timer_LSB32 = mygdc & 0xFFFFFFFF;  // 32-bit
           } else if (((mygdc >> 40) & 0xF) == 0x5) {
