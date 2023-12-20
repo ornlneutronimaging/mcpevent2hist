@@ -33,7 +33,7 @@ target_link_libraries(SophireadGUI SophireadLib Qt5::Widgets qwt hdf5 hdf5_cpp O
 
 # symlink the executable to the build directory
 add_custom_command(TARGET SophireadGUI POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadGUI/SophireadGUI
     ${PROJECT_BINARY_DIR}/SophireadGUI.app
 )

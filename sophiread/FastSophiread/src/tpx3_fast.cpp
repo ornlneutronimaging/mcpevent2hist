@@ -269,6 +269,9 @@ void process_tpx3_packets(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter byte
         // Data packet
         if (tdc_timestamp != 0 && gdc_timestamp != 0) {
           tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
+        } else {
+          // ignore problematic time headers, record everything
+          tpx3h.emplace_back(char_array, tdc_timestamp, gdc_timestamp);
         }
       }
     }

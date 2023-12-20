@@ -52,7 +52,7 @@ target_link_libraries(
 )
 # symlink executable to the build directory
 add_custom_command(TARGET SophireadLib POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS
     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS.app
 )
@@ -68,7 +68,7 @@ target_link_libraries(
 )
 # symlink executable to the build directory
 add_custom_command(TARGET SophireadLib POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadLib/SophireadBenchmarks_ABS_Thread
     ${PROJECT_BINARY_DIR}/SophireadBenchmarks_ABS_Thread.app
 )

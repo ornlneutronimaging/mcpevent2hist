@@ -30,7 +30,7 @@ target_link_libraries(SophireadStream PUBLIC readerwriterqueue SophireadLib hdf5
 
 # symlink the executable to the build directory
 add_custom_command(TARGET SophireadStream POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadStreamCLI/SophireadStream
     ${PROJECT_BINARY_DIR}/SophireadStream
 )

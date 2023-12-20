@@ -44,7 +44,8 @@ std::vector<TPX3> timedFindTPX3H(const std::vector<char> &rawdata) {
   auto batches = findTPX3H(rawdata);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Locate all headers: {} s", elapsed / 1e6);
+  const auto total_number_headers = batches.size();
+  spdlog::info("Locate all {} headers in {} sec", total_number_headers, elapsed / 1e6);
 
   return batches;
 }
@@ -65,7 +66,7 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches, const std::vector<char> &r
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Locate all timestamps: {} s", elapsed / 1e6);
+  spdlog::info("Locate all timestamps: in {} sec", elapsed / 1e6);
 }
 
 /**
@@ -95,7 +96,17 @@ void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_da
   });
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Process all hits -> neutrons: {} s", elapsed / 1e6);
+  // find out total number of hits
+  auto total_number_hits = 0;
+  for (const auto &tpx3 : batches) {
+    total_number_hits += tpx3.hits.size();
+  }
+  // find out total number of neutrons
+  auto total_number_neutrons = 0;
+  for (const auto &tpx3 : batches) {
+    total_number_neutrons += tpx3.neutrons.size();
+  }
+  spdlog::info("Process {} hits -> {} neutrons in {} sec", total_number_hits, total_number_neutrons, elapsed / 1e6);
 }
 
 /**
@@ -166,7 +177,7 @@ int main(int argc, char *argv[]) {
       case 'E':  // output event file
         out_events = optarg;
         break;
-      case 'u':  // user-defined params 
+      case 'u':  // user-defined params
         user_defined_params = optarg;
         break;
       case 'v':

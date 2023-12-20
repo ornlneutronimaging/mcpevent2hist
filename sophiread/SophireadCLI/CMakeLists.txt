@@ -42,7 +42,7 @@ gtest_discover_tests(UserConfigTest)
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
 add_custom_command(TARGET Sophiread POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadCLI/Sophiread
     ${PROJECT_BINARY_DIR}/Sophiread
 )

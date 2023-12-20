@@ -130,7 +130,7 @@ target_link_libraries(
     ${HDF5_LIBRARIES}
 )
 add_custom_command(TARGET SophireadBenchmarks_raw2hits POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_raw2hits
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2hits.app
 )
@@ -147,7 +147,7 @@ target_link_libraries(
     spdlog::spdlog
 )
 add_custom_command(TARGET SophireadBenchmarks_hits2events POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_hits2events
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_hits2events.app
 )
@@ -165,7 +165,7 @@ target_link_libraries(
     ${HDF5_LIBRARIES}
 )
 add_custom_command(TARGET SophireadBenchmarks_raw2events POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_raw2events
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2events.app
 )
