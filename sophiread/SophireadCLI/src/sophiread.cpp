@@ -66,7 +66,7 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches, const std::vector<char> &r
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-  spdlog::info("Locate all timestamps: in {} sec", elapsed / 1e6);
+  spdlog::info("Locate all timestamps in {} sec", elapsed / 1e6);
 }
 
 /**
