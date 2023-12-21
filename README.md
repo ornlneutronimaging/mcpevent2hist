@@ -21,6 +21,8 @@ neutron events.
   - `SophireadGUI` is the Qt GUI application, which can be used to process raw
     data into neutron events and display it as a 2D histogram via super-pixeling.
 
+- The input data, binary `tpx3` file must contain the global time stamp, GDC, which can be achieved by turning on GDC with GlobalTimestampInterval set to 1.0 in the detector settings. 
+
 Developer Note
 --------------
 
