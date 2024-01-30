@@ -169,3 +169,25 @@ add_custom_command(TARGET SophireadBenchmarks_raw2events POST_BUILD
     ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_raw2events
     ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2events.app
 )
+# CLI
+add_executable(
+    FastSophireadBenchmarksCLI
+    benchmarks/benchmark_mmap.cpp
+)
+target_link_libraries(
+    FastSophireadBenchmarksCLI
+    FastSophiread
+    pthread
+    tbb
+    spdlog::spdlog
+    ${HDF5_LIBRARIES}
+)
+add_custom_command(TARGET FastSophireadBenchmarksCLI POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_BINARY_DIR}/FastSophiread/FastSophireadBenchmarksCLI
+    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarksCLI.app
+
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/FastSophiread/benchmarks/benchmark.sh
+    ${PROJECT_BINARY_DIR}/FastSophiread_benchmark.sh
+)
