@@ -53,6 +53,24 @@ TEST(DiskIOTest, ReadTPX3RawToCharVec) {
   EXPECT_EQ(rawdata.size(), ref_size);
 }
 
+TEST(DiskIOTest, ReadTPX3RawToMapInfo) {
+  // read the testing raw data, same interface as memory map
+  auto raw = readTPX3RawToMapInfo("../data/frames_flood_1M.tpx3");
+
+  // check the size of the raw data
+  const unsigned long ref_size = 9739597 * 8;
+  EXPECT_EQ(raw.max, ref_size);
+}
+
+TEST(DiskIOTest, MmapTPX3RawToMapInfo) {
+  // memory map the testing raw data
+  auto raw = mmapTPX3RawToMapInfo("../data/frames_flood_1M.tpx3");
+
+  // check the size of the raw data
+  const unsigned long ref_size = 9739597 * 8;
+  EXPECT_EQ(raw.max, ref_size);
+}
+
 class FileNameGeneratorTest : public ::testing::Test {
  protected:
   std::regex expectedPattern;
