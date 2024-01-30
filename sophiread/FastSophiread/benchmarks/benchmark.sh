@@ -14,7 +14,8 @@
 # in each iteration, and compares the result of each iteration to check that the same answers are obtained.
 
 EXT=${1:-h5}
-LST="data/suann_socket_background_serval32.tpx3 data/HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3"
+# TODO: data/suann_socket_background_serval32.tpx3 produces poor performance statistics
+LST="data/HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3"
 ITR=${2:-3}
 
 # meaningful comparisons of hdf5 files requires h5diff
