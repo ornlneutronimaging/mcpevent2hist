@@ -26,17 +26,21 @@
 #include <numeric>
 
 #define MAX_BATCH_LEN	100000 // enough to process suann_socket_background_serval32.tpx3 without rollover
+
 #ifdef MAX_BATCH_LEN
 #include <cstdlib>
-std::size_t _get_max_batch_len(void) {
+#include <climits>
+// allow MAX_BATCH_LEN to come from the environment
+long unsigned int _get_max_batch_len(void) {
     if (const char* env_p = std::getenv("MAX_BATCH_LEN")) {
-        auto max_batch_len = std::strtoull(env_p, (void *)0, 0);
-        // no conversion or range error produce 0 or UULONG_MAX respectively
-        if (max_batch_len != 0 && max_batch_len != std::UULONG_MAX )
-            return (std::size_t)max_batch_len;
+        auto max_batch_len = std::strtoul(env_p, NULL, 0);
+        // no conversion produce 0
+        if (max_batch_len != 0 )
+            return max_batch_len;
     }
-    return (std::size_t)MAX_BATCH_LEN;
+    return MAX_BATCH_LEN;
 }
+#endif
 
 /**
  * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
@@ -88,8 +92,9 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &con
   std::vector<TPX3> batches;
   auto len = std::distance(begin, end) / 64;
 #ifdef MAX_BATCH_LEN
-  if ( len > MAX_BATCH_LEN ) {
-    len = MAX_BATCH_LEN;
+  auto _max_batch_len = _get_max_batch_len();
+  if ( (long unsigned int)len > _max_batch_len ) {
+    len = _max_batch_len;
   }
 #endif  // MAX_BATCH_LEN
   batches.reserve(len);
@@ -104,7 +109,7 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &con
   for (auto iter = begin; std::distance(iter, end) >= 8; std::advance(iter, 8), consumed += 8) {
     const char *char_array = &(*iter);
 #ifdef MAX_BATCH_LEN
-    if (batches.size() >= MAX_BATCH_LEN) {
+    if (batches.size() >= _max_batch_len) {
       break;
     }
 #endif  // MAX_BATCH_LEN
