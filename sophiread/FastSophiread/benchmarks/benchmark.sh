@@ -52,7 +52,6 @@ for f in $LST ; do
     for m in stream mmap ; do
         for c in tbb verify ; do
             CFG=${m}+${c}+tgdc
-            #echo "" > ${result}/${CFG}.info
             echo "" > ${result}/${CFG}.result
             echo "*** ${result}/${CFG} ***"
             for i in $(seq 1 ${ITR}) ; do
