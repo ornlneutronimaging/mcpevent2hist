@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
   unsigned long timer_lsb32 = 0;
 
   // output data
-  std::vector<std::vector<Neutron>> events;
+  tbb::concurrent_vector<std::vector<Neutron>> events;
   std::string method_events;
 
   spdlog::debug("@{:p}, {}", raw_data.map, raw_data.max);
@@ -319,7 +319,7 @@ while (raw_data_consumed < raw_data.max) {
       std::vector<TPX3>& batch;
 
       // output vector-of-vector-of-events
-      std::vector<std::vector<Neutron>> output;
+      tbb::concurrent_vector<std::vector<Neutron>> output;
 
       // standard and splitting constructor
       ComputeEvents(char *input, std::size_t range, std::vector<TPX3>& batch) : input(input), range(range), batch(batch), output() {}
