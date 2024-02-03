@@ -106,8 +106,6 @@ void saveEventsToCSV(const std::string out_file_name, const std::vector<Neutron>
   // sanity check
   if (events.size() == 0) return;
 
-  // TODO: sort events by TOF
-  
   // write to CSV file
   // -- preparation and header
   std::ofstream file(out_file_name, std::ofstream::app);
@@ -146,8 +144,6 @@ void saveEventsToBIN(const std::string out_file_name, const std::vector<Neutron>
   // sanity check
   if (events.size() == 0) return;
 
-  // TODO: sort events by TOF
-  
   // write to BIN file
   // -- preparation and header
   std::ofstream file(out_file_name, std::ofstream::binary | std::ofstream::trunc);
