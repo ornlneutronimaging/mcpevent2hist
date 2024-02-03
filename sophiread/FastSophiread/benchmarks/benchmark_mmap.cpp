@@ -23,6 +23,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <cstdint>  // for std::numeric_limits<>
 
 #include "disk_io.h"
 #include "hit.h"
@@ -132,8 +133,6 @@ void saveEventsToCSV(const std::string out_file_name, const std::vector<Neutron>
   // -- close file
   file.close();
 }
-
-#include <cstdint>  // for std::numeric_limits<>
 
 void saveEventsToBIN( const std::string out_file_name,
                       const std::vector<Neutron>& events);
