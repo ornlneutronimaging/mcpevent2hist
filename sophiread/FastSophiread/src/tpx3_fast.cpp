@@ -25,6 +25,23 @@
 #include <iostream>
 #include <numeric>
 
+#define MAX_BATCH_LEN	100000 // enough to process suann_socket_background_serval32.tpx3 without rollover
+
+#ifdef MAX_BATCH_LEN
+#include <cstdlib>
+#include <climits>
+// allow MAX_BATCH_LEN to come from the environment
+long unsigned int _get_max_batch_len(void) {
+    if (const char* env_p = std::getenv("MAX_BATCH_LEN")) {
+        auto max_batch_len = std::strtoul(env_p, NULL, 0);
+        // no conversion produce 0
+        if (max_batch_len != 0 )
+            return max_batch_len;
+    }
+    return MAX_BATCH_LEN;
+}
+#endif
+
 /**
  * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
  *
@@ -61,6 +78,55 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
 }
 
 /**
+ * @brief Templated function to locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @tparam ForwardIter
+ * @param[in] begin
+ * @param[in] end
+ * @param[out] consumed
+ * @return std::vector<TPX3>
+ * @note will limit the batch size to 100000, will update the number of elements consumed
+ */
+template <typename ForwardIter>
+std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &consumed) {
+  std::vector<TPX3> batches;
+  auto len = std::distance(begin, end) / 64;
+#ifdef MAX_BATCH_LEN
+  auto _max_batch_len = _get_max_batch_len();
+  if ( (long unsigned int)len > _max_batch_len ) {
+    len = _max_batch_len;
+  }
+#endif  // MAX_BATCH_LEN
+  batches.reserve(len);
+  consumed = 0;
+
+  // local variables
+  int chip_layout_type = 0;
+  int data_packet_size = 0;
+  int data_packet_num = 0;
+
+  // find all batches
+  for (auto iter = begin; std::distance(iter, end) >= 8; std::advance(iter, 8), consumed += 8) {
+    const char *char_array = &(*iter);
+#ifdef MAX_BATCH_LEN
+    if (batches.size() >= _max_batch_len) {
+      break;
+    }
+#endif  // MAX_BATCH_LEN
+
+    // locate the data packet header
+    if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
+      data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
+      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
+      chip_layout_type = static_cast<int>(char_array[4]);
+      batches.emplace_back(static_cast<size_t>(std::distance(begin, iter)), data_packet_num, chip_layout_type);
+    }
+  }
+
+  return batches;
+}
+
+/**
  * @brief Locate all TPX3H (chip dataset) in the raw data.
  *
  * @param[in] raw_bytes
@@ -73,11 +139,36 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
 /**
  * @brief Locate all TPX3H (chip dataset) in the raw data.
  *
- * @param raw_bytes
- * @param size
+ * @param[in] raw_bytes
+ * @param[in] size
  * @return std::vector<TPX3>
  */
-std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) {
+  return findTPX3H(raw_bytes, raw_bytes + size);
+}
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param[in] raw_bytes
+ * @param[out] consumed
+ * @return std::vector<TPX3H>
+ */
+std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes, std::size_t& consumed) {
+  return findTPX3H(raw_bytes.cbegin(), raw_bytes.cend(), consumed);
+}
+
+/**
+ * @brief Locate all TPX3H (chip dataset) in the raw data.
+ *
+ * @param[in] raw_bytes
+ * @param[in] size
+ * @param[out] consumed
+ * @return std::vector<TPX3>
+ */
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size, std::size_t& consumed) {
+  return findTPX3H(raw_bytes, raw_bytes + size, consumed);
+}
 
 /**
  * @brief record the given timestamp as starting timestamp of the dataset batch, and evolve the timestamp till the end
