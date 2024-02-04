@@ -33,6 +33,15 @@
 
 std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file);
 
+typedef struct mapinfo {
+    int fd;
+    char *map;
+    size_t max;
+} mapinfo_t;
+
+mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file);
+mapinfo_t mmapTPX3RawToMapInfo(const std::string& tpx3file);
+
 std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName);
 
 template <typename T, typename ForwardIterator>
