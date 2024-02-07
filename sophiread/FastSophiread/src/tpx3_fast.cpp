@@ -90,12 +90,13 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end) {
 template <typename ForwardIter>
 std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &consumed) {
   std::vector<TPX3> batches;
-  auto len = std::distance(begin, end) / 64;
 #ifdef MAX_BATCH_LEN
-  auto _max_batch_len = _get_max_batch_len();
-  if ( (long unsigned int)len > _max_batch_len ) {
-    len = _max_batch_len;
-  }
+  auto len = _get_max_batch_len();
+  std::size_t batch_number = 0;
+#else
+  // prior code that estimates appropriate batch size to contain the entire input
+  // NOTE: this can grow without bound based on the input file size
+  auto len = std::distance(begin, end) / 64;
 #endif  // MAX_BATCH_LEN
   batches.reserve(len);
   consumed = 0;
@@ -108,11 +109,6 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &con
   // find all batches
   for (auto iter = begin; std::distance(iter, end) >= 8; std::advance(iter, 8), consumed += 8) {
     const char *char_array = &(*iter);
-#ifdef MAX_BATCH_LEN
-    if (batches.size() >= _max_batch_len) {
-      break;
-    }
-#endif  // MAX_BATCH_LEN
 
     // locate the data packet header
     if (char_array[0] == 'T' && char_array[1] == 'P' && char_array[2] == 'X') {
@@ -120,6 +116,10 @@ std::vector<TPX3> findTPX3H(ForwardIter begin, ForwardIter end, std::size_t &con
       data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
       chip_layout_type = static_cast<int>(char_array[4]);
       batches.emplace_back(static_cast<size_t>(std::distance(begin, iter)), data_packet_num, chip_layout_type);
+
+#ifdef MAX_BATCH_LEN
+      if (++batch_number >= len) break;
+#endif  // MAX_BATCH_LEN
     }
   }
 
