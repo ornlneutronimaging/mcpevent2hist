@@ -224,9 +224,15 @@ TEST(TPX3FuncTest, TestExtractHits_mmap) {
 TEST(TPX3FuncTest, TestExtractHits_large) {
   // memory map the testing raw data
   auto mapdata = mmapTPX3RawToMapInfo("../data/HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3");
+  const int n_hits_reference = 5303344;       // HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3
   //auto mapdata = mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  //const int n_hits_reference = 98533;       // suann_socket_background_serval32.tpx3
   size_t raw_data_consumed = 0;
   size_t n_hits = 0;
+  // NB: these track timestamps; if they are reset improperly, the system keeps searching and gets the wrong answers!
+  unsigned long tdc_timestamp = 0;
+  unsigned long long int gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
 
  while (raw_data_consumed < mapdata.max) {
 
@@ -239,9 +245,6 @@ TEST(TPX3FuncTest, TestExtractHits_large) {
   auto batches = findTPX3H(raw_data_ptr, raw_data_size, consumed);
 
   // locate gdc and tdc
-  unsigned long tdc_timestamp = 0;
-  unsigned long long int gdc_timestamp = 0;
-  unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches) {
     updateTimestamp(tpx3, raw_data_ptr, consumed, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
@@ -270,8 +273,6 @@ TEST(TPX3FuncTest, TestExtractHits_large) {
   raw_data_consumed += consumed;
  }
 
-  const int n_hits_reference = 5199514+80927; // HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3
-  //const int n_hits_reference = 98533;       // suann_socket_background_serval32.tpx3
   EXPECT_EQ(n_hits, n_hits_reference);
 
 }
