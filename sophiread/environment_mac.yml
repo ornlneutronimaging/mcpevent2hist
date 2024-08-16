@@ -13,6 +13,7 @@ dependencies:
   - eigen
   - tbb-devel
   - spdlog
+  - nlohmann_json
 
   # Not Windows, OpenGL implementation:
   # - mesalib>=18.0.0
