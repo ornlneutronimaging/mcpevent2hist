@@ -1,0 +1,15 @@
+{
+  "abs": {
+    "radius": 5.0,
+    "min_cluster_size": 1,
+    "spider_time_range": 75
+  },
+  "tof_imaging": {
+    "bin_edges": [0, 1000, 2000, 3000, 16700],
+    "uniform_bins": {
+      "start": 0,
+      "end": 16700,
+      "num_bins": 1500
+    }
+  }
+}
