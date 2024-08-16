@@ -7,6 +7,7 @@ include_directories(
 # Configure the commandline application
 set(SRC_FILES
     src/user_config.cpp
+    src/json_config_parser.cpp
     src/sophiread.cpp
 )
 
@@ -15,12 +16,12 @@ add_executable(Sophiread
     ${SRC_FILES}
 )
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
-target_link_libraries(
-    Sophiread
-    FastSophiread
-    tbb
-    spdlog::spdlog
-    ${HDF5_LIBRARIES}
+target_link_libraries(Sophiread
+    PRIVATE FastSophiread
+    PRIVATE TBB::tbb
+    PRIVATE spdlog::spdlog
+    PRIVATE nlohmann_json::nlohmann_json
+    PRIVATE ${HDF5_LIBRARIES}
 )
 
 # ----------------- TESTS ----------------- #
@@ -30,14 +31,27 @@ add_executable(
     tests/test_user_config.cpp
     src/user_config.cpp
 )
-target_link_libraries(
-    UserConfigTest
-    FastSophiread
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
+target_link_libraries(UserConfigTest
+    PRIVATE FastSophiread
+    PRIVATE spdlog::spdlog
+    PRIVATE GTest::GTest
+    PRIVATE GTest::Main
 )
 gtest_discover_tests(UserConfigTest)
+# Json config test
+add_executable(
+    JsonConfigParserTest
+    tests/test_json_config_parser.cpp
+    src/json_config_parser.cpp
+)
+target_link_libraries(JsonConfigParserTest
+    PRIVATE FastSophiread
+    PRIVATE spdlog::spdlog
+    PRIVATE GTest::GTest
+    PRIVATE GTest::Main
+    PRIVATE nlohmann_json::nlohmann_json
+)
+gtest_discover_tests(JsonConfigParserTest)
 
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory

@@ -1,15 +1,4 @@
-# Config SophireadLib
-include_directories(
-    include
-    $ENV{CONDA_PREFIX}/include
-    ${EIGEN3_INCLUDE_DIR}
-    ${HDF5_INCLUDE_DIRS}
-)
-
-link_directories(
-    $ENV{CONDA_PREFIX}/lib
-)
-
+# Config FastSophireadLib
 set(SRC_FAST_FILES
     src/abs.cpp
     src/centroid.cpp
@@ -21,164 +10,78 @@ set(SRC_FAST_FILES
 
 # ------------- SophireadLibFast -------------- #
 add_library(FastSophiread ${SRC_FAST_FILES})
+target_include_directories(FastSophiread
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    $ENV{CONDA_PREFIX}/include
+    ${EIGEN3_INCLUDE_DIR}
+    ${HDF5_INCLUDE_DIRS}
+)
+target_link_directories(FastSophiread
+  PRIVATE
+    $ENV{CONDA_PREFIX}/lib
+)
 
 # ----------------- TESTS ----------------- #
-# DiskIO Tests
-add_executable(
-    SophireadTests_diskio
-    tests/test_disk_io.cpp
-)
-target_link_libraries(
-    SophireadTests_diskio
-    FastSophiread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-    ${HDF5_LIBRARIES}
-)
-gtest_discover_tests(SophireadTests_diskio)
-# Hit Test
-add_executable(
-    SophireadTests_hit
-    tests/test_hit.cpp
-)
-target_link_libraries(
-    SophireadTests_hit
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-)
-gtest_discover_tests(SophireadTests_hit)
-# TPX3 Test
-add_executable(
-    SophireadTests_tpx3
-    tests/test_tpx3.cpp
-)
-target_link_libraries(
-    SophireadTests_tpx3
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-    ${HDF5_LIBRARIES}
-)
-gtest_discover_tests(SophireadTests_tpx3)
-# ABS Test
-add_executable(
-    SophireadTests_abs
-    tests/test_abs.cpp
-)
-target_link_libraries(
-    SophireadTests_abs
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-)
-gtest_discover_tests(SophireadTests_abs)
-# Centroid Test
-add_executable(
-    SophireadTests_centroid
-    tests/test_centroid.cpp
-)
-target_link_libraries(
-    SophireadTests_centroid
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-)
-gtest_discover_tests(SophireadTests_centroid)
-# Fast Gaussian Test
-add_executable(
-    SophireadTests_fastgaussian
-    tests/test_fastgaussian.cpp
-)
-target_link_libraries(
-    SophireadTests_fastgaussian
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
-)
-gtest_discover_tests(SophireadTests_fastgaussian)
+function(add_sophiread_test test_name)
+  add_executable(${test_name} tests/test_${test_name}.cpp)
+  target_link_libraries(${test_name}
+    PRIVATE
+      FastSophiread
+      pthread
+      TBB::tbb
+      spdlog::spdlog
+      GTest::GTest
+      GTest::Main
+      ${ARGN}
+  )
+  gtest_discover_tests(${test_name})
+endfunction()
+# Add tests
+add_sophiread_test(disk_io ${HDF5_LIBRARIES})
+add_sophiread_test(hit)
+add_sophiread_test(tpx3  ${HDF5_LIBRARIES})
+add_sophiread_test(abs)
+add_sophiread_test(centroid)
+add_sophiread_test(fastgaussian)
+
 
 # ------------------ Benchmarks ------------------ #
-# Raw2Hits Benchmark
-add_executable(
-    SophireadBenchmarks_raw2hits
-    benchmarks/benchmark_raw2hits.cpp
-)
-target_link_libraries(
-    SophireadBenchmarks_raw2hits
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    ${HDF5_LIBRARIES}
-)
-add_custom_command(TARGET SophireadBenchmarks_raw2hits POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
-    ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_raw2hits
-    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2hits.app
-)
-# Hits2Events Benchmark
-add_executable(
-    SophireadBenchmarks_hits2events
-    benchmarks/benchmark_hits2events.cpp
-)
-target_link_libraries(
-    SophireadBenchmarks_hits2events
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-)
-add_custom_command(TARGET SophireadBenchmarks_hits2events POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
-    ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_hits2events
-    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_hits2events.app
-)
-# Raw2Events Benchmark
-add_executable(
-    SophireadBenchmarks_raw2events
-    benchmarks/benchmark_raw2events.cpp
-)
-target_link_libraries(
-    SophireadBenchmarks_raw2events
-    FastSophiread
-    pthread
-    tbb
-    spdlog::spdlog
-    ${HDF5_LIBRARIES}
-)
-add_custom_command(TARGET SophireadBenchmarks_raw2events POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
-    ${PROJECT_BINARY_DIR}/FastSophiread/SophireadBenchmarks_raw2events
-    ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_raw2events.app
-)
-# CLI
-add_executable(
-    FastSophireadBenchmarksCLI
+# Define a function to add benchmark targets
+function(add_sophiread_benchmark NAME)
+    set(TARGET_NAME SophireadBenchmarks_${NAME})
+    add_executable(${TARGET_NAME} benchmarks/benchmark_${NAME}.cpp)
+    
+    target_link_libraries(${TARGET_NAME}
+        PRIVATE
+            FastSophiread
+            pthread
+            TBB::tbb
+            spdlog::spdlog
+            ${ARGN}  # Additional libraries passed as arguments
+    )
+    
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_BINARY_DIR}/FastSophiread/${TARGET_NAME}
+        ${PROJECT_BINARY_DIR}/FastSophireadBenchmarks_${NAME}.app
+    )
+endfunction()
+
+# Add benchmarks
+add_sophiread_benchmark(raw2hits ${HDF5_LIBRARIES})
+add_sophiread_benchmark(hits2events)
+add_sophiread_benchmark(raw2events ${HDF5_LIBRARIES})
+
+# ----------------- CLI ----------------- #
+add_executable(FastSophireadBenchmarksCLI
     benchmarks/benchmark_mmap.cpp
 )
-target_link_libraries(
-    FastSophireadBenchmarksCLI
+target_link_libraries(FastSophireadBenchmarksCLI
+  PRIVATE
     FastSophiread
     pthread
-    tbb
+    TBB::tbb
     spdlog::spdlog
     ${HDF5_LIBRARIES}
 )
