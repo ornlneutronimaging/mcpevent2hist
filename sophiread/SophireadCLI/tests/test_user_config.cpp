@@ -20,16 +20,89 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <gtest/gtest.h>
-
 #include <fstream>
-
 #include "user_config.h"
+#include "tof_binning.h"
 
-// Test toString method of UserConfig class
+// Test default constructor
+TEST(UserConfigTest, DefaultConstructor) {
+  UserConfig config;
+  EXPECT_DOUBLE_EQ(config.getABSRadius(), 5.0);
+  EXPECT_EQ(config.getABSMinClusterSize(), 1);
+  EXPECT_EQ(config.getABSSpiderTimeRange(), 75);
+  
+  auto tof_edges = config.getTOFBinEdges();
+  EXPECT_EQ(tof_edges.size(), 1501);  // 1500 bins + 1
+  EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
+}
+
+// Test parameterized constructor
+TEST(UserConfigTest, ParameterizedConstructor) {
+  UserConfig config(10.0, 5, 100);
+  EXPECT_DOUBLE_EQ(config.getABSRadius(), 10.0);
+  EXPECT_EQ(config.getABSMinClusterSize(), 5);
+  EXPECT_EQ(config.getABSSpiderTimeRange(), 100);
+  
+  // TOF binning should still be default
+  auto tof_edges = config.getTOFBinEdges();
+  EXPECT_EQ(tof_edges.size(), 1501);
+  EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
+}
+
+// Test setters
+TEST(UserConfigTest, Setters) {
+  UserConfig config;
+  config.setABSRadius(15.0);
+  config.setABSMinClusterSize(10);
+  config.setABSSpiderTimeRange(150);
+  
+  EXPECT_DOUBLE_EQ(config.getABSRadius(), 15.0);
+  EXPECT_EQ(config.getABSMinClusterSize(), 10);
+  EXPECT_EQ(config.getABSSpiderTimeRange(), 150);
+}
+
+// Test TOF binning setter
+TEST(UserConfigTest, TOFBinningSetter) {
+  UserConfig config;
+  TOFBinning custom_binning;
+  custom_binning.num_bins = 1000;
+  custom_binning.tof_max = 20000.0;
+  config.setTOFBinning(custom_binning);
+  
+  auto tof_edges = config.getTOFBinEdges();
+  EXPECT_EQ(tof_edges.size(), 1001);  // 1000 bins + 1
+  EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 20000.0);
+}
+
+// Test custom TOF bin edges
+TEST(UserConfigTest, CustomTOFBinEdges) {
+  UserConfig config;
+  std::vector<double> custom_edges = {0.0, 100.0, 200.0, 300.0, 400.0};
+  config.setCustomTOFBinEdges(custom_edges);
+  
+  auto tof_edges = config.getTOFBinEdges();
+  EXPECT_EQ(tof_edges.size(), 5);
+  EXPECT_DOUBLE_EQ(tof_edges[0], 0.0);
+  EXPECT_DOUBLE_EQ(tof_edges[1], 100.0);
+  EXPECT_DOUBLE_EQ(tof_edges[2], 200.0);
+  EXPECT_DOUBLE_EQ(tof_edges[3], 300.0);
+  EXPECT_DOUBLE_EQ(tof_edges[4], 400.0);
+}
+
+// Test toString method
 TEST(UserConfigTest, ToStringMethod) {
-  UserConfig config(20.0, 30, 500000);
-  std::string expected = "ABS: radius=20, min_cluster_size=30, spider_time_range=500000";
-  ASSERT_EQ(config.toString(), expected);
+  UserConfig config(20.0, 30, 500);
+  std::string result = config.toString();
+  // print the result
+  std::cout << result << std::endl;
+  EXPECT_TRUE(result.find("radius=20") != std::string::npos);
+  EXPECT_TRUE(result.find("min_cluster_size=30") != std::string::npos);
+  EXPECT_TRUE(result.find("spider_time_range=500") != std::string::npos);
+  EXPECT_TRUE(result.find("TOF bins=1500") != std::string::npos);
+  EXPECT_TRUE(result.find("TOF max=16.7 ms") != std::string::npos);
 }
 
 // Test parsing a valid configuration file
@@ -39,13 +112,19 @@ TEST(UserConfigTest, ParseValidConfigurationFile) {
   testFile << "# ABS\n";
   testFile << "abs_radius 20.0\n";
   testFile << "abs_min_cluster_size 30\n";
-  testFile << "spider_time_range 500000\n";
+  testFile << "spider_time_range 500\n";
   testFile.close();
 
   UserConfig config = parseUserDefinedConfigurationFile("testConfig.txt");
-  ASSERT_DOUBLE_EQ(config.getABSRadius(), 20.0);
-  ASSERT_EQ(config.getABSMinClusterSize(), 30);
-  ASSERT_EQ(config.getABSSpidertimeRange(), 500000);
+  EXPECT_DOUBLE_EQ(config.getABSRadius(), 20.0);
+  EXPECT_EQ(config.getABSMinClusterSize(), 30);
+  EXPECT_EQ(config.getABSSpiderTimeRange(), 500);
+
+  // TOF binning should still be default
+  auto tof_edges = config.getTOFBinEdges();
+  EXPECT_EQ(tof_edges.size(), 1501);
+  EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
 
   // Cleanup
   std::remove("testConfig.txt");
@@ -61,9 +140,9 @@ TEST(UserConfigTest, ParseInvalidConfigurationFile) {
 
   // It should ignore the unknown parameter and use the default value instead
   UserConfig config = parseUserDefinedConfigurationFile("testInvalidConfig.txt");
-  ASSERT_DOUBLE_EQ(config.getABSRadius(), 5.0);   // Default value
-  ASSERT_EQ(config.getABSMinClusterSize(), 1);    // Default value
-  ASSERT_EQ(config.getABSSpidertimeRange(), 75);  // Default value
+  EXPECT_DOUBLE_EQ(config.getABSRadius(), 5.0);   // Default value
+  EXPECT_EQ(config.getABSMinClusterSize(), 1);    // Default value
+  EXPECT_EQ(config.getABSSpiderTimeRange(), 75);  // Default value
 
   // Cleanup
   std::remove("testInvalidConfig.txt");
