@@ -23,6 +23,11 @@
 #include <fstream>
 #include <spdlog/spdlog.h>
 
+/**
+ * @brief Build JSONConfigParser from a given file
+ * @param filepath Path to the JSON configuration file
+ * @return JSONConfigParser
+ */
 JSONConfigParser JSONConfigParser::fromFile(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
@@ -39,38 +44,79 @@ JSONConfigParser JSONConfigParser::fromFile(const std::string& filepath) {
     return JSONConfigParser(config);
 }
 
-JSONConfigParser::JSONConfigParser(const nlohmann::json& config) : m_config(config) {}
+/**
+ * @brief Construct a new JSONConfigParser::JSONConfigParser object
+ * @param config JSON configuration object
+ */
+JSONConfigParser::JSONConfigParser(const nlohmann::json& config) : m_config(config) {
+    parseTOFBinning();
+}
 
+/**
+ * @brief Get the ABS Radius
+ * @return double
+ */
 double JSONConfigParser::getABSRadius() const {
-    return m_config["abs"]["radius"].get<double>();
+    return m_config.value("/abs/radius"_json_pointer, DEFAULT_ABS_RADIUS);
 }
 
+/**
+ * @brief Get the ABS Min Cluster Size
+ * @return unsigned long int
+ */
 unsigned long int JSONConfigParser::getABSMinClusterSize() const {
-    return m_config["abs"]["min_cluster_size"].get<unsigned long int>();
+    return m_config.value("/abs/min_cluster_size"_json_pointer, DEFAULT_ABS_MIN_CLUSTER_SIZE);
 }
 
+/**
+ * @brief Get the ABS Spider Time Range
+ * @return unsigned long int
+ */
 unsigned long int JSONConfigParser::getABSSpiderTimeRange() const {
-    return m_config["abs"]["spider_time_range"].get<unsigned long int>();
+    return m_config.value("/abs/spider_time_range"_json_pointer, DEFAULT_ABS_SPIDER_TIME_RANGE);
 }
 
+/**
+ * @brief Get the TOF Bin Edges
+ * @return std::vector<double>
+ */
 std::vector<double> JSONConfigParser::getTOFBinEdges() const {
-    const auto& tof = m_config["tof_imaging"];
-    if (tof.contains("bin_edges")) {
-        return tof["bin_edges"].get<std::vector<double>>();
-    } else if (tof.contains("uniform_bins")) {
-        const auto& uniform = tof["uniform_bins"];
-        double start = uniform["start"].get<double>();
-        double end = uniform["end"].get<double>();
-        int num_bins = uniform["num_bins"].get<int>();
-        std::vector<double> edges(num_bins + 1);
-        for (int i = 0; i <= num_bins; ++i) {
-            edges[i] = start + (end - start) * i / num_bins;
-        }
-        return edges;
-    }
-    throw std::runtime_error("TOF bin edges not specified in configuration");
+    return m_tof_binning.getBinEdges();
 }
 
+/**
+ * @brief Parse the TOF binning configuration
+ */
+void JSONConfigParser::parseTOFBinning() {
+    if (m_config.contains("/tof_imaging/bin_edges"_json_pointer)) {
+        m_tof_binning.custom_edges = m_config["/tof_imaging/bin_edges"_json_pointer].get<std::vector<double>>();
+    } else if (m_config.contains("/tof_imaging/uniform_bins"_json_pointer)) {
+        const auto& uniform = m_config["/tof_imaging/uniform_bins"_json_pointer];
+        m_tof_binning.num_bins = uniform.value("num_bins", DEFAULT_TOF_BINS);
+        m_tof_binning.tof_max = uniform.value("end", DEFAULT_TOF_MAX);
+    } else {
+        // Use default values
+        m_tof_binning.num_bins = DEFAULT_TOF_BINS;
+        m_tof_binning.tof_max = DEFAULT_TOF_MAX;
+    }
+}
+
+/**
+ * @brief Get a string representation of the configuration
+ * @return std::string
+ */
 std::string JSONConfigParser::toString() const {
-    return m_config.dump(2);
+    std::stringstream ss;
+    ss << "ABS: radius=" << getABSRadius()
+       << ", min_cluster_size=" << getABSMinClusterSize()
+       << ", spider_time_range=" << getABSSpiderTimeRange();
+
+    if (m_tof_binning.isCustom()) {
+        ss << ", Custom TOF binning with " << m_tof_binning.custom_edges.size() - 1 << " bins";
+    } else {
+        ss << ", TOF bins=" << m_tof_binning.num_bins.value_or(DEFAULT_TOF_BINS)
+           << ", TOF max=" << (m_tof_binning.tof_max.value_or(DEFAULT_TOF_MAX) * 1000) << " ms";
+    }
+
+    return ss.str();
 }
