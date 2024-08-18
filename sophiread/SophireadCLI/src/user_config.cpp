@@ -28,15 +28,31 @@
 #include <fstream>
 #include <sstream>
 
+UserConfig::UserConfig() : m_abs_radius(5.0), m_abs_min_cluster_size(1), m_abs_spider_time_range(75), m_tof_binning() {}
+
+UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size, unsigned long int abs_spider_time_range)
+    : m_abs_radius(abs_radius), m_abs_min_cluster_size(abs_min_cluster_size), m_abs_spider_time_range(abs_spider_time_range), m_tof_binning() {}
+
 /**
  * @brief Helper function to convert a user configuration to a string for console output.
  *
- * @return std::string
+ * @return std::string User configuration as a string
  */
 std::string UserConfig::toString() const {
   std::stringstream ss;
-  ss << "ABS: radius=" << m_abs_radius << ", min_cluster_size=" << m_abs_min_cluster_size
+  ss << "ABS: radius=" << m_abs_radius
+     << ", min_cluster_size=" << m_abs_min_cluster_size
      << ", spider_time_range=" << m_abs_spider_time_range;
+
+  // Add TOF binning information
+  if (m_tof_binning.isUniform()) {
+    ss << ", TOF bins=" << m_tof_binning.num_bins.value_or(0)
+       << ", TOF max=" << (m_tof_binning.tof_max.value_or(0.0) * 1000) << " ms";  // Convert to milliseconds
+  } else if (m_tof_binning.isCustom()) {
+    ss << ", Custom TOF binning with " << m_tof_binning.custom_edges.size() - 1 << " bins";
+  } else {
+    ss << ", TOF binning not set";
+  }
 
   return ss.str();
 }
@@ -45,7 +61,7 @@ std::string UserConfig::toString() const {
  * @brief Parse the user-defined configuration file and return a UserConfig object.
  *
  * @param[in] filepath
- * @return UserConfig
+ * @return UserConfig User-defined configuration
  */
 UserConfig parseUserDefinedConfigurationFile(const std::string& filepath) {
   // Check if the file exists
@@ -87,8 +103,15 @@ UserConfig parseUserDefinedConfigurationFile(const std::string& filepath) {
     } else if (name == "spider_time_range") {
       int value;
       ss >> value;
-      user_config.setABSSpidertimeRange(value);
-    } else {
+      user_config.setABSSpiderTimeRange(value);
+    } else if (name == "tof_bins") {
+      int value;
+      ss >> value;
+    } else if (name == "tof_max") {
+      double value;
+      ss >> value;
+    }
+    else {
       spdlog::warn("Unknown parameter {} in the user-defined configuration file.", name);
     }
   }

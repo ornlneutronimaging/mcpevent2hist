@@ -80,7 +80,7 @@ void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_da
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
     // Define ABS algorithm with user-defined parameters for each thread
     auto abs_alg_mt =
-        std::make_unique<ABS>(config.getABSRadius(), config.getABSMinClusterSize(), config.getABSSpidertimeRange());
+        std::make_unique<ABS>(config.getABSRadius(), config.getABSMinClusterSize(), config.getABSSpiderTimeRange());
 
     for (size_t i = r.begin(); i != r.end(); ++i) {
       auto &tpx3 = batches[i];
