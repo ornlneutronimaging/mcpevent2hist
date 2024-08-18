@@ -11,11 +11,13 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <filesystem>
 
 #include "abs.h"
 #include "disk_io.h"
 #include "tpx3_fast.h"
 #include "user_config.h"
+#include "json_config_parser.h"
 
 /**
  * @brief Timed read raw data to char vector.
@@ -75,7 +77,7 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches, const std::vector<char> &r
  * @param[in] rawdata
  * @param[in] config
  */
-void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_data, const UserConfig &config) {
+void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &raw_data, const IConfig &config) {
   auto start = std::chrono::high_resolution_clock::now();
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()), [&](const tbb::blocked_range<size_t> &r) {
     // Define ABS algorithm with user-defined parameters for each thread
@@ -146,7 +148,7 @@ int main(int argc, char *argv[]) {
   std::string in_tpx3;
   std::string out_hits;
   std::string out_events;
-  std::string user_defined_params;
+  std::string config_file;
   bool verbose = false;
   int opt;
 
@@ -167,7 +169,7 @@ int main(int argc, char *argv[]) {
         out_events = optarg;
         break;
       case 'u':  // user-defined params 
-        user_defined_params = optarg;
+        config_file = optarg;
         break;
       case 'v':
         verbose = true;
@@ -178,10 +180,26 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // If provided user-defined params, parse it
-  UserConfig config;
-  if (!user_defined_params.empty()) {
-    config = parseUserDefinedConfigurationFile(user_defined_params);
+  // Determine config file type and parse accordingly
+  std::unique_ptr<IConfig> config;
+  if (!config_file.empty()) {
+    std::string extension = std::filesystem::path(config_file).extension().string();
+    if (extension == ".json") {
+      try {
+        config = std::make_unique<JSONConfigParser>(JSONConfigParser::fromFile(config_file));
+        spdlog::info("Using JSON configuration file: {}", config_file);
+      } catch (const std::exception& e) {
+        spdlog::error("Error parsing JSON configuration file: {}", e.what());
+        return 1;
+      }
+    } else {
+      spdlog::warn("Deprecated configuration format detected. Please switch to JSON format in future.");
+      spdlog::warn("Support for the old format will be removed in version 4.x");
+      config = std::make_unique<UserConfig>(parseUserDefinedConfigurationFile(config_file));
+    }
+  } else {
+    spdlog::info("No configuration file provided. Using default values.");
+    config = std::make_unique<UserConfig>();
   }
 
   // recap
@@ -189,6 +207,7 @@ int main(int argc, char *argv[]) {
     spdlog::info("Input file: {}", in_tpx3);
     spdlog::info("Output hits file: {}", out_hits);
     spdlog::info("Output events file: {}", out_events);
+    spdlog::info("Configuration: {}", config->toString());
   }
 
   // read raw data
@@ -203,7 +222,7 @@ int main(int argc, char *argv[]) {
   auto raw_data = timedReadDataToCharVec(in_tpx3);
   auto batches = timedFindTPX3H(raw_data);
   timedLocateTimeStamp(batches, raw_data);
-  timedProcessing(batches, raw_data, config);
+  timedProcessing(batches, raw_data, *config);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Total processing time: {} s", elapsed / 1e6);
