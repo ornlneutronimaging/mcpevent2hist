@@ -35,6 +35,7 @@ public:
     unsigned long int getABSMinClusterSize() const override;
     unsigned long int getABSSpiderTimeRange() const override;
     std::vector<double> getTOFBinEdges() const override;
+    double getSuperResolution() const;
 
     std::string toString() const override;
 
@@ -51,4 +52,5 @@ private:
     static constexpr unsigned long int DEFAULT_ABS_SPIDER_TIME_RANGE = 75;
     static constexpr int DEFAULT_TOF_BINS = 1500;
     static constexpr double DEFAULT_TOF_MAX = 16.7e-3;  // 16.7 milliseconds
+    static constexpr double DEFAULT_SUPER_RESOLUTION = 1.0;
 };
