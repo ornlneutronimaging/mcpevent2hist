@@ -2,6 +2,7 @@
 include_directories(
     include
     ${PROJECT_SOURCE_DIR}/FastSophiread/include
+    ${TIFF_INCLUDE_DIRS}
 )
 
 # Configure the commandline application
@@ -17,11 +18,14 @@ add_executable(Sophiread
 )
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(Sophiread
-    PRIVATE FastSophiread
-    PRIVATE TBB::tbb
-    PRIVATE spdlog::spdlog
-    PRIVATE nlohmann_json::nlohmann_json
-    PRIVATE ${HDF5_LIBRARIES}
+    PRIVATE 
+      FastSophiread
+      TBB::tbb
+      spdlog::spdlog
+      fmt::fmt
+      nlohmann_json::nlohmann_json
+      ${HDF5_LIBRARIES}
+      ${TIFF_LIBRARIES}
 )
 
 # ----------------- TESTS ----------------- #

@@ -13,6 +13,11 @@ endif()
 
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
+# This is to avoid accidentally using Homebrew header/lib instead of the one from micromamba
+if(DEFINED ENV{CONDA_PREFIX})
+  set(CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX} ${CMAKE_PREFIX_PATH})
+endif()
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -22,11 +27,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
-find_package(spdlog REQUIRED)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 find_package(GTest REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(TBB REQUIRED)
+find_package(TIFF REQUIRED)
+find_package(spdlog 1.8.0 REQUIRED)
+find_package(fmt 7.0.0 REQUIRED)
 # find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 # Testing setup
