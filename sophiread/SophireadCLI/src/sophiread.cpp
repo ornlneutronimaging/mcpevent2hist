@@ -1,7 +1,24 @@
 /**
+ * @file sophiread.cpp
+ * @author Chen Zhang (zhangc@orn.gov)
+ * @author Su-Ann Chong (chongs@ornl.gov)
  * @brief CLI for reading Timepix3 raw data and parse it into neutron event
  * files and a tiff image (for visual inspection).
+ * @date 2024-08-19
  *
+ * @copyright Copyright (c) 2024
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <spdlog/spdlog.h>
 #include <tbb/tbb.h>
@@ -143,6 +160,73 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
   spdlog::info("Save events to HDF5: {} s", elapsed / 1e6);
 }
 
+std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
+    const std::vector<TPX3>& batches, 
+    double super_resolution, 
+    const std::vector<double>& tof_bin_edges) {
+    
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Sanity checks
+    if (tof_bin_edges.size() < 2) {
+        spdlog::error("Invalid TOF bin edges: at least 2 edges are required");
+        return {};
+    }
+
+    // Initialize the TOF images container
+    std::vector<std::vector<std::vector<unsigned int>>> tof_images(tof_bin_edges.size() - 1);
+    
+    // Calculate the dimensions of each 2D histogram based on super_resolution
+    // one chip: 0-255 pixel pos
+    // gap: 5
+    // total: 0-255 + 5 + 0-255 -> 517 (TPX3@VENUS only)
+    int dim_x = static_cast<int>(517 * super_resolution);
+    int dim_y = static_cast<int>(517 * super_resolution);
+
+    spdlog::debug("Creating TOF images with dimensions: {} x {}", dim_x, dim_y);
+    
+    // Initialize each TOF bin's 2D histogram
+    for (auto& tof_image : tof_images) {
+        tof_image.resize(dim_y, std::vector<unsigned int>(dim_x, 0));
+    }
+
+    // Process neutrons from all batches
+    size_t total_neutrons = 0;
+    size_t binned_neutrons = 0;
+
+    for (const auto& batch : batches) {
+        for (const auto& neutron : batch.neutrons) {
+            total_neutrons++;
+            double tof_ns = neutron.getTOF_ns();
+            
+            // Find the correct TOF bin
+            // NOTE: tof_bin_edges are in sec, and tof_ns are in nano secs
+            auto it = std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_ns/1e9);
+            if (it != tof_bin_edges.begin()) {
+                size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
+                
+                // Calculate the x and y indices in the 2D histogram
+                int x = static_cast<int>(neutron.getX() * super_resolution);
+                int y = static_cast<int>(neutron.getY() * super_resolution);
+                
+                // Ensure x and y are within bounds
+                if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
+                    // Increment the count in the appropriate bin and position
+                    tof_images[bin_index][y][x]++;
+                    binned_neutrons++;
+                }
+            }
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    spdlog::info("TOF image creation time: {} s", elapsed / 1e6);
+    spdlog::info("Total neutrons: {}, Binned neutrons: {}", total_neutrons, binned_neutrons);
+
+    return tof_images;
+}
+
 /**
  * @brief Timed save TOF imaging to TIFF.
  * 
@@ -150,7 +234,10 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
  * @param[in] batches
  * @param[in] tof_bin_edges
  */
-void timedSaveTOFImagingToTIFF(const std::string& out_tof_imaging, std::vector<TPX3>& batches, const std::vector<double>& tof_bin_edges) {
+void timedSaveTOFImagingToTIFF(
+    const std::string& out_tof_imaging,
+    const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
+    const std::string& tof_filename_base) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Implementation for TOF imaging
@@ -169,21 +256,32 @@ void timedSaveTOFImagingToTIFF(const std::string& out_tof_imaging, std::vector<T
  * @return int
  */
 int main(int argc, char *argv[]) {
+  // ----------------------------------
   // processing command line arguments
+  // ----------------------------------
   std::string in_tpx3;
   std::string out_hits;
   std::string out_events;
   std::string config_file;
   std::string out_tof_imaging;
+  std::string tof_filename_base = "tof_image";
   bool verbose = false;
   int opt;
 
   // help message string
-  std::string help_msg = "Usage: " + std::string(argv[0]) + " [-i input_tpx3] " + " [-H output_hits_HDF5] " +
-                         " [-E output_event_HDF5] " + " [-u user_defined_params]" + " [-v]";
+  std::string help_msg = 
+    "Usage: " +
+    std::string(argv[0]) +
+    " [-i input_tpx3] " +
+    " [-H output_hits_HDF5] " +
+    " [-E output_event_HDF5] " +
+    " [-u user_defined_params]" +
+    " [-T tof_imaging_folder]" +
+    " [-f tof_filename_base]" +
+    " [-v]";
 
   // parse command line arguments
-  while ((opt = getopt(argc, argv, "i:H:E:T:u:v")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:T:f:u:v")) != -1) {
     switch (opt) {
       case 'i':  // input file
         in_tpx3 = optarg;
@@ -194,11 +292,14 @@ int main(int argc, char *argv[]) {
       case 'E':  // output event file
         out_events = optarg;
         break;
-      case 'T':  // output TOF imaging files (TIFF)
-        out_tof_imaging = optarg;
-        break;
       case 'u':  // user-defined params 
         config_file = optarg;
+        break;
+      case 'T':  // output TOF imaging folder
+        out_tof_imaging = optarg;
+        break;
+      case 'f':  // TOF filename base
+        tof_filename_base = optarg;
         break;
       case 'v':
         verbose = true;
@@ -227,26 +328,41 @@ int main(int argc, char *argv[]) {
       config = std::make_unique<UserConfig>(parseUserDefinedConfigurationFile(config_file));
     }
   } else {
-    spdlog::info("No configuration file provided. Using default values.");
-    config = std::make_unique<UserConfig>();
+    spdlog::info("No configuration file provided. Using default JSON configuration.");
+    config = std::make_unique<JSONConfigParser>(JSONConfigParser::createDefault());
   }
 
   // recap
   if (verbose) {
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::debug("Debug logging enabled");
     spdlog::info("Input file: {}", in_tpx3);
     spdlog::info("Output hits file: {}", out_hits);
     spdlog::info("Output events file: {}", out_events);
     spdlog::info("Configuration: {}", config->toString());
   }
 
-  // read raw data
+  // -------------
+  // sanity check
+  // -------------
+  // 1. Does the TPX3 exists?
   if (in_tpx3.empty()) {
     spdlog::error("Error: no input file specified.");
     spdlog::error(help_msg);
     return 1;
   }
+  // 2. Do we need to create a folder for the TOF Imaging
+  if (!out_tof_imaging.empty()) {
+    if (!std::filesystem::exists(out_tof_imaging)) {
+      std::filesystem::create_directories(out_tof_imaging);
+    }
+  }
 
-  // process file to hits
+  // --------
+  // process 
+  // --------
+  
+  // raw data --> hits --> neutrons
   auto start = std::chrono::high_resolution_clock::now();
   auto raw_data = timedReadDataToCharVec(in_tpx3);
   auto batches = timedFindTPX3H(raw_data);
@@ -255,9 +371,19 @@ int main(int argc, char *argv[]) {
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   spdlog::info("Total processing time: {} s", elapsed / 1e6);
-
   // release memory of raw data
   std::vector<char>().swap(raw_data);
+
+  // neutrons --2D hist--> TOF images
+  std::vector<std::vector<std::vector<unsigned int>>> tof_images;
+  if (!out_tof_imaging.empty()) {
+    spdlog::debug("start creating tof images");
+    tof_images = timedCreateTOFImages(batches, config->getSuperResolution(), config->getTOFBinEdges());
+  }
+
+  // -------------
+  // Save to Disk
+  // -------------
 
   // save hits to HDF5 file
   if (!out_hits.empty()) {
@@ -271,7 +397,8 @@ int main(int argc, char *argv[]) {
 
   // Save TOF imaging to TIFF files
   if (!out_tof_imaging.empty()) {
-      timedSaveTOFImagingToTIFF(out_tof_imaging, batches, config->getTOFBinEdges());
+      // TODO
+      timedSaveTOFImagingToTIFF(out_tof_imaging, tof_images, tof_filename_base);
   }
 
   return 0;

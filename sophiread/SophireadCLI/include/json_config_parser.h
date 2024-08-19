@@ -29,13 +29,14 @@
 
 class JSONConfigParser : public IConfig {
 public:
+    static JSONConfigParser createDefault();
     static JSONConfigParser fromFile(const std::string& filepath);
 
     double getABSRadius() const override;
     unsigned long int getABSMinClusterSize() const override;
     unsigned long int getABSSpiderTimeRange() const override;
     std::vector<double> getTOFBinEdges() const override;
-    double getSuperResolution() const;
+    double getSuperResolution() const override;
 
     std::string toString() const override;
 

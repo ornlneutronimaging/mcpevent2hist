@@ -23,6 +23,27 @@
 #include <fstream>
 #include <spdlog/spdlog.h>
 
+
+JSONConfigParser JSONConfigParser::createDefault() {
+    nlohmann::json default_config = {
+        {"abs", {
+            {"radius", DEFAULT_ABS_RADIUS},
+            {"min_cluster_size", DEFAULT_ABS_MIN_CLUSTER_SIZE},
+            {"spider_time_range", DEFAULT_ABS_SPIDER_TIME_RANGE}
+        }},
+        {"tof_imaging", {
+            {"uniform_bins", {
+                {"num_bins", DEFAULT_TOF_BINS},
+                {"end", DEFAULT_TOF_MAX}
+            }},
+            {"super_resolution", DEFAULT_SUPER_RESOLUTION}
+        }}
+    };
+
+    return JSONConfigParser(default_config);
+}
+
+
 /**
  * @brief Build JSONConfigParser from a given file
  * @param filepath Path to the JSON configuration file
