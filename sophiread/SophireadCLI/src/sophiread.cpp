@@ -237,15 +237,37 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
 void timedSaveTOFImagingToTIFF(
     const std::string& out_tof_imaging,
     const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
-    const std::string& tof_filename_base) {
+    const std::vector<double>& tof_bin_edges,
+    const std::string& tof_filename_base)
+{
     auto start = std::chrono::high_resolution_clock::now();
 
-    // Implementation for TOF imaging
-    // TODO: Implement TOF imaging logic here
+    // 1. Create output directory if it doesn't exist
+    if (!std::filesystem::exists(out_tof_imaging)) {
+        std::filesystem::create_directories(out_tof_imaging);
+        spdlog::info("Created output directory: {}", out_tof_imaging);
+    }
+
+    // 2. Initialize vector for spectral data
+    std::vector<unsigned long long> spectral_counts(tof_images.size(), 0);
+
+    // 3. Iterate through each TOF bin and save TIFF files
+    for (size_t bin = 0; bin < tof_images.size(); ++bin) {
+        // Construct filename
+        std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
+        
+        // TODO: Write or update TIFF file
+
+        // TODO: Accumulate counts for spectral file
+    }
+
+    // 4. Write spectral file
+    std::string spectral_filename = fmt::format("{}/spectral.txt", out_tof_imaging);
+    // TODO: Write spectral data to file
 
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    spdlog::info("Save TOF imaging to TIFF: {} s", elapsed / 1e6);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    spdlog::info("TIFF and spectral file writing completed in {} ms", duration.count());
 }
 
 /**
@@ -350,12 +372,6 @@ int main(int argc, char *argv[]) {
     spdlog::error("Error: no input file specified.");
     spdlog::error(help_msg);
     return 1;
-  }
-  // 2. Do we need to create a folder for the TOF Imaging
-  if (!out_tof_imaging.empty()) {
-    if (!std::filesystem::exists(out_tof_imaging)) {
-      std::filesystem::create_directories(out_tof_imaging);
-    }
   }
 
   // --------
