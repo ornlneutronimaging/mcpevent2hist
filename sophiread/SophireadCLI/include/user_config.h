@@ -44,6 +44,10 @@ class UserConfig : public IConfig {
   void setTOFBinning(const TOFBinning& tof_binning) { m_tof_binning = tof_binning; }
   void setCustomTOFBinEdges(const std::vector<double>& edges) { m_tof_binning.custom_edges = edges; }
 
+  // no super resolution for old config format
+  double getSuperResolution() const override {return m_super_resolution; }
+  void setSuperResolution(double super_resolution) {m_super_resolution = super_resolution; }
+
   std::string toString() const override;
 
  private:
@@ -51,6 +55,7 @@ class UserConfig : public IConfig {
   unsigned long int m_abs_min_cluster_size = 1;
   unsigned long int m_abs_spider_time_range = 75;
   TOFBinning m_tof_binning;
+  double m_super_resolution = 1.0;
 };
 
 UserConfig parseUserDefinedConfigurationFile(const std::string& filepath);

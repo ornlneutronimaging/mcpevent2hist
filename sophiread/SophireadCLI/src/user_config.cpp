@@ -31,13 +31,13 @@
 /**
  * @brief Construct a new UserConfig object with default values.
  */
-UserConfig::UserConfig() : m_abs_radius(5.0), m_abs_min_cluster_size(1), m_abs_spider_time_range(75), m_tof_binning() {}
+UserConfig::UserConfig() : m_abs_radius(5.0), m_abs_min_cluster_size(1), m_abs_spider_time_range(75), m_tof_binning(), m_super_resolution(1.0) {}
 
 /**
  * @brief Construct a new UserConfig object with user-defined values
  */
 UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size, unsigned long int abs_spider_time_range)
-    : m_abs_radius(abs_radius), m_abs_min_cluster_size(abs_min_cluster_size), m_abs_spider_time_range(abs_spider_time_range), m_tof_binning() {}
+    : m_abs_radius(abs_radius), m_abs_min_cluster_size(abs_min_cluster_size), m_abs_spider_time_range(abs_spider_time_range), m_tof_binning(), m_super_resolution(1.0) {}
 
 /**
  * @brief Helper function to convert a user configuration to a string for console output.
@@ -59,6 +59,8 @@ std::string UserConfig::toString() const {
   } else {
     ss << ", TOF binning not set";
   }
+
+  ss << ", Super Resolution=" << m_super_resolution;
 
   return ss.str();
 }
