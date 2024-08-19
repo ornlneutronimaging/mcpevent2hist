@@ -46,7 +46,7 @@ struct TOFBinning {
         }
         
         int bins = num_bins.value_or(1500);
-        double max = tof_max.value_or(16.7e-3);
+        double max = tof_max.value_or(1.0/60);
         std::vector<double> edges(bins + 1);
         for (int i = 0; i <= bins; ++i) {
             edges[i] = max * i / bins;

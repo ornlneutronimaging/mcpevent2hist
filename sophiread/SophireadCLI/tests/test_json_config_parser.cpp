@@ -38,7 +38,8 @@ protected:
                 "uniform_bins": {
                     "num_bins": 1000,
                     "end": 0.0167
-                }
+                },
+                "super_resolution": 2.0
             }
         })";
         config_file.close();
@@ -71,6 +72,11 @@ protected:
         std::remove("test_config_default.json");
     }
 };
+
+TEST_F(JSONConfigParserTest, ParsesSuperResolutionCorrectly) {
+    auto config = JSONConfigParser::fromFile("test_config_uniform.json");
+    EXPECT_DOUBLE_EQ(config.getSuperResolution(), 2.0);
+}
 
 TEST_F(JSONConfigParserTest, ParsesUniformConfigCorrectly) {
     auto config = JSONConfigParser::fromFile("test_config_uniform.json");
@@ -113,6 +119,7 @@ TEST_F(JSONConfigParserTest, UsesDefaultValuesCorrectly) {
     EXPECT_EQ(bin_edges.size(), 1501);  // 1500 bins + 1
     EXPECT_DOUBLE_EQ(bin_edges.front(), 0);
     EXPECT_DOUBLE_EQ(bin_edges.back(), 0.0167);
+    EXPECT_DOUBLE_EQ(config.getSuperResolution(), 1.0);
 }
 
 TEST_F(JSONConfigParserTest, ThrowsOnMissingFile) {
@@ -128,4 +135,5 @@ TEST_F(JSONConfigParserTest, ToStringMethodWorksCorrectly) {
     EXPECT_TRUE(result.find("spider_time_range=80") != std::string::npos);
     EXPECT_TRUE(result.find("TOF bins=1000") != std::string::npos);
     EXPECT_TRUE(result.find("TOF max=16.7 ms") != std::string::npos);
+    EXPECT_TRUE(result.find("Super Resolution=2") != std::string::npos);
 }

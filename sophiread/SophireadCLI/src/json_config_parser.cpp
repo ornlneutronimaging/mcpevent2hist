@@ -84,6 +84,10 @@ std::vector<double> JSONConfigParser::getTOFBinEdges() const {
     return m_tof_binning.getBinEdges();
 }
 
+double JSONConfigParser::getSuperResolution() const {
+    return m_config.value("/tof_imaging/super_resolution"_json_pointer, DEFAULT_SUPER_RESOLUTION);
+}
+
 /**
  * @brief Parse the TOF binning configuration
  */
@@ -117,6 +121,8 @@ std::string JSONConfigParser::toString() const {
         ss << ", TOF bins=" << m_tof_binning.num_bins.value_or(DEFAULT_TOF_BINS)
            << ", TOF max=" << (m_tof_binning.tof_max.value_or(DEFAULT_TOF_MAX) * 1000) << " ms";
     }
+
+    ss << ", Super Resolution=" << getSuperResolution();
 
     return ss.str();
 }
