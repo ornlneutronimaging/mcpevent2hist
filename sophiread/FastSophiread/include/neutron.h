@@ -34,6 +34,7 @@ class Neutron {
   double getTOT() const { return m_tot; }
   double getTOF() const { return m_tof; };
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
+  double getTOT_ns() const { return m_tot * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
 
   std::string toString() const {

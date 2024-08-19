@@ -348,8 +348,8 @@ void saveOrAppendNeutronToHDF5(const std::string &out_file_name, ForwardIterator
                              {
                                  {"x", [](const Neutron &neutron) { return neutron.getX(); }},
                                  {"y", [](const Neutron &neutron) { return neutron.getY(); }},
-                                 {"tof", [](const Neutron &neutron) { return neutron.getTOF(); }},
-                                 {"tot", [](const Neutron &neutron) { return neutron.getTOT(); }},
+                                 {"tof_ns", [](const Neutron &neutron) { return neutron.getTOF_ns(); }},
+                                 {"tot_ns", [](const Neutron &neutron) { return neutron.getTOT_ns(); }},
                                  {"nHits", [](const Neutron &neutron) { return neutron.getNHits(); }},
                              },
                              append);
