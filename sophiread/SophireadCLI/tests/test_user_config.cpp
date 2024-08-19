@@ -34,7 +34,7 @@ TEST(UserConfigTest, DefaultConstructor) {
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);  // 1500 bins + 1
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 }
 
 // Test parameterized constructor
@@ -48,7 +48,7 @@ TEST(UserConfigTest, ParameterizedConstructor) {
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 }
 
 // Test setters
@@ -102,7 +102,7 @@ TEST(UserConfigTest, ToStringMethod) {
   EXPECT_TRUE(result.find("min_cluster_size=30") != std::string::npos);
   EXPECT_TRUE(result.find("spider_time_range=500") != std::string::npos);
   EXPECT_TRUE(result.find("TOF bins=1500") != std::string::npos);
-  EXPECT_TRUE(result.find("TOF max=16.7 ms") != std::string::npos);
+  EXPECT_TRUE(result.find("TOF max=16.6667 ms") != std::string::npos);
 }
 
 // Test parsing a valid configuration file
@@ -124,7 +124,7 @@ TEST(UserConfigTest, ParseValidConfigurationFile) {
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 16.7e-3);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 
   // Cleanup
   std::remove("testConfig.txt");
