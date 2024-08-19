@@ -7,6 +7,7 @@
 #include <tbb/tbb.h>
 #include <unistd.h>
 
+#include <tiffio.h>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -121,6 +122,12 @@ void timedSaveHitsToHDF5(const std::string &out_hits, std::vector<TPX3> &batches
   spdlog::info("Save hits to HDF5: {} s", elapsed / 1e6);
 }
 
+/**
+ * @brief Timed save events to HDF5.
+ * 
+ * @param[in] out_events
+ * @param[in] batches
+ */
 void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &batches) {
   auto start = std::chrono::high_resolution_clock::now();
   // move all events into a single vector
@@ -137,6 +144,24 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
 }
 
 /**
+ * @brief Timed save TOF imaging to TIFF.
+ * 
+ * @param[in] out_tof_imaging
+ * @param[in] batches
+ * @param[in] tof_bin_edges
+ */
+void timedSaveTOFImagingToTIFF(const std::string& out_tof_imaging, std::vector<TPX3>& batches, const std::vector<double>& tof_bin_edges) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Implementation for TOF imaging
+    // TODO: Implement TOF imaging logic here
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    spdlog::info("Save TOF imaging to TIFF: {} s", elapsed / 1e6);
+}
+
+/**
  * @brief Main function.
  *
  * @param[in] argc
@@ -149,6 +174,7 @@ int main(int argc, char *argv[]) {
   std::string out_hits;
   std::string out_events;
   std::string config_file;
+  std::string out_tof_imaging;
   bool verbose = false;
   int opt;
 
@@ -157,7 +183,7 @@ int main(int argc, char *argv[]) {
                          " [-E output_event_HDF5] " + " [-u user_defined_params]" + " [-v]";
 
   // parse command line arguments
-  while ((opt = getopt(argc, argv, "i:H:E:u:v")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:T:u:v")) != -1) {
     switch (opt) {
       case 'i':  // input file
         in_tpx3 = optarg;
@@ -167,6 +193,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'E':  // output event file
         out_events = optarg;
+        break;
+      case 'T':  // output TOF imaging files (TIFF)
+        out_tof_imaging = optarg;
         break;
       case 'u':  // user-defined params 
         config_file = optarg;
@@ -238,6 +267,11 @@ int main(int argc, char *argv[]) {
   // save events to HDF5 file
   if (!out_events.empty()) {
     timedSaveEventsToHDF5(out_events, batches);
+  }
+
+  // Save TOF imaging to TIFF files
+  if (!out_tof_imaging.empty()) {
+      timedSaveTOFImagingToTIFF(out_tof_imaging, batches, config->getTOFBinEdges());
   }
 
   return 0;

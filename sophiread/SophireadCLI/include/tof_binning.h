@@ -30,7 +30,7 @@ struct TOFBinning {
     std::vector<double> custom_edges;
 
     // Default constructor
-    TOFBinning() : num_bins(1500), tof_max(16.7e-3) {}
+    TOFBinning() : num_bins(1500), tof_max(1.0/60) {}
 
     bool isUniform() const {
         return num_bins.has_value() && tof_max.has_value() && custom_edges.empty();
