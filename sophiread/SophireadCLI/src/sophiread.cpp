@@ -256,14 +256,52 @@ void timedSaveTOFImagingToTIFF(
         // Construct filename
         std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
         
-        // TODO: Write or update TIFF file
+        // Write or update TIFF file
+        // TODO: accumulating mode
+        TIFF* tif = TIFFOpen(filename.c_str(), "w");
+        if (tif) {
+            uint32_t width = tof_images[bin][0].size();
+            uint32_t height = tof_images[bin].size();
 
-        // TODO: Accumulate counts for spectral file
+            TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
+            TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+            TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, 1);
+            TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, 32);
+            TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+            TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+            TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+
+            for (uint32_t row = 0; row < height; ++row) {
+                TIFFWriteScanline(tif, const_cast<unsigned int*>(tof_images[bin][row].data()), row);
+            }
+
+            TIFFClose(tif);
+            spdlog::debug("Wrote TIFF file: {}", filename);
+        } else {
+            spdlog::error("Failed to open TIFF file for writing: {}", filename);
+        }
+
+        // Accumulate counts for spectral file
+        spectral_counts[bin] = std::accumulate(tof_images[bin].begin(), tof_images[bin].end(), 0ULL,
+          [](unsigned long long sum, const std::vector<unsigned int>& row) {
+              return sum + std::accumulate(row.begin(), row.end(), 0ULL);
+          });
     }
 
     // 4. Write spectral file
     std::string spectral_filename = fmt::format("{}/spectral.txt", out_tof_imaging);
-    // TODO: Write spectral data to file
+    // Write spectral data to file
+    std::ofstream spectral_file(spectral_filename);
+    if (spectral_file.is_open()) {
+        spectral_file << "Upper_Edge(s)\tCounts\n";
+        for (size_t bin = 0; bin < tof_bin_edges.size() - 1; ++bin) {
+            spectral_file << tof_bin_edges[bin + 1] << "\t" << spectral_counts[bin] << "\n";
+        }
+        spectral_file.close();
+        spdlog::info("Wrote spectral file: {}", spectral_filename);
+    } else {
+        spdlog::error("Failed to open spectral file for writing: {}", spectral_filename);
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -414,7 +452,7 @@ int main(int argc, char *argv[]) {
   // Save TOF imaging to TIFF files
   if (!out_tof_imaging.empty()) {
       // TODO
-      timedSaveTOFImagingToTIFF(out_tof_imaging, tof_images, tof_filename_base);
+      timedSaveTOFImagingToTIFF(out_tof_imaging, tof_images, config->getTOFBinEdges(), tof_filename_base);
   }
 
   return 0;
