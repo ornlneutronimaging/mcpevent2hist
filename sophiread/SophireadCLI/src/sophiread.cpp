@@ -255,9 +255,42 @@ void timedSaveTOFImagingToTIFF(
     for (size_t bin = 0; bin < tof_images.size(); ++bin) {
         // Construct filename
         std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
+
+        // prepare container and fill with current hist2d
+        uint32_t width = tof_images[bin][0].size();
+        uint32_t height = tof_images[bin].size();
+        std::vector<std::vector<unsigned int>> accumulated_image = tof_images[bin];
+
+        // check if file already exist
+        if (std::filesystem::exists(filename)) {
+            TIFF* existing_tif = TIFFOpen(filename.c_str(), "r");
+            if (existing_tif) {
+                uint32_t existing_width, existing_height;
+                TIFFGetField(existing_tif, TIFFTAG_IMAGEWIDTH, &existing_width);
+                TIFFGetField(existing_tif, TIFFTAG_IMAGELENGTH, &existing_height);
+
+                if (existing_width == width && existing_height == height) {
+                    // Dimensions match, proceed with accumulation
+                    for (uint32_t row = 0; row < height; ++row) {
+                        std::vector<unsigned int> scanline(width);
+                        TIFFReadScanline(existing_tif, scanline.data(), row);
+                        for (uint32_t col = 0; col < width; ++col) {
+                            accumulated_image[row][col] += scanline[col];
+                        }
+                    }
+                    spdlog::debug("Accumulated counts for existing file: {}", filename);
+                } else {
+                    spdlog::error("Dimension mismatch for file: {}. Expected {}x{}, got {}x{}. Overwriting.",
+                                  filename, width, height, existing_width, existing_height);
+                }
+                TIFFClose(existing_tif);
+            } else {
+                spdlog::error("Failed to open existing TIFF file for reading: {}", filename);
+            }
+        }
+
         
         // Write or update TIFF file
-        // TODO: accumulating mode
         TIFF* tif = TIFFOpen(filename.c_str(), "w");
         if (tif) {
             uint32_t width = tof_images[bin][0].size();
@@ -272,7 +305,7 @@ void timedSaveTOFImagingToTIFF(
             TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
             for (uint32_t row = 0; row < height; ++row) {
-                TIFFWriteScanline(tif, const_cast<unsigned int*>(tof_images[bin][row].data()), row);
+                TIFFWriteScanline(tif, accumulated_image[row].data(), row);
             }
 
             TIFFClose(tif);
@@ -282,7 +315,7 @@ void timedSaveTOFImagingToTIFF(
         }
 
         // Accumulate counts for spectral file
-        spectral_counts[bin] = std::accumulate(tof_images[bin].begin(), tof_images[bin].end(), 0ULL,
+        spectral_counts[bin] = std::accumulate(accumulated_image.begin(), accumulated_image.end(), 0ULL,
           [](unsigned long long sum, const std::vector<unsigned int>& row) {
               return sum + std::accumulate(row.begin(), row.end(), 0ULL);
           });
@@ -451,7 +484,6 @@ int main(int argc, char *argv[]) {
 
   // Save TOF imaging to TIFF files
   if (!out_tof_imaging.empty()) {
-      // TODO
       timedSaveTOFImagingToTIFF(out_tof_imaging, tof_images, config->getTOFBinEdges(), tof_filename_base);
   }
 
