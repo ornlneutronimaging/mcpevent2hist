@@ -359,22 +359,24 @@ int main(int argc, char *argv[]) {
   std::string out_tof_imaging;
   std::string tof_filename_base = "tof_image";
   bool verbose = false;
+  std::string tof_mode = "neutron"; // Default to neutron-based TOF imaging
   int opt;
 
   // help message string
   std::string help_msg = 
-    "Usage: " +
+    "Usage:\n" +
     std::string(argv[0]) +
-    " [-i input_tpx3] " +
-    " [-H output_hits_HDF5] " +
-    " [-E output_event_HDF5] " +
-    " [-u user_defined_params]" +
-    " [-T tof_imaging_folder]" +
-    " [-f tof_filename_base]" +
-    " [-v]";
+    "\n\t[-i input_tpx3] " +
+    "\n\t[-H output_hits_HDF5] " +
+    "\n\t[-E output_event_HDF5] " +
+    "\n\t[-u user_defined_params]" +
+    "\n\t[-T tof_imaging_folder]" +
+    "\n\t[-f tof_filename_base]" +
+    "\n\t[-m tof_mode(hit or neutron)]" +
+    "\n\t[-v]";
 
   // parse command line arguments
-  while ((opt = getopt(argc, argv, "i:H:E:T:f:u:v")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:T:f:u:m:v")) != -1) {
     switch (opt) {
       case 'i':  // input file
         in_tpx3 = optarg;
@@ -394,6 +396,9 @@ int main(int argc, char *argv[]) {
       case 'f':  // TOF filename base
         tof_filename_base = optarg;
         break;
+      case 'm':
+        tof_mode = optarg;
+        break;
       case 'v':
         verbose = true;
         break;
@@ -403,7 +408,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // Determine config file type and parse accordingly
+  // -------------
+  // sanity check
+  // -------------
+  // Check 1: determine config file type and parse accordingly
   std::unique_ptr<IConfig> config;
   if (!config_file.empty()) {
     std::string extension = std::filesystem::path(config_file).extension().string();
@@ -424,7 +432,17 @@ int main(int argc, char *argv[]) {
     spdlog::info("No configuration file provided. Using default JSON configuration.");
     config = std::make_unique<JSONConfigParser>(JSONConfigParser::createDefault());
   }
-
+  // Check 2: does the TPX3 exists?
+  if (in_tpx3.empty()) {
+    spdlog::error("Error: no input file specified.");
+    spdlog::error(help_msg);
+    return 1;
+  }
+  // Check 3: model valid
+  if (tof_mode != "neutron" && tof_mode != "hit") {
+    spdlog::error("Invalid TOF mode specified. Use 'neutron' or 'hit'.");
+    return 1;
+  }
   // recap
   if (verbose) {
     spdlog::set_level(spdlog::level::debug);
@@ -433,16 +451,7 @@ int main(int argc, char *argv[]) {
     spdlog::info("Output hits file: {}", out_hits);
     spdlog::info("Output events file: {}", out_events);
     spdlog::info("Configuration: {}", config->toString());
-  }
-
-  // -------------
-  // sanity check
-  // -------------
-  // 1. Does the TPX3 exists?
-  if (in_tpx3.empty()) {
-    spdlog::error("Error: no input file specified.");
-    spdlog::error(help_msg);
-    return 1;
+    spdlog::info("TOF imaging mode: {}", tof_mode);
   }
 
   // --------
