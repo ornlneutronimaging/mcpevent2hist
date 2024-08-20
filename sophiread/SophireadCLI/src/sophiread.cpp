@@ -294,74 +294,76 @@ void timedSaveTOFImagingToTIFF(
     std::vector<unsigned long long> spectral_counts(tof_images.size(), 0);
 
     // 3. Iterate through each TOF bin and save TIFF files
-    for (size_t bin = 0; bin < tof_images.size(); ++bin) {
-        // Construct filename
-        std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, tof_images.size()), [&](const tbb::blocked_range<size_t>& range) {
+      for (size_t bin = range.begin(); bin < range.end(); ++bin) {
+          // Construct filename
+          std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
 
-        // prepare container and fill with current hist2d
-        uint32_t width = tof_images[bin][0].size();
-        uint32_t height = tof_images[bin].size();
-        std::vector<std::vector<unsigned int>> accumulated_image = tof_images[bin];
+          // prepare container and fill with current hist2d
+          uint32_t width = tof_images[bin][0].size();
+          uint32_t height = tof_images[bin].size();
+          std::vector<std::vector<unsigned int>> accumulated_image = tof_images[bin];
 
-        // check if file already exist
-        if (std::filesystem::exists(filename)) {
-            TIFF* existing_tif = TIFFOpen(filename.c_str(), "r");
-            if (existing_tif) {
-                uint32_t existing_width, existing_height;
-                TIFFGetField(existing_tif, TIFFTAG_IMAGEWIDTH, &existing_width);
-                TIFFGetField(existing_tif, TIFFTAG_IMAGELENGTH, &existing_height);
+          // check if file already exist
+          if (std::filesystem::exists(filename)) {
+              TIFF* existing_tif = TIFFOpen(filename.c_str(), "r");
+              if (existing_tif) {
+                  uint32_t existing_width, existing_height;
+                  TIFFGetField(existing_tif, TIFFTAG_IMAGEWIDTH, &existing_width);
+                  TIFFGetField(existing_tif, TIFFTAG_IMAGELENGTH, &existing_height);
 
-                if (existing_width == width && existing_height == height) {
-                    // Dimensions match, proceed with accumulation
-                    for (uint32_t row = 0; row < height; ++row) {
-                        std::vector<unsigned int> scanline(width);
-                        TIFFReadScanline(existing_tif, scanline.data(), row);
-                        for (uint32_t col = 0; col < width; ++col) {
-                            accumulated_image[row][col] += scanline[col];
-                        }
-                    }
-                    spdlog::debug("Accumulated counts for existing file: {}", filename);
-                } else {
-                    spdlog::error("Dimension mismatch for file: {}. Expected {}x{}, got {}x{}. Overwriting.",
-                                  filename, width, height, existing_width, existing_height);
-                }
-                TIFFClose(existing_tif);
-            } else {
-                spdlog::error("Failed to open existing TIFF file for reading: {}", filename);
-            }
-        }
+                  if (existing_width == width && existing_height == height) {
+                      // Dimensions match, proceed with accumulation
+                      for (uint32_t row = 0; row < height; ++row) {
+                          std::vector<unsigned int> scanline(width);
+                          TIFFReadScanline(existing_tif, scanline.data(), row);
+                          for (uint32_t col = 0; col < width; ++col) {
+                              accumulated_image[row][col] += scanline[col];
+                          }
+                      }
+                      spdlog::debug("Accumulated counts for existing file: {}", filename);
+                  } else {
+                      spdlog::error("Dimension mismatch for file: {}. Expected {}x{}, got {}x{}. Overwriting.",
+                                    filename, width, height, existing_width, existing_height);
+                  }
+                  TIFFClose(existing_tif);
+              } else {
+                  spdlog::error("Failed to open existing TIFF file for reading: {}", filename);
+              }
+          }
 
-        
-        // Write or update TIFF file
-        TIFF* tif = TIFFOpen(filename.c_str(), "w");
-        if (tif) {
-            uint32_t width = tof_images[bin][0].size();
-            uint32_t height = tof_images[bin].size();
+          
+          // Write or update TIFF file
+          TIFF* tif = TIFFOpen(filename.c_str(), "w");
+          if (tif) {
+              uint32_t width = tof_images[bin][0].size();
+              uint32_t height = tof_images[bin].size();
 
-            TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
-            TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
-            TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, 1);
-            TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, 32);
-            TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
-            TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-            TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+              TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
+              TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+              TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, 1);
+              TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, 32);
+              TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+              TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+              TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
-            for (uint32_t row = 0; row < height; ++row) {
-                TIFFWriteScanline(tif, accumulated_image[row].data(), row);
-            }
+              for (uint32_t row = 0; row < height; ++row) {
+                  TIFFWriteScanline(tif, accumulated_image[row].data(), row);
+              }
 
-            TIFFClose(tif);
-            spdlog::debug("Wrote TIFF file: {}", filename);
-        } else {
-            spdlog::error("Failed to open TIFF file for writing: {}", filename);
-        }
+              TIFFClose(tif);
+              spdlog::debug("Wrote TIFF file: {}", filename);
+          } else {
+              spdlog::error("Failed to open TIFF file for writing: {}", filename);
+          }
 
-        // Accumulate counts for spectral file
-        spectral_counts[bin] = std::accumulate(accumulated_image.begin(), accumulated_image.end(), 0ULL,
-          [](unsigned long long sum, const std::vector<unsigned int>& row) {
-              return sum + std::accumulate(row.begin(), row.end(), 0ULL);
-          });
-    }
+          // Accumulate counts for spectral file
+          spectral_counts[bin] = std::accumulate(accumulated_image.begin(), accumulated_image.end(), 0ULL,
+            [](unsigned long long sum, const std::vector<unsigned int>& row) {
+                return sum + std::accumulate(row.begin(), row.end(), 0ULL);
+            });
+      }
+    });
 
     // 4. Write spectral file
     std::string spectral_filename = fmt::format("{}/spectral.txt", out_tof_imaging);
