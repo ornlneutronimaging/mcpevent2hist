@@ -31,8 +31,6 @@ namespace sophiread {
 
 std::vector<char> timedReadDataToCharVec(const std::string& in_tpx3);
 std::vector<TPX3> timedFindTPX3H(const std::vector<char>& rawdata);
-template <typename ForwardIter> 
-    std::vector<TPX3> timedFindTPX3H(ForwardIter begin, ForwardIter end, std::size_t& consumed);
 void timedLocateTimeStamp(std::vector<TPX3>& batches, const std::vector<char>& rawdata);
 void timedProcessing(std::vector<TPX3>& batches, const std::vector<char>& raw_data, const IConfig& config);
 void timedSaveHitsToHDF5(const std::string& out_hits, std::vector<TPX3>& batches);
@@ -47,5 +45,4 @@ void timedSaveTOFImagingToTIFF(
     const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
     const std::vector<double>& tof_bin_edges,
     const std::string& tof_filename_base);
-
 } // namespace sophiread
