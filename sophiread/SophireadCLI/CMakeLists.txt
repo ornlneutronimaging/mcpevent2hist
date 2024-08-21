@@ -9,6 +9,7 @@ include_directories(
 set(SRC_FILES
     src/user_config.cpp
     src/json_config_parser.cpp
+    src/sophiread_core.cpp
     src/sophiread.cpp
 )
 
@@ -36,10 +37,11 @@ add_executable(
     src/user_config.cpp
 )
 target_link_libraries(UserConfigTest
-    PRIVATE FastSophiread
-    PRIVATE spdlog::spdlog
-    PRIVATE GTest::GTest
-    PRIVATE GTest::Main
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
 )
 gtest_discover_tests(UserConfigTest)
 # Json config test
@@ -49,13 +51,33 @@ add_executable(
     src/json_config_parser.cpp
 )
 target_link_libraries(JsonConfigParserTest
-    PRIVATE FastSophiread
-    PRIVATE spdlog::spdlog
-    PRIVATE GTest::GTest
-    PRIVATE GTest::Main
-    PRIVATE nlohmann_json::nlohmann_json
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
+        nlohmann_json::nlohmann_json
 )
 gtest_discover_tests(JsonConfigParserTest)
+# core test
+# add_executable(
+#     SophireadCoreTest
+#     tests/test_sophiread_core.cpp
+#     src/sophiread_core.cpp
+#     src/json_config_parser.cpp
+# )
+# target_link_libraries(SophireadCoreTest
+#     PRIVATE 
+#         FastSophiread
+#         spdlog::spdlog
+#         GTest::GTest
+#         GTest::Main
+#         nlohmann_json::nlohmann_json
+#         ${HDF5_LIBRARIES}
+#         ${TIFF_LIBRARIES}
+#         TBB::tbb
+# )
+# gtest_discover_tests(SophireadCoreTest)
 
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
