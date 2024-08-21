@@ -40,18 +40,20 @@ struct ProgramOptions {
     std::string config_file;
     std::string tiff_base = "tof_image";
     std::string tof_mode = "neutron";
+    int check_interval = 5;
     bool verbose = false;
     bool debug = false;
 };
 
 void print_usage(const char* program_name) {
-    spdlog::info("Usage: {} -i <input_dir> -o <output_dir> [-u <user_config_json>] [-f <tiff_file_name_base>] [-m <tof_mode>] [-v]", program_name);
+    spdlog::info("Usage: {} -i <input_dir> -o <output_dir> [-u <user_config_json>] [-f <tiff_file_name_base>] [-m <tof_mode>] [-c <check_interval>] [-v] [-d]", program_name);
     spdlog::info("Options:");
     spdlog::info("  -i <input_dir>    Input directory with TPX3 files");
     spdlog::info("  -o <output_dir>   Output directory for TIFF files");
     spdlog::info("  -u <config_file>  User configuration JSON file (optional)");
     spdlog::info("  -f <tiff_base>    Base name for TIFF files (default: tof_image)");
     spdlog::info("  -m <tof_mode>     TOF mode: 'hit' or 'neutron' (default: neutron)");
+    spdlog::info("  -c <interval>     Check interval in seconds (default: 5)");
     spdlog::info("  -d                Debug output");
     spdlog::info("  -v                Verbose output");
 }
@@ -60,7 +62,7 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
     ProgramOptions options;
     int opt;
 
-    while ((opt = getopt(argc, argv, "i:o:u:f:m:dv")) != -1) {
+    while ((opt = getopt(argc, argv, "i:o:u:f:m:c:dv")) != -1) {
         switch (opt) {
             case 'i':
                 options.input_dir = optarg;
@@ -76,6 +78,9 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
                 break;
             case 'm':
                 options.tof_mode = optarg;
+                break;
+            case 'c':
+                options.check_interval = std::stoi(optarg);
                 break;
             case 'd':
                 options.debug = true;
@@ -97,6 +102,11 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
     // Validate tof_mode
     if (options.tof_mode != "hit" && options.tof_mode != "neutron") {
         throw std::runtime_error("Invalid TOF mode. Use 'hit' or 'neutron'.");
+    }
+
+    // Validate check_interval
+    if (options.check_interval <= 0) {
+        throw std::runtime_error("Check interval must be a positive integer.");
     }
 
     return options;
@@ -121,8 +131,15 @@ void process_existing_files(const std::string& input_dir, const std::string& out
     //       same set of tiff files in the output folder
     for (const auto& entry : fs::directory_iterator(input_dir)) {
         if (entry.is_regular_file() && entry.path().extension() == ".tpx3") {
+            std::string filename = entry.path().stem().string();
+
+            if (processed_files.find(filename) != processed_files.end()) {
+                spdlog::debug("Skipping already processed file: {}", filename);
+                continue;
+            }
+
             spdlog::info("Processing file: {}", entry.path().string());
-            
+
             try {
                 // Read the TPX3 file
                 auto raw_data = sophiread::timedReadDataToCharVec(entry.path().string());
@@ -168,80 +185,30 @@ void process_existing_files(const std::string& input_dir, const std::string& out
     spdlog::info(oss.str());
 }
 
-// Function to monitor directory for new files
-// void monitor_directory(const std::string& input_dir, const std::string& output_dir,
-//                        const std::string& tiff_base, const std::string& tof_mode,
-//                        const IConfig& config, std::atomic<bool>& should_continue) {
-//     std::unordered_set<std::string> processed_files;
-    
-//     // First, add all existing processed files to the set
-//     for (const auto& entry : fs::directory_iterator(input_dir)) {
-//         if (entry.is_regular_file() && entry.path().extension() == ".tiff") {
-//             std::string base_name = entry.path().stem().string();
-//             // Remove the tiff_base suffix to get the original file name
-//             size_t pos = base_name.rfind("_" + tiff_base);
-//             if (pos != std::string::npos) {
-//                 base_name = base_name.substr(0, pos);
-//             }
-//             processed_files.insert(base_name + ".tpx3");
-//         }
-//     }
+void monitor_directory(const std::string& input_dir, const std::string& output_dir, 
+                       const std::string& tiff_base, const std::string& tof_mode,
+                       const IConfig& config, std::unordered_set<std::string>& processed_files,
+                       int check_interval) {
+    spdlog::info("Starting directory monitoring: {}", input_dir);
+    spdlog::info("Check interval: {} seconds", check_interval);
 
-//     while (should_continue) {
-//         for (const auto& entry : fs::directory_iterator(input_dir)) {
-//             if (entry.is_regular_file() && entry.path().extension() == ".tpx3") {
-//                 std::string file_name = entry.path().filename().string();
-                
-//                 // Check if file has already been processed
-//                 if (processed_files.find(file_name) != processed_files.end()) {
-//                     continue;
-//                 }
+    while (true) {
+        // Check for *.nxs.h5 file
+        for (const auto& entry : fs::directory_iterator(input_dir)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".h5" && 
+                entry.path().stem().extension() == ".nxs") {
+                spdlog::info("Found *.nxs.h5 file. Stopping monitoring.");
+                return;
+            }
+        }
 
-//                 // Simple file locking mechanism: check if file size is changing
-//                 auto initial_size = fs::file_size(entry.path());
-//                 std::this_thread::sleep_for(std::chrono::seconds(1));
-//                 if (fs::file_size(entry.path()) != initial_size) {
-//                     spdlog::debug("File {} is still being written. Skipping for now.", file_name);
-//                     continue;
-//                 }
+        // Process any new files
+        process_existing_files(input_dir, output_dir, tiff_base, tof_mode, config, processed_files);
 
-//                 spdlog::info("Processing new file: {}", file_name);
-
-//                 try {
-//                     // Read the TPX3 file
-//                     auto raw_data = sophiread::timedReadDataToCharVec(entry.path().string());
-                    
-//                     // Find TPX3 headers
-//                     auto batches = sophiread::timedFindTPX3H(raw_data);
-                    
-//                     // Process the data
-//                     sophiread::timedLocateTimeStamp(batches, raw_data);
-//                     sophiread::timedProcessing(batches, raw_data, config);
-                    
-//                     // Generate output file name
-//                     std::string output_file = fs::path(output_dir) / (entry.path().stem().string() + "_" + tiff_base + ".tiff");
-                    
-//                     // Create TOF images
-//                     auto tof_images = sophiread::timedCreateTOFImages(batches, config.getSuperResolution(), config.getTOFBinEdges(), tof_mode);
-                    
-//                     // Save TOF images
-//                     sophiread::timedSaveTOFImagingToTIFF(output_dir, tof_images, config.getTOFBinEdges(), entry.path().stem().string() + "_" + tiff_base);
-                    
-//                     spdlog::info("Processed and saved: {}", output_file);
-
-//                     // Add to processed files set
-//                     processed_files.insert(file_name);
-
-//                 } catch (const std::exception& e) {
-//                     spdlog::error("Error processing file {}: {}", file_name, e.what());
-//                 }
-//             }
-//         }
-
-//         // Sleep for a short time before checking again
-//         std::this_thread::sleep_for(std::chrono::seconds(5));
-//     }
-// }
+        // Wait before next check
+        std::this_thread::sleep_for(std::chrono::seconds(check_interval));
+    }
+}
 
 int main(int argc, char* argv[]) {
     try {
@@ -277,18 +244,8 @@ int main(int argc, char* argv[]) {
 
         // Process existing files
         std::unordered_set<std::string> processed_files;
-        process_existing_files(options.input_dir, options.output_dir, options.tiff_base, options.tof_mode, *config, processed_files);
-
-        // Start monitoring for new files
-        // std::atomic<bool> should_continue{true};
-        // std::thread monitor_thread(monitor_directory, std::ref(options.input_dir), 
-        //                            std::ref(options.output_dir), std::ref(options.tiff_base), 
-        //                            std::ref(options.tof_mode), std::ref(config),
-        //                            std::ref(should_continue));
-
-        // // TODO: Implement graceful shutdown mechanism
-
-        // monitor_thread.join();
+        monitor_directory(options.input_dir, options.output_dir, options.tiff_base,
+                          options.tof_mode, *config, processed_files, options.check_interval);
 
     } catch (const std::exception& e) {
         spdlog::error("Error: {}", e.what());

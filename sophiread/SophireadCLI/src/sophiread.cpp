@@ -53,15 +53,15 @@ struct ProgramOptions {
 void print_usage(const char* program_name) {
     spdlog::info("Usage: {} -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>] [-T <tof_imaging_folder>] [-f <tof_filename_base>] [-m <tof_mode>] [-d] [-v]", program_name);
     spdlog::info("Options:");
-    spdlog::info("  -i <input_tpx3>       Input TPX3 file");
-    spdlog::info("  -H <output_hits>      Output hits HDF5 file");
-    spdlog::info("  -E <output_events>    Output events HDF5 file");
-    spdlog::info("  -u <config_file>      User configuration JSON file (optional)");
+    spdlog::info("  -i <input_tpx3>          Input TPX3 file");
+    spdlog::info("  -H <output_hits>         Output hits HDF5 file");
+    spdlog::info("  -E <output_events>       Output events HDF5 file");
+    spdlog::info("  -u <config_file>         User configuration JSON file (optional)");
     spdlog::info("  -T <tof_imaging_folder>  Output folder for TIFF TOF images (optional)");
     spdlog::info("  -f <tof_filename_base>   Base name for TIFF files (default: tof_image)");
     spdlog::info("  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: neutron)");
-    spdlog::info("  -d                      Enable debug logging");
-    spdlog::info("  -v                      Enable verbose logging");
+    spdlog::info("  -d                       Enable debug logging");
+    spdlog::info("  -v                       Enable verbose logging");
 }
 
 ProgramOptions parse_arguments(int argc, char* argv[]) {
