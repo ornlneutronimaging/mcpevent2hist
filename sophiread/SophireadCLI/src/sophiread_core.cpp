@@ -26,7 +26,6 @@
 #include <filesystem>
 #include <tiffio.h>
 #include <spdlog/spdlog.h>
-
 #include "disk_io.h"
 #include "sophiread_core.h"
 
@@ -62,25 +61,6 @@ std::vector<TPX3> timedFindTPX3H(const std::vector<char> &rawdata) {
   spdlog::info("Locate all headers: {} s", elapsed / 1e6);
 
   return batches;
-}
-
-/**
- * @brief Timed find TPX3H with iterator syntax
- * 
- * @tparam ForwardIter 
- * @param begin 
- * @param end 
- * @param consumed 
- * @return std::vector<TPX3> 
- */
-template <typename ForwardIter>
-std::vector<TPX3> timedFindTPX3H(ForwardIter begin, ForwardIter end, std::size_t& consumed) {
-    auto start = std::chrono::high_resolution_clock::now();
-    auto batches = findTPX3H(begin, end, consumed);
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start).count();
-    spdlog::info("Locate all headers: {} s", elapsed / 1e6);
-    return batches;
 }
 
 /**

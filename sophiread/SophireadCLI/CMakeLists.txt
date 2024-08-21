@@ -60,24 +60,24 @@ target_link_libraries(JsonConfigParserTest
 )
 gtest_discover_tests(JsonConfigParserTest)
 # core test
-# add_executable(
-#     SophireadCoreTest
-#     tests/test_sophiread_core.cpp
-#     src/sophiread_core.cpp
-#     src/json_config_parser.cpp
-# )
-# target_link_libraries(SophireadCoreTest
-#     PRIVATE 
-#         FastSophiread
-#         spdlog::spdlog
-#         GTest::GTest
-#         GTest::Main
-#         nlohmann_json::nlohmann_json
-#         ${HDF5_LIBRARIES}
-#         ${TIFF_LIBRARIES}
-#         TBB::tbb
-# )
-# gtest_discover_tests(SophireadCoreTest)
+add_executable(
+    SophireadCoreTest
+    tests/test_sophiread_core.cpp
+    src/sophiread_core.cpp
+    src/json_config_parser.cpp
+)
+target_link_libraries(SophireadCoreTest
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
+        TBB::tbb
+)
+gtest_discover_tests(SophireadCoreTest)
 
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
