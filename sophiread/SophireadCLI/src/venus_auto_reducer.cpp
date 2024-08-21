@@ -27,6 +27,7 @@
 #include <vector>
 #include <atomic>
 #include <unistd.h>
+#include <unordered_set>
 #include "sophiread_core.h"
 #include "json_config_parser.h"
 #include <spdlog/spdlog.h>
@@ -109,12 +110,15 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
  * @param[in] tiff_base 
  * @param[in] tof_mode 
  * @param[in] config 
+ * @param[in, out] processed_files
  */
 void process_existing_files(const std::string& input_dir, const std::string& output_dir, 
                             const std::string& tiff_base, const std::string& tof_mode,
-                            const IConfig& config) {
+                            const IConfig& config, std::unordered_set<std::string>& processed_files) {
     spdlog::info("Processing existing files in {}", input_dir);
-    
+
+    // NOTE: we need to process files sequentially as we are accumulating the counts to the
+    //       same set of tiff files in the output folder
     for (const auto& entry : fs::directory_iterator(input_dir)) {
         if (entry.is_regular_file() && entry.path().extension() == ".tpx3") {
             spdlog::info("Processing file: {}", entry.path().string());
@@ -140,20 +144,103 @@ void process_existing_files(const std::string& input_dir, const std::string& out
                 sophiread::timedSaveTOFImagingToTIFF(output_dir, tof_images, config.getTOFBinEdges(), tiff_base);
                 
                 spdlog::info("Processed and saved: {}", output_file);
+
+                // record processed file
+                processed_files.insert(entry.path().stem().string());
             } catch (const std::exception& e) {
                 spdlog::error("Error processing file {}: {}", entry.path().string(), e.what());
             }
         }
     }
-    
-    spdlog::info("Finished processing existing files");
+
+    // Create a string to hold the formatted output
+    std::ostringstream oss;
+    oss << "Processed files: [";
+
+    // Loop through the set and concatenate elements
+    for (auto it = processed_files.begin(); it != processed_files.end(); ++it) {
+        if (it != processed_files.begin()) {
+            oss << ", "; // Add a comma before each element except the first
+        }
+        oss << *it;
+    }
+    oss << "]";
+    spdlog::info(oss.str());
 }
 
 // Function to monitor directory for new files
-// void monitor_directory(const std::string& input_dir, const std::string& output_dir, 
+// void monitor_directory(const std::string& input_dir, const std::string& output_dir,
 //                        const std::string& tiff_base, const std::string& tof_mode,
 //                        const IConfig& config, std::atomic<bool>& should_continue) {
-//     // TODO: Implement directory monitoring and file processing
+//     std::unordered_set<std::string> processed_files;
+    
+//     // First, add all existing processed files to the set
+//     for (const auto& entry : fs::directory_iterator(input_dir)) {
+//         if (entry.is_regular_file() && entry.path().extension() == ".tiff") {
+//             std::string base_name = entry.path().stem().string();
+//             // Remove the tiff_base suffix to get the original file name
+//             size_t pos = base_name.rfind("_" + tiff_base);
+//             if (pos != std::string::npos) {
+//                 base_name = base_name.substr(0, pos);
+//             }
+//             processed_files.insert(base_name + ".tpx3");
+//         }
+//     }
+
+//     while (should_continue) {
+//         for (const auto& entry : fs::directory_iterator(input_dir)) {
+//             if (entry.is_regular_file() && entry.path().extension() == ".tpx3") {
+//                 std::string file_name = entry.path().filename().string();
+                
+//                 // Check if file has already been processed
+//                 if (processed_files.find(file_name) != processed_files.end()) {
+//                     continue;
+//                 }
+
+//                 // Simple file locking mechanism: check if file size is changing
+//                 auto initial_size = fs::file_size(entry.path());
+//                 std::this_thread::sleep_for(std::chrono::seconds(1));
+//                 if (fs::file_size(entry.path()) != initial_size) {
+//                     spdlog::debug("File {} is still being written. Skipping for now.", file_name);
+//                     continue;
+//                 }
+
+//                 spdlog::info("Processing new file: {}", file_name);
+
+//                 try {
+//                     // Read the TPX3 file
+//                     auto raw_data = sophiread::timedReadDataToCharVec(entry.path().string());
+                    
+//                     // Find TPX3 headers
+//                     auto batches = sophiread::timedFindTPX3H(raw_data);
+                    
+//                     // Process the data
+//                     sophiread::timedLocateTimeStamp(batches, raw_data);
+//                     sophiread::timedProcessing(batches, raw_data, config);
+                    
+//                     // Generate output file name
+//                     std::string output_file = fs::path(output_dir) / (entry.path().stem().string() + "_" + tiff_base + ".tiff");
+                    
+//                     // Create TOF images
+//                     auto tof_images = sophiread::timedCreateTOFImages(batches, config.getSuperResolution(), config.getTOFBinEdges(), tof_mode);
+                    
+//                     // Save TOF images
+//                     sophiread::timedSaveTOFImagingToTIFF(output_dir, tof_images, config.getTOFBinEdges(), entry.path().stem().string() + "_" + tiff_base);
+                    
+//                     spdlog::info("Processed and saved: {}", output_file);
+
+//                     // Add to processed files set
+//                     processed_files.insert(file_name);
+
+//                 } catch (const std::exception& e) {
+//                     spdlog::error("Error processing file {}: {}", file_name, e.what());
+//                 }
+//             }
+//         }
+
+//         // Sleep for a short time before checking again
+//         std::this_thread::sleep_for(std::chrono::seconds(5));
+//     }
 // }
 
 int main(int argc, char* argv[]) {
@@ -189,7 +276,8 @@ int main(int argc, char* argv[]) {
         spdlog::info("Configuration: {}", config->toString());
 
         // Process existing files
-        process_existing_files(options.input_dir, options.output_dir, options.tiff_base, options.tof_mode, *config);
+        std::unordered_set<std::string> processed_files;
+        process_existing_files(options.input_dir, options.output_dir, options.tiff_base, options.tof_mode, *config, processed_files);
 
         // Start monitoring for new files
         // std::atomic<bool> should_continue{true};
