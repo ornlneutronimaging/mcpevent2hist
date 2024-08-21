@@ -10,23 +10,38 @@ set(SRC_FILES
     src/user_config.cpp
     src/json_config_parser.cpp
     src/sophiread_core.cpp
-    src/sophiread.cpp
 )
 
 # ----------------- CLI APPLICATION ----------------- #
 add_executable(Sophiread
     ${SRC_FILES}
+    src/sophiread.cpp
 )
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
 target_link_libraries(Sophiread
     PRIVATE 
-      FastSophiread
-      TBB::tbb
-      spdlog::spdlog
-      fmt::fmt
-      nlohmann_json::nlohmann_json
-      ${HDF5_LIBRARIES}
-      ${TIFF_LIBRARIES}
+        FastSophiread
+        TBB::tbb
+        spdlog::spdlog
+        fmt::fmt
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
+)
+#
+add_executable(venus_auto_reducer
+${SRC_FILES}
+    src/venus_auto_reducer.cpp
+)
+target_link_libraries(venus_auto_reducer
+    PRIVATE 
+        FastSophiread
+        TBB::tbb
+        spdlog::spdlog
+        fmt::fmt
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
 )
 
 # ----------------- TESTS ----------------- #
@@ -82,9 +97,14 @@ gtest_discover_tests(SophireadCoreTest)
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
 add_custom_command(TARGET Sophiread POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadCLI/Sophiread
     ${PROJECT_BINARY_DIR}/Sophiread
+)
+add_custom_command(TARGET venus_auto_reducer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_BINARY_DIR}/SophireadCLI/venus_auto_reducer
+    ${PROJECT_BINARY_DIR}/venus_auto_reducer
 )
 
 # ----------------- INSTALL ----------------- #
