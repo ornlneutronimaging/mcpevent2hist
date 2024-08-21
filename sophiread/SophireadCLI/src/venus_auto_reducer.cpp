@@ -45,9 +45,9 @@ struct ProgramOptions {
 };
 
 void print_usage(const char* program_name) {
-    spdlog::info("Usage: {} -I <input_dir> -o <output_dir> [-u <user_config_json>] [-f <tiff_file_name_base>] [-m <tof_mode>] [-v]", program_name);
+    spdlog::info("Usage: {} -i <input_dir> -o <output_dir> [-u <user_config_json>] [-f <tiff_file_name_base>] [-m <tof_mode>] [-v]", program_name);
     spdlog::info("Options:");
-    spdlog::info("  -I <input_dir>    Input directory with TPX3 files");
+    spdlog::info("  -i <input_dir>    Input directory with TPX3 files");
     spdlog::info("  -o <output_dir>   Output directory for TIFF files");
     spdlog::info("  -u <config_file>  User configuration JSON file (optional)");
     spdlog::info("  -f <tiff_base>    Base name for TIFF files (default: tof_image)");
@@ -60,9 +60,9 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
     ProgramOptions options;
     int opt;
 
-    while ((opt = getopt(argc, argv, "I:o:u:f:m:dv")) != -1) {
+    while ((opt = getopt(argc, argv, "i:o:u:f:m:dv")) != -1) {
         switch (opt) {
-            case 'I':
+            case 'i':
                 options.input_dir = optarg;
                 break;
             case 'o':
