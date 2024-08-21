@@ -275,6 +275,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
  * @param[in] out_tof_imaging
  * @param[in] batches
  * @param[in] tof_bin_edges
+ * @param[in] tof_filename_base
  */
 void timedSaveTOFImagingToTIFF(
     const std::string& out_tof_imaging,
@@ -332,7 +333,6 @@ void timedSaveTOFImagingToTIFF(
               }
           }
 
-          
           // Write or update TIFF file
           TIFF* tif = TIFFOpen(filename.c_str(), "w");
           if (tif) {
@@ -442,7 +442,7 @@ int main(int argc, char *argv[]) {
       case 'f':  // TOF filename base
         tof_filename_base = optarg;
         break;
-      case 'm':
+      case 'm': // mode for TOF imaging, neutron: neutrons->tiff; hit: hit->tiff
         tof_mode = optarg;
         break;
       case 'd':
@@ -516,7 +516,6 @@ int main(int argc, char *argv[]) {
   // --------
   // process 
   // --------
-  
   // raw data --> hits --> neutrons
   auto start = std::chrono::high_resolution_clock::now();
   auto raw_data = timedReadDataToCharVec(in_tpx3);
@@ -529,7 +528,9 @@ int main(int argc, char *argv[]) {
   // release memory of raw data
   std::vector<char>().swap(raw_data);
 
-  // neutrons --2D hist--> TOF images
+  // neutrons/hits --2D hist--> TOF images
+  // NOTE: since x,y are int from hit, so the super resolution will produce checked image,
+  //       so users should keep sr at 1 for hit->tiff
   std::vector<std::vector<std::vector<unsigned int>>> tof_images;
   if (!out_tof_imaging.empty()) {
     spdlog::debug("start creating tof images");
@@ -539,7 +540,6 @@ int main(int argc, char *argv[]) {
   // -------------
   // Save to Disk
   // -------------
-
   // save hits to HDF5 file
   if (!out_hits.empty()) {
     timedSaveHitsToHDF5(out_hits, batches);
