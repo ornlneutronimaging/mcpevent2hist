@@ -84,6 +84,7 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
                 break;
             case 'd':
                 options.debug = true;
+                break;
             case 'v':
                 options.verbose = true;
                 break;
