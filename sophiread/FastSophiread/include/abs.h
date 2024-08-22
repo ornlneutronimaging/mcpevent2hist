@@ -44,7 +44,7 @@ struct Cluster {
 class ABS : public ClusteringAlgorithm {
  public:
   ABS(double r, unsigned long int min_cluster_size, unsigned long int spider_time_range)
-      : m_feature(r), m_min_cluster_size(min_cluster_size), spiderTimeRange_(spider_time_range){};
+      : m_feature(r), m_min_cluster_size(min_cluster_size), spiderTimeRange_(spider_time_range) {};
   void fit(const std::vector<Hit>& data);
   void set_method(std::string method) { m_method = method; }
   void reset() { clusterLabels_.clear(); }

@@ -25,7 +25,7 @@ std::vector<NeutronEvent> neutron_events;
  */
 void process_batch(const std::vector<Hit> &batch) {
   ClusteringAlgorithm *alg;
-  alg = new ABS(5.0,1,75);                // select clustering algorithm
+  alg = new ABS(5.0, 1, 75);         // select clustering algorithm
   alg->set_method("fast_gaussian");  // select peak fitting method
   alg->fit(batch);
   std::vector<NeutronEvent> events = alg->get_events(batch);
@@ -89,8 +89,7 @@ void reader(std::string filename) {
         if (char_array[7] == 0x6F) {
           // TDC data packets
           tdclast = (unsigned long *)(&char_array[0]);
-          mytdc = (((*tdclast) >> 12) &
-                   0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+          mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
           TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
           TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
           if (mytdc < TDC_LSB32) {
@@ -117,10 +116,8 @@ void reader(std::string filename) {
           }
         } else if ((char_array[7] & 0xF0) == 0xb0) {
           // Process the data into hit
-          auto data_packet = std::vector<char>(
-              char_array, char_array + sizeof(char_array) / sizeof(char));
-          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
-                                 chip_layout_type);
+          auto data_packet = std::vector<char>(char_array, char_array + sizeof(char_array) / sizeof(char));
+          auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp, chip_layout_type);
           // std::cout << "Hits: " << hit.getX() << " " << hit.getY() << " " <<
           // hit.getTOF_ns()*1E-6 << " " << hit.getSPIDERTIME_ns()*1E-9 <<
           // std::endl;

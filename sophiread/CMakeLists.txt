@@ -103,3 +103,12 @@ if(DOXYGEN_FOUND)
         index.html
   )
 endif(DOXYGEN_FOUND)
+
+# --------------- Clang format --------------#
+file(GLOB_RECURSE ALL_CXX_SOURCE_FILES *.cpp *.hpp *.h *.c)
+add_custom_target(
+    format
+    COMMAND clang-format -i ${ALL_CXX_SOURCE_FILES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Running clang-format"
+)

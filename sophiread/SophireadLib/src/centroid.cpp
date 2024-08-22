@@ -48,6 +48,6 @@ NeutronEvent Centroid::fit(const std::vector<Hit>& data) {
   }
 
   tof /= data.size();
-  
+
   return NeutronEvent(x, y, tof, tot, data.size());
 }
