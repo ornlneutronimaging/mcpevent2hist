@@ -75,19 +75,19 @@ void saveEventsToHDF5(const std::string out_file_name, const std::vector<Neutron
   y_dataset.write(y.data(), float_type);
   // -- write TOF_ns
   std::vector<double> tof_ns(events.size());
-  std::transform(events.begin(), events.end(), tof_ns.begin(),
+  std::transform(events.cbegin(), events.cend(), tof_ns.begin(),
                  [](const Neutron &event) { return event.getTOF_ns(); });
   H5::DataSet tof_ns_dataset = group.createDataSet("tof", float_type, dataspace);
   tof_ns_dataset.write(tof_ns.data(), float_type);
   // -- write Nhits
   std::vector<int> nhits(events.size());
-  std::transform(events.begin(), events.end(), nhits.begin(),
+  std::transform(events.cbegin(), events.cend(), nhits.begin(),
                  [](const Neutron &event) { return event.getNHits(); });
   H5::DataSet nhits_dataset = group.createDataSet("nHits", int_type, dataspace);
   nhits_dataset.write(nhits.data(), int_type);
   // -- write TOT
   std::vector<double> tot(events.size());
-  std::transform(events.begin(), events.end(), tot.begin(), [](const Neutron &event) { return event.getTOT(); });
+  std::transform(events.cbegin(), events.cend(), tot.begin(), [](const Neutron &event) { return event.getTOT(); });
   H5::DataSet tot_dataset = group.createDataSet("tot", float_type, dataspace);
   tot_dataset.write(tot.data(), float_type);
   // -- close file
@@ -260,7 +260,7 @@ int main(int argc, char* argv[])
 
   spdlog::debug("@{:p}, {}", raw_data.map, raw_data.max);
 
-  if ( raw_data.map == NULL )
+  if ( raw_data.map == nullptr )
   {
     spdlog::error("Insufficient memory: {}", in_tpx3);
     exit(EXIT_FAILURE);
