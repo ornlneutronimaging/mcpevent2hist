@@ -4,9 +4,9 @@
  * @brief Benchmark the performance of abs clustering method
  * @version 0.1
  * @date 2023-08-25
- *
+ * 
  * @copyright Copyright (c) 2023
- *
+ * 
  */
 #include <algorithm>
 #include <chrono>
@@ -49,7 +49,8 @@ std::vector<Hit> fake_hits() {
   return hits;
 }
 
-double run_single_test(std::vector<Hit> hits, double &fit_time, double &events_time) {
+double run_single_test(std::vector<Hit> hits, double &fit_time,
+                       double &events_time) {
   // create ABS algorithm
   ABS abs_alg(5.0, 1, 75);
 
@@ -57,7 +58,8 @@ double run_single_test(std::vector<Hit> hits, double &fit_time, double &events_t
   auto start_fit = chrono::high_resolution_clock::now();
   abs_alg.fit(hits);
   auto end_fit = chrono::high_resolution_clock::now();
-  auto duration_fit = chrono::duration_cast<chrono::microseconds>(end_fit - start_fit).count();
+  auto duration_fit =
+      chrono::duration_cast<chrono::microseconds>(end_fit - start_fit).count();
   cout << "abs::fit " << duration_fit << " us" << endl;
 
   // convert to neutron events
@@ -65,7 +67,9 @@ double run_single_test(std::vector<Hit> hits, double &fit_time, double &events_t
   abs_alg.set_method("centroid");
   auto events = abs_alg.get_events(hits);
   auto end_events = chrono::high_resolution_clock::now();
-  auto duration_events = chrono::duration_cast<chrono::microseconds>(end_events - start_events).count();
+  auto duration_events =
+      chrono::duration_cast<chrono::microseconds>(end_events - start_events)
+          .count();
   cout << "abs::get_events " << duration_events << " us" << endl;
 
   fit_time += duration_fit;

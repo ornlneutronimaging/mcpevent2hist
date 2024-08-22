@@ -25,14 +25,14 @@
 #include <vector>
 
 class IConfig {
- public:
-  virtual ~IConfig() = default;
+public:
+    virtual ~IConfig() = default;
 
-  virtual double getABSRadius() const = 0;
-  virtual unsigned long int getABSMinClusterSize() const = 0;
-  virtual unsigned long int getABSSpiderTimeRange() const = 0;
-  virtual std::vector<double> getTOFBinEdges() const = 0;
-  virtual double getSuperResolution() const = 0;
+    virtual double getABSRadius() const = 0;
+    virtual unsigned long int getABSMinClusterSize() const = 0;
+    virtual unsigned long int getABSSpiderTimeRange() const = 0;
+    virtual std::vector<double> getTOFBinEdges() const = 0;
+    virtual double getSuperResolution() const = 0;
 
-  virtual std::string toString() const = 0;
+    virtual std::string toString() const = 0;
 };

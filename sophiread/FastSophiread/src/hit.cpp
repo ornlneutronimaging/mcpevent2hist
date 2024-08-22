@@ -21,7 +21,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "hit.h"
-
 #include <iostream>
 
 /**
@@ -63,16 +62,16 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   m_spidertime = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
   m_spidertime = m_spidertime | spidertime;
 
-  // additional check to make sure rollover of spidertime is correct
+  // additional check to make sure rollover of spidertime is correct 
   // 4e7 is roughly 1 second in the units of 25 ns
   // 1073741824 is 2^30 (in units of 25 ns)
-  if ((m_spidertime - GDC_timestamp) >= 4e7) {
+  if ((m_spidertime-GDC_timestamp)>=4e7){
     m_spidertime -= 1073741824;
   }
 
   // tof calculation
   m_tof = m_spidertime - TDC_timestamp;
-  while (m_tof * 25E-6 > 16.67) {
+  while (m_tof*25E-6 > 16.67){
     m_tof -= 666667;
   }
 

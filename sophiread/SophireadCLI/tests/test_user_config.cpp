@@ -20,11 +20,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <gtest/gtest.h>
-
 #include <fstream>
-
-#include "tof_binning.h"
 #include "user_config.h"
+#include "tof_binning.h"
 
 // Test default constructor
 TEST(UserConfigTest, DefaultConstructor) {
@@ -32,11 +30,11 @@ TEST(UserConfigTest, DefaultConstructor) {
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 5.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 1);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 75);
-
+  
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);  // 1500 bins + 1
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 }
 
 // Test parameterized constructor
@@ -45,12 +43,12 @@ TEST(UserConfigTest, ParameterizedConstructor) {
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 10.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 5);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 100);
-
+  
   // TOF binning should still be default
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 }
 
 // Test setters
@@ -59,7 +57,7 @@ TEST(UserConfigTest, Setters) {
   config.setABSRadius(15.0);
   config.setABSMinClusterSize(10);
   config.setABSSpiderTimeRange(150);
-
+  
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 15.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 10);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 150);
@@ -72,7 +70,7 @@ TEST(UserConfigTest, TOFBinningSetter) {
   custom_binning.num_bins = 1000;
   custom_binning.tof_max = 20000.0;
   config.setTOFBinning(custom_binning);
-
+  
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1001);  // 1000 bins + 1
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
@@ -84,7 +82,7 @@ TEST(UserConfigTest, CustomTOFBinEdges) {
   UserConfig config;
   std::vector<double> custom_edges = {0.0, 100.0, 200.0, 300.0, 400.0};
   config.setCustomTOFBinEdges(custom_edges);
-
+  
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 5);
   EXPECT_DOUBLE_EQ(tof_edges[0], 0.0);
@@ -126,7 +124,7 @@ TEST(UserConfigTest, ParseValidConfigurationFile) {
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
 
   // Cleanup
   std::remove("testConfig.txt");

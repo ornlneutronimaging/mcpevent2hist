@@ -36,9 +36,9 @@
  */
 class Centroid : public PeakFittingAlgorithm {
  public:
-  Centroid(bool weighted_by_tot = true) : m_weighted_by_tot(weighted_by_tot) {};
+  Centroid(bool weighted_by_tot = true) : m_weighted_by_tot(weighted_by_tot){};
   Centroid(bool weighted_by_tot, double super_resolution_factor)
-      : m_weighted_by_tot(weighted_by_tot), m_super_resolution_factor(super_resolution_factor) {};
+      : m_weighted_by_tot(weighted_by_tot), m_super_resolution_factor(super_resolution_factor){};
 
   void set_weighted_by_tot(bool weighted_by_tot) { m_weighted_by_tot = weighted_by_tot; }
 

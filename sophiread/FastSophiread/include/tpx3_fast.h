@@ -33,10 +33,10 @@
  * @note  Each TPX3 dataset batch comes from a single sub-chip
  */
 struct TPX3 {
-  std::size_t index;              // index of the dataset batch in the raw charater array
-  const int num_packets;          // number of packets in the dataset batch (time packet and data packet)
-  const int chip_layout_type;     // data source (sub-chip ID)
-  std::vector<Hit> hits;          // hits extracted from the dataset batch
+  std::size_t index;           // index of the dataset batch in the raw charater array
+  const int num_packets;       // number of packets in the dataset batch (time packet and data packet)
+  const int chip_layout_type;  // data source (sub-chip ID)
+  std::vector<Hit> hits;       // hits extracted from the dataset batch
   std::vector<Neutron> neutrons;  // neutrons from clustering hits
 
   unsigned long tdc_timestamp;       // starting tdc timestamp of the dataset batch

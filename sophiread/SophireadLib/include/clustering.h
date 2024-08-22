@@ -23,7 +23,8 @@ class ClusteringAlgorithm {
   virtual void fit(const std::vector<Hit>& hits) = 0;
 
   // generate neutron events with given hits and fitted cluster IDs
-  virtual std::vector<NeutronEvent> get_events(const std::vector<Hit>& hits) = 0;
+  virtual std::vector<NeutronEvent> get_events(
+      const std::vector<Hit>& hits) = 0;
 
   virtual ~ClusteringAlgorithm() {}
 };

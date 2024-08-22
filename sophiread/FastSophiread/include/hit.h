@@ -29,7 +29,7 @@
 class Hit : public IPositionTOF {
  public:
   // default constructor
-  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0) {};
+  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
   // copy constructor
   Hit(const Hit& hit)
       : m_x(hit.m_x),
@@ -38,10 +38,10 @@ class Hit : public IPositionTOF {
         m_toa(hit.m_toa),
         m_ftoa(hit.m_ftoa),
         m_tof(hit.m_tof),
-        m_spidertime(hit.m_spidertime) {};
+        m_spidertime(hit.m_spidertime){};
 
   Hit(int x, int y, int tot, int toa, int ftoa, unsigned int tof, unsigned long long spidertime)
-      : m_x(x), m_y(y), m_tot(tot), m_toa(toa), m_ftoa(ftoa), m_tof(tof), m_spidertime(spidertime) {};
+      : m_x(x), m_y(y), m_tot(tot), m_toa(toa), m_ftoa(ftoa), m_tof(tof), m_spidertime(spidertime){};
 
   // special constructor that directly parse the raw packet from tpx3
   // into a hit

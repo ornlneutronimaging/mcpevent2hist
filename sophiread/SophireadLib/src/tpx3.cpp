@@ -16,20 +16,23 @@
 
 std::string Hit::toString() const {
   std::stringstream ss;
-  ss << "Hit: x=" << m_x << ", y=" << m_y << ", tot=" << m_tot << ", toa=" << m_toa << ", ftoa=" << m_ftoa
-     << ", tof=" << m_tof << ", spidertime=" << m_spidertime;
+  ss << "Hit: x=" << m_x << ", y=" << m_y << ", tot=" << m_tot
+     << ", toa=" << m_toa << ", ftoa=" << m_ftoa << ", tof=" << m_tof
+     << ", spidertime=" << m_spidertime;
   return ss.str();
 }
 
 std::string NeutronEvent::toString() const {
   std::stringstream ss;
-  ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof << ", nHits=" << m_nHits;
+  ss << "NeutronEvent: x=" << m_x << ", y=" << m_y << ", tof=" << m_tof
+     << ", nHits=" << m_nHits;
   return ss.str();
 }
 
 std::string Params::toString() const {
   std::stringstream ss;
-  ss << "ABS: radius=" << m_abs_radius << ", min_cluster_size=" << m_abs_min_cluster_size
+  ss << "ABS: radius=" << m_abs_radius 
+     << ", min_cluster_size=" << m_abs_min_cluster_size
      << ", spider_time_range=" << m_abs_spider_time_range;
 
   return ss.str();
@@ -118,8 +121,10 @@ Hit::Hit(const char *packet, const unsigned long long tdc, const unsigned long l
  * this function is used as a temporary solution with assumed timing, until
  * timing packet is fixed on the hardware side.
  */
-Hit packetToHitAlt(const std::vector<char> &packet, unsigned long long *rollover_counter,
-                   unsigned long long *previous_time, const int chip_layout_type) {
+Hit packetToHitAlt(const std::vector<char> &packet,
+                   unsigned long long *rollover_counter,
+                   unsigned long long *previous_time,
+                   const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
@@ -149,8 +154,8 @@ Hit packetToHitAlt(const std::vector<char> &packet, unsigned long long *rollover
       *rollover_counter += 1;
     }
 
-    // if the curr hit arrives later than previous hit (in order)
-    // if it is a lot later, it belongs to the previous rollover
+  // if the curr hit arrives later than previous hit (in order)
+  // if it is a lot later, it belongs to the previous rollover
   } else {
     if (spidertime - *previous_time > time_range / 2) {
       if (*rollover_counter > 0) {
@@ -167,7 +172,7 @@ Hit packetToHitAlt(const std::vector<char> &packet, unsigned long long *rollover
   // a consistent round off error of 10ns due to using integer for modulus
   // which is way below the 100ns time resolution needed
   tof = SPDR_timestamp % 666667;
-
+  
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -203,15 +208,15 @@ Hit packetToHitAlt(const std::vector<char> &packet, unsigned long long *rollover
  * @param chip_layout_type: chip layout ID number
  * @return Hit
  */
-Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc, const unsigned long long gdc,
-                const int chip_layout_type) {
+Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc,
+                const unsigned long long gdc, const int chip_layout_type) {
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
   unsigned short *nTOT;    // bytes 2,3, raw time over threshold
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   int x, y, tot, toa, ftoa;
-  unsigned int spidertime = 0, tof = 0;
+  unsigned int spidertime=0, tof=0;
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
   nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
@@ -240,8 +245,8 @@ Hit packetToHit(const std::vector<char> &packet, const unsigned long long tdc, c
 
   // tof calculation
   // TDC packets not always arrive before corresponding data packets
-  if (SPDR_timestamp < TDC_timestamp) {
-    tof = SPDR_timestamp - TDC_timestamp + 1E9 / 60.0;
+  if (SPDR_timestamp < TDC_timestamp){
+    tof = SPDR_timestamp - TDC_timestamp + 1E9/60.0;
   } else {
     tof = SPDR_timestamp - TDC_timestamp;
   }
@@ -290,7 +295,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
     throw std::runtime_error("Error opening file");
   }
   // Read the data from the file into a buffer
-  std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(file)),
+                                    std::istreambuf_iterator<char>());
   file.close();
 
   // Process the buffer to extract the raw data
@@ -332,7 +338,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
       // and data_packet_num, therefore we are using the code from manufacture
       // example, tpx3cam.cpp to get the data_packet_size.
       data_packet_size = ((0xff & char_array[7]) << 8) | (0xff & char_array[6]);
-      data_packet_num = data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
+      data_packet_num =
+          data_packet_size >> 3;  // every 8 (2^3) bytes is a data packet
 
       // get chip layout type
       chip_layout_type = (int)char_array[4];
@@ -349,7 +356,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
         if (data_packet[7] == 0x6F) {
           // TDC data packets
           tdclast = (unsigned long *)(&data_packet[0]);
-          mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
+          mytdc = (((*tdclast) >> 12) &
+                   0xFFFFFFFF);  // rick: 0x3fffffff, get 32-bit tdc
           TDC_LSB32 = GDC_timestamp & 0xFFFFFFFF;
           TDC_MSB16 = (GDC_timestamp >> 32) & 0xFFFF;
           if (mytdc < TDC_LSB32) {
@@ -376,7 +384,8 @@ std::vector<Hit> readTimepix3RawData(const std::string &filepath) {
         } else if ((data_packet[7] & 0xF0) == 0xb0) {
           // NOTE: as of 2023-02-24, timing data packet cannot be used, using
           // alternative method to get the timing information
-          auto hit = packetToHitAlt(data_packet, rollover_counter, previous_time, chip_layout_type);
+          auto hit = packetToHitAlt(data_packet, rollover_counter,
+                                    previous_time, chip_layout_type);
           // std::cout << hit.toString() << std::endl;
           // Process the data into hit
           // auto hit = packetToHit(data_packet, TDC_timestamp, GDC_timestamp,
@@ -719,40 +728,40 @@ void saveEventsToHDF5(const std::string out_file_name, const std::vector<Neutron
   out_file.close();
 }
 
-/**
- * @brief Parse user-defined parameters from a parameter file
- *
- * @param filepath: path to the parameter file.
- * @return Params
- */
+  /**
+   * @brief Parse user-defined parameters from a parameter file
+   *
+   * @param filepath: path to the parameter file.
+   * @return Params
+   */
 
-Params parseUserDefinedParams(const std::string &filepath) {
-  // default ABS settings
-  double radius = 5.0;
-  unsigned long int min_cluster_size = 1;
-  unsigned long int spider_time_range = 75;
+  Params parseUserDefinedParams(const std::string &filepath) {
+    // default ABS settings
+    double radius = 5.0;
+    unsigned long int min_cluster_size = 1;
+    unsigned long int spider_time_range = 75;
 
-  std::ifstream user_defined_params_file(filepath);
-  std::string line;
+    std::ifstream user_defined_params_file(filepath);
+    std::string line;
 
-  while (std::getline(user_defined_params_file, line)) {
-    std::istringstream ss(line);
-    std::string name;
-    ss >> name;
-    if (name == "abs_radius") {
+    while (std::getline(user_defined_params_file, line)) {
+      std::istringstream ss(line);
+      std::string name;
+      ss >> name;
+      if (name == "abs_radius") {
       ss >> radius;
-    } else if (name == "abs_min_cluster_size") {
+      } else if (name == "abs_min_cluster_size") {
       ss >> min_cluster_size;
-    } else if (name == "spider_time_range") {
+      } else if (name == "spider_time_range") {
       ss >> spider_time_range;
+      }
     }
+
+    Params p(radius, min_cluster_size, spider_time_range);
+
+    // prints out user-defined parameters
+    std::cout << "User-defined params file: " << filepath << std::endl;
+    std::cout << p.toString() << std::endl;
+
+    return p;
   }
-
-  Params p(radius, min_cluster_size, spider_time_range);
-
-  // prints out user-defined parameters
-  std::cout << "User-defined params file: " << filepath << std::endl;
-  std::cout << p.toString() << std::endl;
-
-  return p;
-}
