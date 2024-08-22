@@ -141,7 +141,7 @@ TEST_F(SophireadCoreTest, TimedSaveTOFImagingToTIFF) {
     EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0001.tiff"));
     EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0002.tiff"));
     EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0003.tiff"));
-    EXPECT_TRUE(std::filesystem::exists("test_tof/spectral.txt"));
+    EXPECT_TRUE(std::filesystem::exists("test_tof/test_Spectra.txt"));
     std::filesystem::remove_all("test_tof");
 }
 
