@@ -29,8 +29,8 @@
  */
 class FastGaussian : public PeakFittingAlgorithm {
  public:
-  FastGaussian(){};
-  FastGaussian(double super_resolution_factor) : m_super_resolution_factor(super_resolution_factor){};
+  FastGaussian() {};
+  FastGaussian(double super_resolution_factor) : m_super_resolution_factor(super_resolution_factor) {};
 
   void set_super_resolution_factor(double super_resolution_factor) {
     m_super_resolution_factor = super_resolution_factor;

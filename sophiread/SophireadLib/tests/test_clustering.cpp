@@ -53,7 +53,7 @@ TEST(Clustering, ABSAlgorithm) {
   auto data = gen_clusters();
 
   // create the ABS algorithm
-  ABS abs(5.,1,75);
+  ABS abs(5., 1, 75);
   abs.fit(data);
   abs.set_method("centroid");
   auto events = abs.get_events(data);
@@ -63,10 +63,8 @@ TEST(Clustering, ABSAlgorithm) {
 
   // OPENMP will shuffle the order of the events, we need to extract and sort
   // them before asserting
-  std::vector<double> x = {events[0].getX(), events[1].getX(),
-                           events[2].getX()};
-  std::vector<double> y = {events[0].getY(), events[1].getY(),
-                           events[2].getY()};
+  std::vector<double> x = {events[0].getX(), events[1].getX(), events[2].getX()};
+  std::vector<double> y = {events[0].getY(), events[1].getY(), events[2].getY()};
   std::sort(x.begin(), x.end());
   std::sort(y.begin(), y.end());
 
@@ -90,18 +88,15 @@ TEST(Clustering, DBSCANAlgorithm) {
 
   auto data = gen_clusters();
   // create the DSCAN algorithm
-  DBSCAN dbs(8000. /*eps time*/, 30 /*min_points time*/, 4. /*eps xy*/,
-             10 /*min_points xy*/);
+  DBSCAN dbs(8000. /*eps time*/, 30 /*min_points time*/, 4. /*eps xy*/, 10 /*min_points xy*/);
   auto events = dbs.get_events(data);
   // dbs.fit(data);
 
   // check that there are 3 events
   EXPECT_EQ(events.size(), 3);
 
-  std::vector<double> x = {events[0].getX(), events[1].getX(),
-                           events[2].getX()};
-  std::vector<double> y = {events[0].getY(), events[1].getY(),
-                           events[2].getY()};
+  std::vector<double> x = {events[0].getX(), events[1].getX(), events[2].getX()};
+  std::vector<double> y = {events[0].getY(), events[1].getY(), events[2].getY()};
   std::sort(x.begin(), x.end());
   std::sort(y.begin(), y.end());
 

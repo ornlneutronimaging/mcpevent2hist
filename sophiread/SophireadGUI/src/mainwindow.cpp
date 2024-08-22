@@ -26,8 +26,7 @@ class ColorMap : public QwtLinearColorMap {
   }
 };
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
   // Set up the UI
   ui->setupUi(this);
 
@@ -67,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
   unsigned long int min_cluster_size = 1;
   unsigned long int spider_time_range = 75;
 
-  clustering_alg = new ABS(radius,min_cluster_size,spider_time_range);
+  clustering_alg = new ABS(radius, min_cluster_size, spider_time_range);
   clustering_alg->set_method("centroid");
   // clustering_alg->set_method("fast_gaussian");
 
@@ -114,9 +113,8 @@ void MainWindow::handlereadfile() {
   }
 
   // Get file name
-  QString filename = QFileDialog::getOpenFileName(
-      this, "Timepix File to open", QDir::currentPath(),
-      "All files (*.*) ;; Timepix raw (*.tpx3)");
+  QString filename = QFileDialog::getOpenFileName(this, "Timepix File to open", QDir::currentPath(),
+                                                  "All files (*.*) ;; Timepix raw (*.tpx3)");
 
   // DEVNOTE:
   // The original QtConcurrent::run() function is not safe guarding content of
@@ -209,9 +207,8 @@ void MainWindow::handlesavedata() {
 
   // Save 2D histogram
   double *swaphisto = NULL;
-  QString filename = QFileDialog::getSaveFileName(
-      this, "Save 2D hist as binary", QDir::currentPath(),
-      "All files (*.*) ;; Pic Binary (*.dat)");
+  QString filename = QFileDialog::getSaveFileName(this, "Save 2D hist as binary", QDir::currentPath(),
+                                                  "All files (*.*) ;; Pic Binary (*.dat)");
   if (!filename.isNull()) {
     FILE *outfile;
     int ii;
@@ -232,8 +229,7 @@ void MainWindow::handlesavedata() {
   }
 
   // Save neutron events to HDF5 archive
-  filename = QFileDialog::getSaveFileName(this, "Save events to HDF5",
-                                          QDir::currentPath(),
+  filename = QFileDialog::getSaveFileName(this, "Save events to HDF5", QDir::currentPath(),
                                           "All files (*.*) ;; HDF5 (*.hdf5)");
   if (!filename.isNull()) {
     saveEventsToHDF5(filename.toStdString(), m_events);

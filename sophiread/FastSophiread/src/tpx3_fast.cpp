@@ -25,20 +25,19 @@
 #include <iostream>
 #include <numeric>
 
-#define MAX_BATCH_LEN	100000 // enough to process suann_socket_background_serval32.tpx3 without rollover
+#define MAX_BATCH_LEN 100000  // enough to process suann_socket_background_serval32.tpx3 without rollover
 
 #ifdef MAX_BATCH_LEN
-#include <cstdlib>
 #include <climits>
+#include <cstdlib>
 // allow MAX_BATCH_LEN to come from the environment
 long unsigned int _get_max_batch_len(void) {
-    if (const char* env_p = std::getenv("MAX_BATCH_LEN")) {
-        auto max_batch_len = std::strtoul(env_p, NULL, 0);
-        // no conversion produce 0
-        if (max_batch_len != 0 )
-            return max_batch_len;
-    }
-    return MAX_BATCH_LEN;
+  if (const char *env_p = std::getenv("MAX_BATCH_LEN")) {
+    auto max_batch_len = std::strtoul(env_p, NULL, 0);
+    // no conversion produce 0
+    if (max_batch_len != 0) return max_batch_len;
+  }
+  return MAX_BATCH_LEN;
 }
 #endif
 
@@ -143,9 +142,7 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes) {
  * @param[in] size
  * @return std::vector<TPX3>
  */
-std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) {
-  return findTPX3H(raw_bytes, raw_bytes + size);
-}
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) { return findTPX3H(raw_bytes, raw_bytes + size); }
 
 /**
  * @brief Locate all TPX3H (chip dataset) in the raw data.
@@ -154,7 +151,7 @@ std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size) {
  * @param[out] consumed
  * @return std::vector<TPX3H>
  */
-std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes, std::size_t& consumed) {
+std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes, std::size_t &consumed) {
   return findTPX3H(raw_bytes.cbegin(), raw_bytes.cend(), consumed);
 }
 
@@ -166,7 +163,7 @@ std::vector<TPX3> findTPX3H(const std::vector<char> &raw_bytes, std::size_t& con
  * @param[out] consumed
  * @return std::vector<TPX3>
  */
-std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size, std::size_t& consumed) {
+std::vector<TPX3> findTPX3H(char *raw_bytes, std::size_t size, std::size_t &consumed) {
   return findTPX3H(raw_bytes, raw_bytes + size, consumed);
 }
 

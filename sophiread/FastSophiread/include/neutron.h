@@ -29,7 +29,7 @@
 class Neutron : public IPositionTOF {
  public:
   Neutron(const double x, const double y, const double tof, const double tot, const int nHits)
-      : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits){};
+      : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits) {};
 
   double getX() const { return m_x; };
   double getY() const { return m_y; };

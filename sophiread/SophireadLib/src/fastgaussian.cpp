@@ -28,9 +28,7 @@ double getMedian(const std::vector<double>& data) {
   std::vector<double> sorted_data = data;
   std::sort(sorted_data.begin(), sorted_data.end());
   if (sorted_data.size() % 2 == 0) {
-    return (sorted_data[sorted_data.size() / 2 - 1] +
-            sorted_data[sorted_data.size() / 2]) /
-           2;
+    return (sorted_data[sorted_data.size() / 2 - 1] + sorted_data[sorted_data.size() / 2]) / 2;
   } else {
     return sorted_data[sorted_data.size() / 2];
   }
@@ -109,12 +107,10 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
   double y_event = x_sol(1) / 2.0;
 
   // calculate the tof as the average of the tof of the filtered hits
-  double tof_event =
-      std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) /
-      tof_filtered.size();
+  double tof_event = std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) / tof_filtered.size();
 
   // calculate the tot
-  double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(),0.0);
+  double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(), 0.0);
 
   // even if we are throwing away to bottom half, we still need to return the
   // pre-filtered number of hits
