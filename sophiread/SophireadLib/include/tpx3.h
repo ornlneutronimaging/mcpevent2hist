@@ -18,7 +18,7 @@
 class Hit {
  public:
   // default constructor
-  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0) {};
+  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
   // copy constructor
   Hit(const Hit& hit)
       : m_x(hit.m_x),
@@ -27,10 +27,17 @@ class Hit {
         m_toa(hit.m_toa),
         m_ftoa(hit.m_ftoa),
         m_tof(hit.m_tof),
-        m_spidertime(hit.m_spidertime) {};
+        m_spidertime(hit.m_spidertime){};
 
-  Hit(int x, int y, int tot, int toa, int ftoa, unsigned int tof, unsigned long long spidertime)
-      : m_x(x), m_y(y), m_tot(tot), m_toa(toa), m_ftoa(ftoa), m_tof(tof), m_spidertime(spidertime) {};
+  Hit(int x, int y, int tot, int toa, int ftoa, unsigned int tof,
+      unsigned long long spidertime)
+      : m_x(x),
+        m_y(y),
+        m_tot(tot),
+        m_toa(toa),
+        m_ftoa(ftoa),
+        m_tof(tof),
+        m_spidertime(spidertime){};
 
   // special constructor that directly parse the raw packet from tpx3
   // into a hit
@@ -58,7 +65,9 @@ class Hit {
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   double getTOA_ns() const { return m_toa * m_scale_to_ns_40mhz; };
   double getTOT_ns() const { return m_tot * m_scale_to_ns_40mhz; };
-  double getSPIDERTIME_ns() const { return m_spidertime * m_scale_to_ns_40mhz; };
+  double getSPIDERTIME_ns() const {
+    return m_spidertime * m_scale_to_ns_40mhz;
+  };
   double getFTOA_ns() const { return m_ftoa * m_scale_to_ns_640mhz; };
 
   std::string toString() const;
@@ -70,11 +79,14 @@ class Hit {
   int m_toa;     // time of arrival (40MHz clock, 14 bit)
   int m_ftoa;    // fine time of arrival (640MHz clock, 4 bit)
   unsigned int m_tof;
-  unsigned long long m_spidertime;  // time from the spider board (in the unit of 25ns)
+  unsigned long long
+      m_spidertime;  // time from the spider board (in the unit of 25ns)
 
   // scale factor that converts time to ns
-  const double m_scale_to_ns_40mhz = 25.0;          // 40 MHz clock is used for the coarse time of arrival.
-  const double m_scale_to_ns_640mhz = 25.0 / 16.0;  // 640 MHz clock is used for the fine time of arrival.
+  const double m_scale_to_ns_40mhz =
+      25.0;  // 40 MHz clock is used for the coarse time of arrival.
+  const double m_scale_to_ns_640mhz =
+      25.0 / 16.0;  // 640 MHz clock is used for the fine time of arrival.
 };
 
 /**
@@ -83,11 +95,12 @@ class Hit {
  */
 class NeutronEvent {
  public:
-  NeutronEvent(const double x, const double y, const double tof, const double tot, const int nHits)
-      : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits) {};
+  NeutronEvent(const double x, const double y, const double tof,
+               const double tot, const int nHits)
+      : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits){};
   double getX() const { return m_x; };
   double getY() const { return m_y; };
-  double getTOT() const { return m_tot; }
+  double getTOT() const { return m_tot;}
   double getTOF() const { return m_tof; };
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
@@ -95,49 +108,59 @@ class NeutronEvent {
   std::string toString() const;
 
  private:
-  const double m_x, m_y;                    // pixel coordinates
-  const double m_tof;                       // time of flight
-  const double m_tot;                       // time-over-threshold
-  const int m_nHits;                        // number of hits in the event (cluster size)
-  const double m_scale_to_ns_40mhz = 25.0;  // 40 MHz clock is used for the coarse time of arrival.
+  const double m_x, m_y;  // pixel coordinates
+  const double m_tof;     // time of flight
+  const double m_tot;     // time-over-threshold
+  const int m_nHits;      // number of hits in the event (cluster size)
+  const double m_scale_to_ns_40mhz =
+      25.0;  // 40 MHz clock is used for the coarse time of arrival.
 };
 
 /**
- *  @brief Class to store user-defined parameters for clustering algorithms
+ *  @brief Class to store user-defined parameters for clustering algorithms 
  * */
 class Params {
- public:
-  Params(const double abs_radius, unsigned long int abs_min_cluster_size, unsigned long int abs_spider_time_range)
-      : m_abs_radius(abs_radius),
-        m_abs_min_cluster_size(abs_min_cluster_size),
-        m_abs_spider_time_range(abs_spider_time_range) {};
+public:
+  Params(const double abs_radius, 
+    unsigned long int abs_min_cluster_size,
+    unsigned long int abs_spider_time_range) :
+    m_abs_radius(abs_radius), 
+    m_abs_min_cluster_size(abs_min_cluster_size),
+    m_abs_spider_time_range(abs_spider_time_range){};
 
-  double getABSRadius() const { return m_abs_radius; };
-  unsigned long int getABSMinClusterSize() const { return m_abs_min_cluster_size; };
-  unsigned long int getABSSpidertimeRange() const { return m_abs_spider_time_range; };
+  double getABSRadius() const {return m_abs_radius;};
+  unsigned long int getABSMinClusterSize() 
+        const {return m_abs_min_cluster_size;};
+  unsigned long int getABSSpidertimeRange() 
+        const {return m_abs_spider_time_range;};
 
   std::string toString() const;
 
- private:
+private:
   // ABS members (see abs.h for details)
-  double m_abs_radius;
+  double m_abs_radius;                            
   unsigned long int m_abs_min_cluster_size;
   unsigned long int m_abs_spider_time_range;
 };
 
 // static file processing
 std::vector<Hit> readTimepix3RawData(const std::string& filepath);
-Hit packetToHit(const std::vector<char>& packet, const unsigned long long tdc, const unsigned long long gdc,
-                const int chip_layout_type);
-Hit packetToHitAlt(const std::vector<char>& packet, unsigned long long* rollover_counter,
-                   unsigned long long* previous_time, const int chip_layout_type);
+Hit packetToHit(const std::vector<char>& packet, const unsigned long long tdc,
+                const unsigned long long gdc, const int chip_layout_type);
+Hit packetToHitAlt(const std::vector<char>& packet,
+                   unsigned long long* rollover_counter,
+                   unsigned long long* previous_time,
+                   const int chip_layout_type);
 // in memory processing
 std::vector<Hit> parseRawBytesToHits(const std::vector<char>& raw_bytes);
 //
-void saveHitsToHDF5(const std::string out_file_name, const std::vector<Hit>& hits, const std::vector<int>& labels);
-void saveEventsToHDF5(const std::string out_file_name, const std::vector<NeutronEvent>& events);
+void saveHitsToHDF5(const std::string out_file_name,
+                    const std::vector<Hit>& hits,
+                    const std::vector<int>& labels);
+void saveEventsToHDF5(const std::string out_file_name,
+                      const std::vector<NeutronEvent>& events);
 
-// parse user-defined param file
+// parse user-defined param file 
 Params parseUserDefinedParams(const std::string& filepath);
 
 // for fast processing raw bytes into hit
@@ -148,7 +171,7 @@ struct TPX3H {
   const int chip_layout_type;
 
   TPX3H(std::size_t index, int packet_size, int num_packets, int chip_layout_type)
-      : index(index), packet_size(packet_size), num_packets(num_packets), chip_layout_type(chip_layout_type) {};
+      : index(index), packet_size(packet_size), num_packets(num_packets), chip_layout_type(chip_layout_type){};
 };
 std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes);
 std::vector<Hit> processBatch(TPX3H batch, const std::vector<char>& raw_bytes);

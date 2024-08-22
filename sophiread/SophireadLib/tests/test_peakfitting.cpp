@@ -32,18 +32,24 @@ TEST(PeakFitting, CentroidAlgorithm) {
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event.getX(), 1863.66 * DSCALE, absolute_error) << "Centroid x is not correct.";
-  EXPECT_NEAR(event.getY(), 2718.74 * DSCALE, absolute_error) << "Centroid y is not correct.";
-  EXPECT_NEAR(event.getTOF(), 2262.67, absolute_error) << "Centroid tof is not correct.";
+  EXPECT_NEAR(event.getX(), 1863.66 * DSCALE, absolute_error)
+      << "Centroid x is not correct.";
+  EXPECT_NEAR(event.getY(), 2718.74 * DSCALE, absolute_error)
+      << "Centroid y is not correct.";
+  EXPECT_NEAR(event.getTOF(), 2262.67, absolute_error)
+      << "Centroid tof is not correct.";
 
   // CASE_2: not weighted by tot
   Centroid alg2(false);
   NeutronEvent event2 = alg2.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event2.getX(), 1845.67 * DSCALE, absolute_error) << "Centroid x is not correct.";
-  EXPECT_NEAR(event2.getY(), 2674.33 * DSCALE, absolute_error) << "Centroid y is not correct.";
-  EXPECT_NEAR(event2.getTOF(), 2262.67, absolute_error) << "Centroid tof is not correct.";
+  EXPECT_NEAR(event2.getX(), 1845.67 * DSCALE, absolute_error)
+      << "Centroid x is not correct.";
+  EXPECT_NEAR(event2.getY(), 2674.33 * DSCALE, absolute_error)
+      << "Centroid y is not correct.";
+  EXPECT_NEAR(event2.getTOF(), 2262.67, absolute_error)
+      << "Centroid tof is not correct.";
 }
 
 TEST(PeakFitting, FastGaussianAlgorithm) {
@@ -57,7 +63,8 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
     int y = 50 + pos(gen);
     int mytof = 1000 + tof(gen);
     int stime = 10 + spidertime(gen);
-    hits.push_back(Hit(x, y, 1 + tot(gen), 1 + toa(gen), ftoa(gen), mytof, stime));
+    hits.push_back(
+        Hit(x, y, 1 + tot(gen), 1 + toa(gen), ftoa(gen), mytof, stime));
   }
 
   // Create a fast gaussian algorithm
@@ -65,7 +72,10 @@ TEST(PeakFitting, FastGaussianAlgorithm) {
   NeutronEvent event = alg.fit(hits);
 
   // Check that the event is correct
-  EXPECT_NEAR(event.getX(), 50 * DSCALE, absolute_error) << "FastGaussian x is not correct.";
-  EXPECT_NEAR(event.getY(), 50 * DSCALE, absolute_error) << "FastGaussian y is not correct.";
-  EXPECT_NEAR(event.getTOF(), 1000, absolute_error) << "FastGaussian tof is not correct.";
+  EXPECT_NEAR(event.getX(), 50 * DSCALE, absolute_error)
+      << "FastGaussian x is not correct.";
+  EXPECT_NEAR(event.getY(), 50 * DSCALE, absolute_error)
+      << "FastGaussian y is not correct.";
+  EXPECT_NEAR(event.getTOF(), 1000, absolute_error)
+      << "FastGaussian tof is not correct.";
 }

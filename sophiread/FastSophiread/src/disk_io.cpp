@@ -31,7 +31,7 @@
  * @param[in] tpx3file
  * @return std::vector<char>
  */
-std::vector<char> readTPX3RawToCharVec(const std::string &tpx3file) {
+std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
   // Open the file
   std::ifstream file(tpx3file, std::ios::binary | std::ios::ate);
 
@@ -64,8 +64,9 @@ std::vector<char> readTPX3RawToCharVec(const std::string &tpx3file) {
  * @param tpx3file
  * @return mapinfo_t that defines { char *, and size_t }
  */
-mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
-  mapinfo_t info = {-1, NULL, 0};
+mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file)
+{
+  mapinfo_t info = { -1, NULL, 0 };
 
   // Open the file
   std::ifstream file(tpx3file, std::ios::binary | std::ios::ate);
@@ -86,10 +87,8 @@ mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
   info.map = reinterpret_cast<char *>(malloc(info.max));
 
   // Read the data from file and store it in the vector
-  if (info.map == NULL)
-    info.max = 0;
-  else
-    file.read(info.map, info.max);
+  if (info.map == NULL) info.max = 0;
+  else file.read(info.map, info.max);
 
   // Close the file
   file.close();
@@ -98,10 +97,10 @@ mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
 }
 
 // for mmap support
-#include <errno.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/mman.h>
+#include <errno.h>
 #include <unistd.h>
 
 /**
@@ -110,8 +109,9 @@ mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
  * @param tpx3file
  * @return mapinfo_t that defines { char *, and size_t }
  */
-mapinfo_t mmapTPX3RawToMapInfo(const std::string &tpx3file) {
-  mapinfo_t info = {-1, NULL, 0};
+mapinfo_t mmapTPX3RawToMapInfo(const std::string& tpx3file)
+{
+  mapinfo_t info = { -1, NULL, 0 };
 
   std::ifstream file(tpx3file, std::ios::binary);
   if (!file.is_open()) {
@@ -119,21 +119,17 @@ mapinfo_t mmapTPX3RawToMapInfo(const std::string &tpx3file) {
     exit(EXIT_FAILURE);
   }
 
-  info.fd = open(tpx3file.c_str(), O_RDWR, 0666);
+  info.fd = open(tpx3file.c_str(),O_RDWR,0666);
 
-  if (info.fd == -1) {
-    perror(tpx3file.c_str());
-    exit(EXIT_FAILURE);
-  }
-  info.max = lseek(info.fd, 0, SEEK_END);  // determine the sizeof the file
-  info.map = reinterpret_cast<char *>(mmap(0, info.max, PROT_READ | PROT_WRITE, MAP_SHARED, info.fd, 0));
+  if( info.fd == -1 ) { perror(tpx3file.c_str()); exit(EXIT_FAILURE); }
+  info.max = lseek(info.fd,0,SEEK_END);     // determine the sizeof the file
+  info.map = reinterpret_cast<char *>(mmap(0, info.max, PROT_READ|PROT_WRITE, MAP_SHARED, info.fd, 0));
   // https://lemire.me/blog/2012/06/26/which-is-fastest-read-fread-ifstream-or-mmap/
   // says to add MAP_POPULATE to make it mmap() faster...
   // TODO: Test this
 
   return info;
-  // https://stackoverflow.com/questions/26569217/do-i-have-to-munmap-a-mmap-file ( consensus is that you do not need to
-  // do it )
+  // https://stackoverflow.com/questions/26569217/do-i-have-to-munmap-a-mmap-file ( consensus is that you do not need to do it )
 }
 
 /**
@@ -142,7 +138,7 @@ mapinfo_t mmapTPX3RawToMapInfo(const std::string &tpx3file) {
  * @param[in] originalFileName
  * @return std::string
  */
-std::string generateFileNameWithMicroTimestamp(const std::string &originalFileName) {
+std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName) {
   auto now = std::chrono::high_resolution_clock::now();
   auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
   auto micros = std::chrono::duration_cast<std::chrono::microseconds>(now - seconds);

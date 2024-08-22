@@ -31,23 +31,13 @@
 /**
  * @brief Construct a new UserConfig object with default values.
  */
-UserConfig::UserConfig()
-    : m_abs_radius(5.0),
-      m_abs_min_cluster_size(1),
-      m_abs_spider_time_range(75),
-      m_tof_binning(),
-      m_super_resolution(1.0) {}
+UserConfig::UserConfig() : m_abs_radius(5.0), m_abs_min_cluster_size(1), m_abs_spider_time_range(75), m_tof_binning(), m_super_resolution(1.0) {}
 
 /**
  * @brief Construct a new UserConfig object with user-defined values
  */
-UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size,
-                       unsigned long int abs_spider_time_range)
-    : m_abs_radius(abs_radius),
-      m_abs_min_cluster_size(abs_min_cluster_size),
-      m_abs_spider_time_range(abs_spider_time_range),
-      m_tof_binning(),
-      m_super_resolution(1.0) {}
+UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size, unsigned long int abs_spider_time_range)
+    : m_abs_radius(abs_radius), m_abs_min_cluster_size(abs_min_cluster_size), m_abs_spider_time_range(abs_spider_time_range), m_tof_binning(), m_super_resolution(1.0) {}
 
 /**
  * @brief Helper function to convert a user configuration to a string for console output.
@@ -56,7 +46,8 @@ UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size
  */
 std::string UserConfig::toString() const {
   std::stringstream ss;
-  ss << "ABS: radius=" << m_abs_radius << ", min_cluster_size=" << m_abs_min_cluster_size
+  ss << "ABS: radius=" << m_abs_radius
+     << ", min_cluster_size=" << m_abs_min_cluster_size
      << ", spider_time_range=" << m_abs_spider_time_range;
 
   // Add TOF binning information
@@ -127,7 +118,8 @@ UserConfig parseUserDefinedConfigurationFile(const std::string& filepath) {
     } else if (name == "tof_max") {
       double value;
       ss >> value;
-    } else {
+    }
+    else {
       spdlog::warn("Unknown parameter {} in the user-defined configuration file.", name);
     }
   }

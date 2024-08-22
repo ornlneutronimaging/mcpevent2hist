@@ -6,7 +6,7 @@
  */
 class FastGaussian : public PeakFittingAlgorithm {
  public:
-  FastGaussian() {};
+  FastGaussian(){};
 
   // Pure virtual function for predicting the peak positions and parameters
   // predict -> (x, y, tof)

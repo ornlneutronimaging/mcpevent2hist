@@ -4,8 +4,12 @@
 
 class DBSCAN : public ClusteringAlgorithm {
  public:
-  DBSCAN(double eps_time, size_t min_points_time, double eps_xy, size_t min_points_xy)
-      : m_eps_time(eps_time), m_min_points_time(min_points_time), m_eps_xy(eps_xy), m_min_points_xy(min_points_xy) {};
+  DBSCAN(double eps_time, size_t min_points_time, double eps_xy,
+         size_t min_points_xy)
+      : m_eps_time(eps_time),
+        m_min_points_time(min_points_time),
+        m_eps_xy(eps_xy),
+        m_min_points_xy(min_points_xy){};
   ~DBSCAN() = default;
 
  public:
@@ -31,18 +35,20 @@ class DBSCAN : public ClusteringAlgorithm {
     double m_time_max;
     std::vector<size_t> m_time_cluster_xy_indexes;  // wrt input hits vector
   };
-  void fit1D(std::vector<double> &data, size_t &number_of_clusters, std::vector<size_t> &labels,
-             std::vector<double> &centroids);
-  void fit2D(std::vector<std::pair<double, double>> &data, size_t &number_of_clusters, std::vector<size_t> &labels,
+  void fit1D(std::vector<double> &data, size_t &number_of_clusters,
+             std::vector<size_t> &labels, std::vector<double> &centroids);
+  void fit2D(std::vector<std::pair<double, double>> &data,
+             size_t &number_of_clusters, std::vector<size_t> &labels,
              std::vector<std::pair<double, double>> &centroids);
-  void mergeTimeClusters1D(std::vector<TimeClusterInfo> &input_infos, std::vector<TimeClusterInfo> &merged_infos);
+  void mergeTimeClusters1D(std::vector<TimeClusterInfo> &input_infos,
+                           std::vector<TimeClusterInfo> &merged_infos);
 
  private:
   std::string m_method{"centroid"};  // method for centroid
-  double m_eps_time;                 // The maximum distance between two time points
-  size_t m_min_points_time;          // The minimum number of points in a time cluster
-  double m_eps_xy;                   // The maximum distance between two XY points
-  size_t m_min_points_xy;            // The minimum number of points in an XY cluster
+  double m_eps_time;         // The maximum distance between two time points
+  size_t m_min_points_time;  // The minimum number of points in a time cluster
+  double m_eps_xy;           // The maximum distance between two XY points
+  size_t m_min_points_xy;    // The minimum number of points in an XY cluster
   std::vector<NeutronEvent> m_events;
   const size_t m_max_hit_chunk_size = 2e6;
   std::vector<int> clusterLabels_;  // The cluster labels for each hit

@@ -48,7 +48,8 @@ std::vector<Hit> fake_hits() {
     int stime = 10 * i + spidertime(gen);
     // cluster
     for (int j = 0; j < num_hits_per_cluster; j++) {
-      hits.emplace_back(Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
+      hits.emplace_back(
+          Hit(x, y, tot(gen), toa(gen), ftoa(gen), tof(gen), stime));
     }
   }
   return hits;
@@ -81,7 +82,9 @@ double single_test(const std::vector<Hit>& hits, int num_thread) {
   // start threads
   for (int i = 0; i < num_thread; ++i) {
     thread_data_list[i].begin = hits.begin() + i * chunk_size;
-    thread_data_list[i].end = (i == num_thread - 1) ? hits.end() : hits.begin() + (i + 1) * chunk_size;
+    thread_data_list[i].end = (i == num_thread - 1)
+                                  ? hits.end()
+                                  : hits.begin() + (i + 1) * chunk_size;
     threads[i] = std::thread(&thread_data::run, std::ref(thread_data_list[i]));
   }
 
@@ -93,7 +96,10 @@ double single_test(const std::vector<Hit>& hits, int num_thread) {
   // record time
   auto end = std::chrono::high_resolution_clock::now();
 
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1e6;
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count() /
+      1e6;
   cout << "[user]total " << duration << " sec" << endl;
 
   return duration;

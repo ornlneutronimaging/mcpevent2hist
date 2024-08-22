@@ -16,7 +16,9 @@
 #define VERSION_PATCH 0
 
 // Version number final
-#define VERSION_NUMBER ((unsigned long)(VERSION_MAJOR << 16) | (VERSION_MINOR << 8) | (VERSION_PATCH))
+#define VERSION_NUMBER                                           \
+  ((unsigned long)(VERSION_MAJOR << 16) | (VERSION_MINOR << 8) | \
+   (VERSION_PATCH))
 
 // Version string
 #define VERSION_STRING       \

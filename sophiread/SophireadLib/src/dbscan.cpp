@@ -3,11 +3,16 @@
 #include <iostream>
 #include <mlpack.hpp>
 
-DBSCAN::TimeClusterInfo::TimeClusterInfo() : m_time_mean(0.), m_time_sum(0.), m_time_min(DBL_MAX), m_time_max(DBL_MIN) {
+DBSCAN::TimeClusterInfo::TimeClusterInfo()
+    : m_time_mean(0.),
+      m_time_sum(0.),
+      m_time_min(DBL_MAX),
+      m_time_max(DBL_MIN) {
   m_time_cluster_xy_indexes = std::vector<size_t>();
 }
 
-DBSCAN::TimeClusterInfo::TimeClusterInfo(const double time, const size_t xy_index)
+DBSCAN::TimeClusterInfo::TimeClusterInfo(const double time,
+                                         const size_t xy_index)
     : m_time_mean(time), m_time_sum(time), m_time_min(time), m_time_max(time) {
   m_time_cluster_xy_indexes = std::vector<size_t>{xy_index};
 }
@@ -34,13 +39,16 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   if (max_number_of_hits == 0) return;
 
   if (m_verbose) {
-    std::cout << "Number of hits to process: " << max_number_of_hits << std::endl;
-    std::cout << "Maximum chunk size (hits): " << m_max_hit_chunk_size << std::endl;
+    std::cout << "Number of hits to process: " << max_number_of_hits
+              << std::endl;
+    std::cout << "Maximum chunk size (hits): " << m_max_hit_chunk_size
+              << std::endl;
 
     if (max_number_of_hits <= m_max_hit_chunk_size)
       std::cout << "Fitting time clusters (1D DBSCAN) on all hits" << std::endl;
     else
-      std::cout << "Fitting time clusters (1D DBSCAN) on chunks of hits..." << std::endl;
+      std::cout << "Fitting time clusters (1D DBSCAN) on chunks of hits..."
+                << std::endl;
   }
 
   size_t chunk_size{0};  // either max_chunk_size or the number of unprocessed
@@ -51,11 +59,13 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
 
   while (true) {
     // make a chunk
-    chunk_size = std::min(m_max_hit_chunk_size, max_number_of_hits - hit_offset);
+    chunk_size =
+        std::min(m_max_hit_chunk_size, max_number_of_hits - hit_offset);
     std::vector<double> chunk;
     // NOTE: we are using TOA ns here, NOT clock cycle.
-    std::transform(hits.begin() + hit_offset, hits.begin() + hit_offset + chunk_size, std::back_inserter(chunk),
-                   [](Hit const& h) { return h.getTOA_ns(); });
+    std::transform(
+        hits.begin() + hit_offset, hits.begin() + hit_offset + chunk_size,
+        std::back_inserter(chunk), [](Hit const& h) { return h.getTOA_ns(); });
 
     // run 1D time clustering on the chunk
     std::vector<size_t> labels;
@@ -65,16 +75,19 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
 
     std::vector<TimeClusterInfo> time_cluster_infos;
     time_cluster_infos.resize(number_of_clusters);
-    std::vector<TimeClusterInfo> non_cluster_infos;  // these unassigned data points may still change
-                                                     // their status later, during merging of chunks
+    std::vector<TimeClusterInfo>
+        non_cluster_infos;  // these unassigned data points may still change
+                            // their status later, during merging of chunks
 
     // set the time mean of each new info from the centroids vector
-    for (size_t jj = 0; jj < number_of_clusters; jj++) time_cluster_infos[jj].m_time_mean = centroids_1D[jj];
+    for (size_t jj = 0; jj < number_of_clusters; jj++)
+      time_cluster_infos[jj].m_time_mean = centroids_1D[jj];
 
     for (size_t ii = 0; ii < labels.size(); ii++) {
       size_t label = labels[ii];
       if (label == SIZE_MAX || label > number_of_clusters - 1) {
-        non_cluster_infos.emplace_back(TimeClusterInfo(chunk[ii], ii + hit_offset));
+        non_cluster_infos.emplace_back(
+            TimeClusterInfo(chunk[ii], ii + hit_offset));
         continue;
       }
       TimeClusterInfo& info = time_cluster_infos[label];
@@ -85,10 +98,14 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
     }
     // append non-cluster infos considering them as clusters with a single data
     // point each
-    time_cluster_infos.insert(time_cluster_infos.end(), non_cluster_infos.begin(), non_cluster_infos.end());
+    time_cluster_infos.insert(time_cluster_infos.end(),
+                              non_cluster_infos.begin(),
+                              non_cluster_infos.end());
 
     // append the new infos to the total infos
-    all_time_cluster_infos.insert(all_time_cluster_infos.end(), time_cluster_infos.begin(), time_cluster_infos.end());
+    all_time_cluster_infos.insert(all_time_cluster_infos.end(),
+                                  time_cluster_infos.begin(),
+                                  time_cluster_infos.end());
 
     hit_offset += chunk_size;
     if (max_number_of_hits - hit_offset == 0) break;  // processed all hits
@@ -105,9 +122,12 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
   assert(m_events.empty());  // must run reset() before fitting
 
   if (m_verbose) {
-    std::cout << "Number of time clusters: " << merged_time_cluster_infos.size() << std::endl;
-    std::cout << "Fitting XY clusters (2D DBSCAN) on every time cluster..." << std::endl;
-    std::cout << "Eps: " << m_eps_xy << "; min_points: " << m_min_points_xy << std::endl;
+    std::cout << "Number of time clusters: " << merged_time_cluster_infos.size()
+              << std::endl;
+    std::cout << "Fitting XY clusters (2D DBSCAN) on every time cluster..."
+              << std::endl;
+    std::cout << "Eps: " << m_eps_xy << "; min_points: " << m_min_points_xy
+              << std::endl;
   }
 
   size_t label_offset{0};
@@ -116,7 +136,8 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
 
     std::vector<std::pair<double, double>> xy_points;
     for (auto& index : info.m_time_cluster_xy_indexes)
-      xy_points.push_back(std::pair<double, double>(hits[index].getX(), hits[index].getY()));
+      xy_points.push_back(
+          std::pair<double, double>(hits[index].getX(), hits[index].getY()));
 
     std::vector<size_t> labels;
     std::vector<std::pair<double, double>> centroids_2D;
@@ -126,12 +147,15 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
     // set cluster labels to all hits contained in the current time cluster
     for (size_t ii = 0; ii < labels.size(); ii++) {
       size_t label = labels[ii];
-      int cluster_label = (label == SIZE_MAX || label > number_of_clusters - 1) ? -1 : label + label_offset;
+      int cluster_label = (label == SIZE_MAX || label > number_of_clusters - 1)
+                              ? -1
+                              : label + label_offset;
       clusterLabels_[info.m_time_cluster_xy_indexes[ii]] = cluster_label;
     }
     label_offset += number_of_clusters;
 
-    std::map<size_t, size_t> label_counts;  // label vs. number of xy points with that label
+    std::map<size_t, size_t>
+        label_counts;  // label vs. number of xy points with that label
     for (size_t ii = 0; ii < labels.size(); ii++) {
       size_t label = labels[ii];
       if (label == SIZE_MAX || label > number_of_clusters - 1) continue;
@@ -143,9 +167,10 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
     // note: currently the tot for each neutron event is set to 0
     // as there is no simple solution to incorporate tot info using DBSCAN
     for (auto const& label_count : label_counts)
-      m_events.emplace_back(NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
-                                         centroids_2D[label_count.first].second * DSCALE /*Y*/, info.m_time_mean, 0,
-                                         label_count.second));
+      m_events.emplace_back(
+          NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
+                       centroids_2D[label_count.first].second * DSCALE /*Y*/,
+                       info.m_time_mean,0, label_count.second));  
   }
 }
 
@@ -163,7 +188,9 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
 
   // before merging, sort the infos by the min time
   std::sort(input_infos.begin(), input_infos.end(),
-            [](const TimeClusterInfo& a, const TimeClusterInfo& b) { return a.m_time_min < b.m_time_min; });
+            [](const TimeClusterInfo& a, const TimeClusterInfo& b) {
+              return a.m_time_min < b.m_time_min;
+            });
 
   merged_infos.clear();
   std::vector<TimeClusterInfo>::const_iterator it = input_infos.begin();
@@ -172,16 +199,19 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
   while (it != input_infos.end()) {
     next = *(it);
     if (current.m_time_max > next.m_time_min ||
-        next.m_time_min - current.m_time_max <= m_eps_time) {  // checking if the clusters should be merged
+        next.m_time_min - current.m_time_max <=
+            m_eps_time) {  // checking if the clusters should be merged
       current.m_time_max = std::max(current.m_time_max, next.m_time_max);
       current.m_time_min = std::min(current.m_time_min, next.m_time_min);
-      current.m_time_cluster_xy_indexes.insert(current.m_time_cluster_xy_indexes.end(),
-                                               next.m_time_cluster_xy_indexes.begin(),
-                                               next.m_time_cluster_xy_indexes.end());
+      current.m_time_cluster_xy_indexes.insert(
+          current.m_time_cluster_xy_indexes.end(),
+          next.m_time_cluster_xy_indexes.begin(),
+          next.m_time_cluster_xy_indexes.end());
       current.m_time_sum += next.m_time_sum;
     } else {
       if (current.m_time_cluster_xy_indexes.size() >= m_min_points_time) {
-        current.m_time_mean = current.m_time_sum / current.m_time_cluster_xy_indexes.size();
+        current.m_time_mean =
+            current.m_time_sum / current.m_time_cluster_xy_indexes.size();
         merged_infos.push_back(current);
       }
       current = *(it);
@@ -189,7 +219,8 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
     it++;
   }
   if (current.m_time_cluster_xy_indexes.size() >= m_min_points_time) {
-    current.m_time_mean = current.m_time_sum / current.m_time_cluster_xy_indexes.size();
+    current.m_time_mean =
+        current.m_time_sum / current.m_time_cluster_xy_indexes.size();
     merged_infos.push_back(current);
   }
 }
@@ -202,14 +233,17 @@ void DBSCAN::mergeTimeClusters1D(std::vector<TimeClusterInfo>& input_infos,
  * @param labels :: (output) cluster labels
  * @param centroids :: (output) cluster centroids
  */
-void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters, std::vector<size_t>& labels,
+void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters,
+                   std::vector<size_t>& labels,
                    std::vector<double>& centroids) {
   // create an arma matrix from the data vector
-  arma::mat data_mat(&data[0], 1 /*nrows*/, data.size() /*ncols*/,
-                     false /*arma::mat will re-use the input data vector memory*/);
+  arma::mat data_mat(
+      &data[0], 1 /*nrows*/, data.size() /*ncols*/,
+      false /*arma::mat will re-use the input data vector memory*/);
 
   // create the dbscan object
-  mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(m_eps_time, m_min_points_time);
+  mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(
+      m_eps_time, m_min_points_time);
 
   // run mlpack clustering
   arma::Row<size_t> labels_row;
@@ -225,7 +259,8 @@ void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters, std::v
   labels_row.for_each([&labels](size_t& val) { labels.push_back(val); });
 
   // fill in the centroids vector from the arma centroids matrix
-  centroids_mat.for_each([&centroids](arma::mat::elem_type& val) { centroids.push_back(val); });
+  centroids_mat.for_each(
+      [&centroids](arma::mat::elem_type& val) { centroids.push_back(val); });
 }
 
 /**
@@ -236,14 +271,17 @@ void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters, std::v
  * @param labels :: (output) cluster labels
  * @param centroids :: (output) cluster centroids
  */
-void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data, size_t& number_of_clusters,
-                   std::vector<size_t>& labels, std::vector<std::pair<double, double>>& centroids) {
+void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data,
+                   size_t& number_of_clusters, std::vector<size_t>& labels,
+                   std::vector<std::pair<double, double>>& centroids) {
   // create an arma matrix from the data vector
-  arma::mat data_mat(&(data[0].first), 2 /*nrows*/, data.size() /*ncols*/,
-                     false /*arma::mat will re-use the input data vector memory*/);
+  arma::mat data_mat(
+      &(data[0].first), 2 /*nrows*/, data.size() /*ncols*/,
+      false /*arma::mat will re-use the input data vector memory*/);
 
   // create the dbscan object
-  mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(m_eps_xy, m_min_points_xy);
+  mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(
+      m_eps_xy, m_min_points_xy);
 
   // run mlpack clustering
   arma::Row<size_t> labels_row;
@@ -254,8 +292,9 @@ void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data, size_t& number_
   labels_row.for_each([&labels](size_t& val) { labels.push_back(val); });
 
   // fill in the centroids vector from the arma centroids matrix
-  centroids_mat.each_col(
-      [&centroids](const arma::vec& b) { centroids.push_back(std::pair<double, double>(b[0], b[1])); });
+  centroids_mat.each_col([&centroids](const arma::vec& b) {
+    centroids.push_back(std::pair<double, double>(b[0], b[1]));
+  });
 }
 
 /**
@@ -268,7 +307,8 @@ std::vector<NeutronEvent> DBSCAN::get_events(const std::vector<Hit>& hits) {
   if (m_events.size() == 0) {
     fit(hits);
   }
-  if (m_verbose) std::cout << "Total number of events: " << m_events.size() << std::endl;
+  if (m_verbose)
+    std::cout << "Total number of events: " << m_events.size() << std::endl;
   return m_events;
 }
 

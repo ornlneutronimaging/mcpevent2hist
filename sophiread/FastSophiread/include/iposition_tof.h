@@ -4,7 +4,7 @@
  * @brief Interface for neutron and hit
  * @version 0.1
  * @date 2024-08-20
- *
+ * 
  * @copyright Copyright (c) 2024
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@
 #pragma once
 
 class IPositionTOF {
- public:
-  virtual ~IPositionTOF() = default;
-  virtual double iGetX() const = 0;
-  virtual double iGetY() const = 0;
-  virtual double iGetTOF_ns() const = 0;
+public:
+    virtual ~IPositionTOF() = default;
+    virtual double iGetX() const = 0;
+    virtual double iGetY() const = 0;
+    virtual double iGetTOF_ns() const = 0;
 };

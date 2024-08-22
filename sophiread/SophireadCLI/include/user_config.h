@@ -23,7 +23,6 @@
 #pragma once
 
 #include <string>
-
 #include "iconfig.h"
 #include "tof_binning.h"
 
@@ -39,17 +38,15 @@ class UserConfig : public IConfig {
   void setABSMinClusterSize(unsigned long int abs_min_cluster_size) { m_abs_min_cluster_size = abs_min_cluster_size; }
 
   unsigned long int getABSSpiderTimeRange() const override { return m_abs_spider_time_range; }
-  void setABSSpiderTimeRange(unsigned long int abs_spider_time_range) {
-    m_abs_spider_time_range = abs_spider_time_range;
-  }
+  void setABSSpiderTimeRange(unsigned long int abs_spider_time_range) { m_abs_spider_time_range = abs_spider_time_range; }
 
   std::vector<double> getTOFBinEdges() const override { return m_tof_binning.getBinEdges(); }
   void setTOFBinning(const TOFBinning& tof_binning) { m_tof_binning = tof_binning; }
   void setCustomTOFBinEdges(const std::vector<double>& edges) { m_tof_binning.custom_edges = edges; }
 
   // no super resolution for old config format
-  double getSuperResolution() const override { return m_super_resolution; }
-  void setSuperResolution(double super_resolution) { m_super_resolution = super_resolution; }
+  double getSuperResolution() const override {return m_super_resolution; }
+  void setSuperResolution(double super_resolution) {m_super_resolution = super_resolution; }
 
   std::string toString() const override;
 
