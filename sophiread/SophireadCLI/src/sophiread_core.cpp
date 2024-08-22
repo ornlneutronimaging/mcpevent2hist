@@ -364,19 +364,19 @@ void timedSaveTOFImagingToTIFF(
     // Write spectral data to file
     std::ofstream spectral_file(spectral_filename);
     if (spectral_file.is_open()) {
-        spectral_file << "shutter_time(s),counts\n";
+        spectral_file << "shutter_time,counts\n";
         for (size_t bin = 0; bin < tof_bin_edges.size() - 1; ++bin) {
             spectral_file << tof_bin_edges[bin + 1] << "," << spectral_counts[bin] << "\n";
         }
         spectral_file.close();
         spdlog::info("Wrote spectral file: {}", spectral_filename);
     } else {
-        spdlog::error("Failed to open spectral file for writing: {}", spectral_filename);
+        spdlog::error("Failed to open spectra file for writing: {}", spectral_filename);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    spdlog::info("TIFF and spectral file writing completed in {} ms", duration.count());
+    spdlog::info("TIFF and spectra file writing completed in {} ms", duration.count());
 }
 
 } // namespace sophiread
