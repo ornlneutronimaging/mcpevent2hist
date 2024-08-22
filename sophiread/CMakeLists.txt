@@ -53,8 +53,6 @@ add_custom_target(copy_resources ALL DEPENDS ${CMAKE_BINARY_DIR}/data)
 # Add compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(
-    # -O3
-    # -std=c++20
     -march=native
     -ffast-math
     -pthread
