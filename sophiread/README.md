@@ -1,19 +1,13 @@
-Sophiread
----------
+# Sophiread
 
-Sophiread is a simple, fast, and extensible toolkit for reading and processing
-raw data from the Timepix3 chip.
+Sophiread is a simple, fast, and extensible toolkit for reading and processing raw data (`*.tpx3`) from the Timepix3 chip.
 It provides both command line (CLI) and graphical user interface (GUI) interfaces.
 
-Sophiread is written in C++ and Qt (with `qwt` extension).
-The streaming data client, `SophireadStream`, is using a 3rd party library, [readerwriterqueue](https://github.com/cameron314/readerwriterqueue)
-to read and process the raw data packet concurrently.
+> As of 2024-08-22, the GUI application is still undergoing development to use the new fast sophiread backend, only command line applications are available.
 
-How to build
-------------
+## How to build
 
-Sophiread is built using `cmake` and `make` under a sandboxed environment with
-`conda` (see [conda](https://conda.io/docs/)).
+Sophiread is built using `cmake` and `make` under a sandboxed environment with `conda` (see [conda](https://conda.io/docs/)).
 The following steps have been tested under MaxOS and Linux, and it is in theory possible to build it under Windows.
 
 - Install `conda` or equivalent pacakge manager such as `miniconda`, `mamba`, `micromamba`, etc.
@@ -58,48 +52,50 @@ The following steps have been tested under MaxOS and Linux, and it is in theory 
   - `sophiread-<version>-Linux.sh`: an installer for Linux
 
 - For Mac users with m-series chip, please make the following adjustment:
-  - Create env with `CONDA_SUBDIR=osx-64 conda create -f environment_mac.yml`
-    - Currently `mlpack` does not have a `arm64` package from conda, so we need to fallback to x86-64 using Rosetta 2 under the hood.
   - Install [MacTex](https://www.tug.org/mactex/) before building the documentation.
-  - __DO NOT__ install `mlpack` from homebrew.
-    - `mlpack` from homebrew can lead to linking error when building the DBSCAN object.
 
-Use the CLI
------------
+## Use the CLI
 
 The CLI is a simple command line interface to read and process raw data from the Timepix3 chip.
 It is a single executable file, `Sophiread`, which can be found in the `build` directory.
 The current version of the CLI supports the following input arguments:
 
 ```bash
-Sophiread [-i input_tpx3] [-u user_defined_params_list] [-H output_hits_HDF5]  [-E output_event_HDF5]  [-v]
+Sophiread -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>] [-T <tof_imaging_folder>] [-f <tof_filename_base>] [-m <tof_mode>] [-d] [-v]
 ```
 
-- `-i`: input raw Timepix3 data file.  (Mandatory)
-- `-u`: parse user-defined parameter list for clustering algorithsm. Please refer to the `user_defined_params.txt` template for reference. (Optional)
-- `-H`: output processed hits with corresponding cluster labels as HDF5 archive. (Optional)
-- `-E`: output processed neutron events as HDF5 archive. (Optional)
-- `-v`: verbose mode. (Optional)
+- `-i <input_tpx3>`: Input TPX3 file
+- `-H <output_hits>`: Output hits HDF5 file
+- `-E <output_events>`: Output events HDF5 file
+- `-u <config_file>`: User configuration JSON file (optional)
+- `-T <tof_imaging_folder>`: Output folder for TIFF TOF images (optional)
+- `-f <tof_filename_base>`: Base name for TIFF files (default: tof_image)
+- `-m <tof_mode>`: TOF mode: 'hit' or 'neutron' (default: neutron)
+- `-d`: Enable debug logging
+- `-v`: Enable verbose logging
 
-Alternatively, you can use `SophireadStream` to process the raw data packet concurrently.
-From the user perspective, it is the same as `Sophiread` but it is much faster for larger data set and has a better memory management.
-Unlike `Sophiread`, `SophireadStream` has a much simpler interface:
+One **important** thing to check before using this software is that you need to check your chip layout before using it.
+By default, `Sophiread` is assuming the detector has a `2x2` layout with a 5 pixel gap between chips.
+Each chip has `512x512` pixels.
+If your chip has different spec, you will need to modify the source code to make it work for your detector.
+
+A temporary auto reduction code binary is also available for the commission of [VENUS](https://neutrons.ornl.gov/venus), `venus_auto_reducer`:
 
 ```bash
-SophireadStream <TIMEPIX3_FILE_NAME>
+venus_auto_reducer -i <input_dir> -o <output_dir> [-u <user_config_json>] [-f <tiff_file_name_base>] [-m <tof_mode>] [-c <check_interval>] [-v] [-d]
 ```
 
-Use the GUI
------------
+- `-i <input_dir>`:  Input directory with TPX3 files
+- `-o <output_dir>`:  Output directory for TIFF files
+- `-u <config_file>`:  User configuration JSON file (optional)
+- `-f <tiff_base>`:  Base name for TIFF files (default: tof_image)
+- `-m <tof_mode>`:  TOF mode: 'hit' or 'neutron' (default: neutron)
+- `-c <interval>`:  Check interval in seconds (default: 5)
+- `-d`:  Debug output
+- `-v`:  Verbose output
 
-The GUI is a graphical user interface to read and process raw data from the Timepix3 chip.
-It is a single executable file, `SophireadGUI`, which can be found in the `build` directory.
-Once the GUI is launched, you can open a raw data file by clicking the `Load Data` button on the top left corner.
-The GUI will process the data and display the clustered neutron events in the 2D histogram.
+## Important note
 
-Important note
---------------
-
-The raw data file is a binary file with a specific format, so it is not recommended to open it with a text editor.
+The raw data file is a binary file with a specific format, please **DO NOT** try to open it with a text editor as it can corrupt the bytes inside.
 Additionally, super-pixeling (also known as super resolution) is used to increase the spatial resolution of the data, i.e. bumping the `512x512` native resolution to `4028x4028`.
 This is done by splitting each pixel into 8x8 sub-pixels via peak fitting.
