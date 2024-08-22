@@ -360,13 +360,13 @@ void timedSaveTOFImagingToTIFF(
     });
 
     // 4. Write spectral file
-    std::string spectral_filename = fmt::format("{}/spectral.txt", out_tof_imaging);
+    std::string spectral_filename = fmt::format("{}/{}_Spectra.txt", out_tof_imaging, tof_filename_base);
     // Write spectral data to file
     std::ofstream spectral_file(spectral_filename);
     if (spectral_file.is_open()) {
-        spectral_file << "Upper_Edge(s)\tCounts\n";
+        spectral_file << "shutter_time(s),counts\n";
         for (size_t bin = 0; bin < tof_bin_edges.size() - 1; ++bin) {
-            spectral_file << tof_bin_edges[bin + 1] << "\t" << spectral_counts[bin] << "\n";
+            spectral_file << tof_bin_edges[bin + 1] << "," << spectral_counts[bin] << "\n";
         }
         spectral_file.close();
         spdlog::info("Wrote spectral file: {}", spectral_filename);
