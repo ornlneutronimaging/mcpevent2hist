@@ -87,6 +87,13 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
 
+# For package config
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sophiread.pc.in
+               ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc @ONLY)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
