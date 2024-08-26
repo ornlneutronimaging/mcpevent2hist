@@ -11,7 +11,7 @@
 
 Hit_worker::Hit_worker(struct newRawPacket *myrawpackets, struct hitinfo *info, double *histo, unsigned int *tofhisto)
 {
-    // Constructor 
+    // Constructor
     myhits=myrawpackets;
     myinfo=info;
     my2dhisto=histo;
@@ -35,7 +35,7 @@ Hit_worker::Hit_worker(struct newRawPacket *myrawpackets, struct hitinfo *info, 
 
 Hit_worker::~Hit_worker()
 {
-    // Destructor 
+    // Destructor
     this->killthread=1;
 
 }
@@ -47,9 +47,9 @@ int Hit_worker::runme()
     unsigned int itof;
     int pindex=0;                   // these  are  for the cluster memory area.
     int cindex=0;
-    double xmean,ymean;             // 
+    double xmean,ymean;             //
     int ix,iy;
-    int isize=(int)DSCALE*512;  
+    int isize=(int)DSCALE*512;
     totalClusters=0;
     acceptedClusters=0;
     this->killthread=0;
@@ -73,39 +73,39 @@ int Hit_worker::runme()
             //
             nomatch=1;
 
-            // going through a list of 128 clusters and 
+            // going through a list of 128 clusters and
             // see if the hit belongs to an existing cluster
-            // or a new cluster 
+            // or a new cluster
             for (i=0;i<NUMCLUSTERS;i++)
             {
                 if (myclusters[i].slotinuse==1)
                 {
                     //check if  I belong to this  cluster with time and spatial constraint
                     // time check (~100~ns time window w.r.t. first hit in the cluster)
-                    k=myclusters[i].firstspdr- myhits[myinfo->ci].spdrtime;         
+                    k=myclusters[i].firstspdr- myhits[myinfo->ci].spdrtime;
 
-                    if (abs(k) < 3)      // in ns units 
-                   
-                    //spatial check 
+                    if (abs(k) < 3)      // in ns units
+
+                    //spatial check
                     {
                     //is it this cluster or another at the same time?
                     //could I use FTOA to avoid this?
 
-                        // check if it is within +5 pixels away cluster boundary  
-                        if ((myhits[myinfo->ci].x <= myclusters[i].maxx+CLUSTERADD) && 
-                            (myhits[myinfo->ci].x >= myclusters[i].minx-CLUSTERADD) && 
-                            (myhits[myinfo->ci].y <= myclusters[i].maxy+CLUSTERADD) && 
+                        // check if it is within +5 pixels away cluster boundary
+                        if ((myhits[myinfo->ci].x <= myclusters[i].maxx+CLUSTERADD) &&
+                            (myhits[myinfo->ci].x >= myclusters[i].minx-CLUSTERADD) &&
+                            (myhits[myinfo->ci].y <= myclusters[i].maxy+CLUSTERADD) &&
                             (myhits[myinfo->ci].y >= myclusters[i].miny-CLUSTERADD))
 
                         {
-                            // update cluster information 
+                            // update cluster information
                             myclusters[i].totalpix+=1;
-                            myclusters[i].runningX+=myhits[myinfo->ci].myTOT*myhits[myinfo->ci].x; 
+                            myclusters[i].runningX+=myhits[myinfo->ci].myTOT*myhits[myinfo->ci].x;
                             myclusters[i].runningY+=myhits[myinfo->ci].myTOT*myhits[myinfo->ci].y;
                             myclusters[i].totalTOT+=myhits[myinfo->ci].myTOT;
 
-                            // update cluster boundary as necessary 
-                            if (myhits[myinfo->ci].x < myclusters[i].minx)     
+                            // update cluster boundary as necessary
+                            if (myhits[myinfo->ci].x < myclusters[i].minx)
                             {
                                 myclusters[i].minx=myhits[myinfo->ci].x;
                             }

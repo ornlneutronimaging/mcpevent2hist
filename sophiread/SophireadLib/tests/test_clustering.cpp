@@ -53,7 +53,7 @@ TEST(Clustering, ABSAlgorithm) {
   auto data = gen_clusters();
 
   // create the ABS algorithm
-  ABS abs(5.,1,75);
+  ABS abs(5., 1, 75);
   abs.fit(data);
   abs.set_method("centroid");
   auto events = abs.get_events(data);
