@@ -24,7 +24,9 @@
 #include <sstream>
 #include <string>
 
-class Hit {
+#include "iposition_tof.h"
+
+class Hit : public IPositionTOF {
  public:
   // default constructor
   Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
@@ -76,6 +78,11 @@ class Hit {
        << ", tof=" << m_tof << ", spidertime=" << m_spidertime;
     return ss.str();
   };
+
+  // Implement the interface methods
+  double iGetX() const override { return static_cast<double>(getX()); }
+  double iGetY() const override { return static_cast<double>(getY()); }
+  double iGetTOF_ns() const override { return getTOF_ns(); }
 
  private:
   // raw packet directly read from tpx3.

@@ -24,7 +24,9 @@
 #include <sstream>
 #include <vector>
 
-class Neutron {
+#include "iposition_tof.h"
+
+class Neutron : public IPositionTOF {
  public:
   Neutron(const double x, const double y, const double tof, const double tot, const int nHits)
       : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits){};
@@ -34,6 +36,7 @@ class Neutron {
   double getTOT() const { return m_tot; }
   double getTOF() const { return m_tof; };
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
+  double getTOT_ns() const { return m_tot * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
 
   std::string toString() const {
@@ -41,6 +44,11 @@ class Neutron {
     ss << "Neutron: x= " << m_x << ", y= " << m_y << ", tof= " << m_tof << ", nHits= " << m_nHits;
     return ss.str();
   };
+
+  // Implement the interface methods
+  double iGetX() const override { return getX(); }
+  double iGetY() const override { return getY(); }
+  double iGetTOF_ns() const override { return getTOF_ns(); }
 
  private:
   double m_x, m_y;                    // pixel coordinates

@@ -14,6 +14,7 @@ dependencies:
   - cereal
   - tbb-devel
   - spdlog
+  - nlohmann_json
 
 
   # Not Windows, OpenGL implementation:
