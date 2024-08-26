@@ -114,7 +114,8 @@ NeutronEvent FastGaussian::fit(const std::vector<Hit>& data) {
       tof_filtered.size();
 
   // calculate the tot
-  double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(),0.0);
+  double tot_event =
+      std::accumulate(tot_filtered.begin(), tot_filtered.end(), 0.0);
 
   // even if we are throwing away to bottom half, we still need to return the
   // pre-filtered number of hits

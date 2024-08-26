@@ -8,7 +8,6 @@
 #include "centroid.h"
 #include "fastgaussian.h"
 
-
 /**
  * @brief Generate cluster labels for the hits.
  *
