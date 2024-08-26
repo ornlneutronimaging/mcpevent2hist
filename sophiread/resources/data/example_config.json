@@ -1,0 +1,16 @@
+{
+  "abs": {
+    "radius": 5.0,
+    "min_cluster_size": 1,
+    "spider_time_range": 75
+  },
+  "tof_imaging": {
+    "uniform_bins": {
+      "num_bins": 1500,
+      "end": 0.0167
+    },
+    "super_resolution": 2.0,
+    "_bin_edges": [0, 0.001, 0.002, 0.005, 0.01, 0.0167],
+    "_comment": "use either uniform_bins or bin_edges, otherwise bin_edges will be used"
+  }
+}

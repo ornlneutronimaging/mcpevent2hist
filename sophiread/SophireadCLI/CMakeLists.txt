@@ -2,25 +2,46 @@
 include_directories(
     include
     ${PROJECT_SOURCE_DIR}/FastSophiread/include
+    ${TIFF_INCLUDE_DIRS}
 )
 
 # Configure the commandline application
 set(SRC_FILES
     src/user_config.cpp
-    src/sophiread.cpp
+    src/json_config_parser.cpp
+    src/sophiread_core.cpp
 )
 
 # ----------------- CLI APPLICATION ----------------- #
 add_executable(Sophiread
     ${SRC_FILES}
+    src/sophiread.cpp
 )
 set_target_properties(Sophiread PROPERTIES VERSION ${PROJECT_VERSION})
-target_link_libraries(
-    Sophiread
-    FastSophiread
-    tbb
-    spdlog::spdlog
-    ${HDF5_LIBRARIES}
+target_link_libraries(Sophiread
+    PRIVATE 
+        FastSophiread
+        TBB::tbb
+        spdlog::spdlog
+        fmt::fmt
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
+)
+#
+add_executable(venus_auto_reducer
+${SRC_FILES}
+    src/venus_auto_reducer.cpp
+)
+target_link_libraries(venus_auto_reducer
+    PRIVATE 
+        FastSophiread
+        TBB::tbb
+        spdlog::spdlog
+        fmt::fmt
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
 )
 
 # ----------------- TESTS ----------------- #
@@ -30,21 +51,60 @@ add_executable(
     tests/test_user_config.cpp
     src/user_config.cpp
 )
-target_link_libraries(
-    UserConfigTest
-    FastSophiread
-    spdlog::spdlog
-    GTest::GTest
-    GTest::Main
+target_link_libraries(UserConfigTest
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
 )
 gtest_discover_tests(UserConfigTest)
+# Json config test
+add_executable(
+    JsonConfigParserTest
+    tests/test_json_config_parser.cpp
+    src/json_config_parser.cpp
+)
+target_link_libraries(JsonConfigParserTest
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
+        nlohmann_json::nlohmann_json
+)
+gtest_discover_tests(JsonConfigParserTest)
+# core test
+add_executable(
+    SophireadCoreTest
+    tests/test_sophiread_core.cpp
+    src/sophiread_core.cpp
+    src/json_config_parser.cpp
+)
+target_link_libraries(SophireadCoreTest
+    PRIVATE 
+        FastSophiread
+        spdlog::spdlog
+        GTest::GTest
+        GTest::Main
+        nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
+        ${TIFF_LIBRARIES}
+        TBB::tbb
+)
+gtest_discover_tests(SophireadCoreTest)
 
 # ----------------- SYMLINK ----------------- #
 # symlink the executable to the build directory
 add_custom_command(TARGET Sophiread POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadCLI/Sophiread
     ${PROJECT_BINARY_DIR}/Sophiread
+)
+add_custom_command(TARGET venus_auto_reducer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_BINARY_DIR}/SophireadCLI/venus_auto_reducer
+    ${PROJECT_BINARY_DIR}/venus_auto_reducer
 )
 
 # ----------------- INSTALL ----------------- #
