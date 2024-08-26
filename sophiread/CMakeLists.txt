@@ -23,8 +23,12 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 20)
-# set(CMAKE_AUTOMOC ON)  # for meta object compiler, needed for Qt5
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
@@ -35,7 +39,6 @@ find_package(TBB REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(spdlog 1.8.0 REQUIRED)
 find_package(fmt 7.0.0 REQUIRED)
-# find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 # Testing setup
 enable_testing()
@@ -54,19 +57,35 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-march=native -ffast-math -pthread -Wall -Wextra)
 endif()
 
-# Add Sophiread library NOTE: this will take care of the testing as well
-# add_subdirectory(SophireadLib)
-
 # Add FastSophiread library
 add_subdirectory(FastSophiread)
-
-# Add Sophiread command line interface
 add_subdirectory(SophireadCLI)
 
-# Add Sophiread stream command line interface
-# add_subdirectory(SophireadStreamCLI)
+# ----------------- PACKAGE CONFIGURATION ----------------- #
 
-# Add Sophiread GUI application add_subdirectory(SophireadGUI)
+# Export targets from subdirectories
+install(
+  EXPORT sophireadTargets
+  FILE sophireadTargets.cmake
+  NAMESPACE sophiread::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
+
+# Generate and install the sophireadConfig.cmake and
+# sophireadConfigVersion.cmake files
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion)
+
+configure_package_config_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/sophireadConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfig.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
