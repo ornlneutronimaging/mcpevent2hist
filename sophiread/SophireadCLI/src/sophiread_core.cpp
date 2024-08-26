@@ -28,6 +28,7 @@
 #include <spdlog/spdlog.h>
 #include "disk_io.h"
 #include "sophiread_core.h"
+#include "tiff_types.h"
 
 namespace sophiread {
 
@@ -135,7 +136,7 @@ void timedSaveHitsToHDF5(const std::string &out_hits, std::vector<TPX3> &batches
 
 /**
  * @brief Timed save events to HDF5.
- * 
+ *
  * @param[in] out_events
  * @param[in] batches
  */
@@ -166,11 +167,11 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
  * @return std::vector<std::vector<std::vector<unsigned int>>> The vector of TOF images, where each TOF image is a 2D histogram representing the distribution of neutron events in space for a specific TOF bin.
  */
 std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
-    const std::vector<TPX3>& batches, 
-    double super_resolution, 
+    const std::vector<TPX3>& batches,
+    double super_resolution,
     const std::vector<double>& tof_bin_edges,
     const std::string& mode) {
-    
+
     auto start = std::chrono::high_resolution_clock::now();
 
     // Initialize the TOF images container
@@ -185,7 +186,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
         spdlog::error("No batches to process");
         return tof_images;
     }
-    
+
     // Calculate the dimensions of each 2D histogram based on super_resolution
     // one chip: 0-255 pixel pos
     // gap: 5
@@ -198,7 +199,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
     if (!tof_bin_edges.empty()) {
         spdlog::debug("First bin edge: {}, Last bin edge: {}", tof_bin_edges.front(), tof_bin_edges.back());
     }
-    
+
     // Initialize each TOF bin's 2D histogram
     for (auto& tof_image : tof_images) {
         tof_image.resize(dim_y, std::vector<unsigned int>(dim_x, 0));
@@ -224,7 +225,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
                 entries.push_back(static_cast<const IPositionTOF*>(&neutron));
             }
         }
-        
+
         if (entries.empty()) {
             spdlog::debug("Batch {} is empty", batch_index);
             continue;
@@ -232,19 +233,20 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
 
         for (const auto& entry : entries) {
             total_entries++;
-            double tof_ns = entry->iGetTOF_ns();
+            const double tof_ns = entry->iGetTOF_ns();
+            const double tof_s = tof_ns/1e9;
 
             // Find the correct TOF bin
             // NOTE: tof_bin_edges are in sec, and tof_ns are in nano secs
-            spdlog::debug("tof_ns: {}, tof_ns/1e9: {}", tof_ns, tof_ns/1e9);
-            auto it = std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_ns/1e9);
-            if (it != tof_bin_edges.begin()) {
-                size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
-                
+            spdlog::debug("tof_ns: {}, tof_ns/1e9: {}", tof_ns, tof_s);
+
+            if (const auto it = std::lower_bound(tof_bin_edges.cbegin(), tof_bin_edges.cend(), tof_s); it != tof_bin_edges.cbegin()) {
+                const size_t bin_index = std::distance(tof_bin_edges.cbegin(), it) - 1;
+
                 // Calculate the x and y indices in the 2D histogram
-                int x = static_cast<int>(entry->iGetX() * super_resolution);
-                int y = static_cast<int>(entry->iGetY() * super_resolution);
-                
+                const int x = std::round(entry->iGetX() * super_resolution);
+                const int y = std::round(entry->iGetY() * super_resolution);
+
                 // Ensure x and y are within bounds
                 if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
                     // Increment the count in the appropriate bin and position
@@ -255,8 +257,8 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     spdlog::info("TOF image creation time: {} s", elapsed / 1e6);
     spdlog::info("Total entries: {}, Binned entries: {}", total_entries, binned_entries);
 
@@ -265,7 +267,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
 
 /**
  * @brief Timed save TOF imaging to TIFF.
- * 
+ *
  * @param[in] out_tof_imaging
  * @param[in] batches
  * @param[in] tof_bin_edges
@@ -273,7 +275,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
  */
 void timedSaveTOFImagingToTIFF(
     const std::string& out_tof_imaging,
-    const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
+    const std::vector<std::vector<std::vector<TIFF32Bit>>>& tof_images,
     const std::vector<double>& tof_bin_edges,
     const std::string& tof_filename_base)
 {
@@ -286,7 +288,7 @@ void timedSaveTOFImagingToTIFF(
     }
 
     // 2. Initialize vector for spectral data
-    std::vector<unsigned long long> spectral_counts(tof_images.size(), 0);
+    std::vector<uint64_t> spectral_counts(tof_images.size(), 0);
 
     // 3. Iterate through each TOF bin and save TIFF files
     tbb::parallel_for(tbb::blocked_range<size_t>(0, tof_images.size()), [&](const tbb::blocked_range<size_t>& range) {
@@ -295,9 +297,9 @@ void timedSaveTOFImagingToTIFF(
           std::string filename = fmt::format("{}/{}_bin_{:04d}.tiff", out_tof_imaging, tof_filename_base, bin + 1);
 
           // prepare container and fill with current hist2d
-          uint32_t width = tof_images[bin][0].size();
-          uint32_t height = tof_images[bin].size();
-          std::vector<std::vector<unsigned int>> accumulated_image = tof_images[bin];
+          const uint32_t width = tof_images[bin][0].size();
+          const uint32_t height = tof_images[bin].size();
+          std::vector<std::vector<TIFF32Bit>> accumulated_image = tof_images[bin];
 
           // check if file already exist
           if (std::filesystem::exists(filename)) {
@@ -310,7 +312,7 @@ void timedSaveTOFImagingToTIFF(
                   if (existing_width == width && existing_height == height) {
                       // Dimensions match, proceed with accumulation
                       for (uint32_t row = 0; row < height; ++row) {
-                          std::vector<unsigned int> scanline(width);
+                          std::vector<TIFF32Bit> scanline(width);
                           TIFFReadScanline(existing_tif, scanline.data(), row);
                           for (uint32_t col = 0; col < width; ++col) {
                               accumulated_image[row][col] += scanline[col];
