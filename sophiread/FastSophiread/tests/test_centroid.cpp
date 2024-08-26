@@ -69,8 +69,10 @@ TEST_F(CentroidTest, CentroidWeightedWithScale) {
   auto event = alg->fit(data);
 
   // Check the centroid
-  EXPECT_NEAR(event.getX(), 1863.66 * super_resolution_factor, absolution_tolerance);
-  EXPECT_NEAR(event.getY(), 2718.74 * super_resolution_factor, absolution_tolerance);
+  EXPECT_NEAR(event.getX(), 1863.66 * super_resolution_factor,
+              absolution_tolerance);
+  EXPECT_NEAR(event.getY(), 2718.74 * super_resolution_factor,
+              absolution_tolerance);
   EXPECT_NEAR(event.getTOF(), 2262.67, absolution_tolerance);
 }
 
