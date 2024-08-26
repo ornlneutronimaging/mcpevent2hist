@@ -332,8 +332,8 @@ void timedSaveTOFImagingToTIFF(
           // Write or update TIFF file
           TIFF* tif = TIFFOpen(filename.c_str(), "w");
           if (tif) {
-              uint32_t width = tof_images[bin][0].size();
-              uint32_t height = tof_images[bin].size();
+              const uint32_t width = tof_images[bin][0].size();
+              const uint32_t height = tof_images[bin].size();
 
               TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
               TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
