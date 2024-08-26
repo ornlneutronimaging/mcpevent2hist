@@ -4,9 +4,9 @@
  * @brief Benchmark the performance of abs clustering method
  * @version 0.1
  * @date 2023-08-25
- * 
+ *
  * @copyright Copyright (c) 2023
- * 
+ *
  */
 #include <algorithm>
 #include <chrono>

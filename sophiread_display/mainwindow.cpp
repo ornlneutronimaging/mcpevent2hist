@@ -8,7 +8,7 @@
 #include <qwt_color_map.h>
 #include <qwt_scale_engine.h>
 
-// Custom class of color map 
+// Custom class of color map
 class ColorMap: public QwtLinearColorMap
 {
 public:
@@ -23,14 +23,14 @@ public:
 };
 
 
-// read file to hit 
+// read file to hit
 int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *myinfo, unsigned int *mytofhisto, QLabel *infobox)
 {
     char data[128];                                     // pixel hit data + TDC data, no need 128 bytes
     char inbytes[128];                                  // mostly to store data packet header, no need 128 bytes
-    int notempty=1;                     
-    int i;                                              // store the number of bytes read for each hit event                 
-    int dwords; 
+    int notempty=1;
+    int i;                                              // store the number of bytes read for each hit event
+    int dwords;
     QString inname;
     int k;
     int n;
@@ -45,26 +45,26 @@ int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *my
     struct newRawPacket mynewraw;
     mytdc=0;
 
-// Load data from raw file 
+// Load data from raw file
     FILE *infile;
     struct stat myfilestat;
     inname=filename.section("/",-1,-1);
     infobox->setText("reading  file" + inname);
 
     infile=fopen(qPrintable(filename),"rb");
-    fstat(fileno(infile),&myfilestat); 
+    fstat(fileno(infile),&myfilestat);
     myinfo->bytesinfile=myfilestat.st_size;             // store file size (hitinfo/myinfo)
 
     while(notempty)
     {
         i=fread(&inbytes[0],1,8,infile);                // read 8 1-bytes data to inbytes[0] (8 bytes = 64 bits)
-        if (i==0)                                       // if num of bytes read is 0, break 
-        {                                               // loop to read file 
+        if (i==0)                                       // if num of bytes read is 0, break
+        {                                               // loop to read file
             notempty=0;
             break;
         }
         myinfo->bytesread+=i;                           // store bytes read (hitinfo/myinfo)
-        if (inbytes[0]=='T' && inbytes[1]=='P' && inbytes[2]=='X')  // check for data packet header 
+        if (inbytes[0]=='T' && inbytes[1]=='P' && inbytes[2]=='X')  // check for data packet header
 
         {
             myinfo->chuckheaders+=1;                   // count number of data packet header (hitinfo/myinfo)
@@ -72,19 +72,19 @@ int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *my
             dwords=dwords  >> 3;                       // data words is the number of bytes chunk? (>> 3 means divide by 8)
             /* ------------------------------------------------------------------------------------------------*/
             // testing purpose
-            // dwords = 3  
+            // dwords = 3
             /* ------------------------------------------------------------------------------------------------*/
 
             for (k=0;k<dwords;k++)                     // for each data word (1 byte?)
             {
-                i=fread(&data[0],1,8,infile);          // read the next 8 bytes from raw file 
+                i=fread(&data[0],1,8,infile);          // read the next 8 bytes from raw file
                 myinfo->bytesread+=i;                  // increment number of bytes read (hitinfo/myinfo)
-                
-                if ((data[7] & 0xF0) == 0xb0)         //Chip data: ToA and ToT timestamp packet, x, y    
+
+                if ((data[7] & 0xF0) == 0xb0)         //Chip data: ToA and ToT timestamp packet, x, y
                 {
                     /* ------------------------------------------------------------------------------------------------*/
                     /* ------------------------------------------------------------------------------------------------*/
-                    // char data[128] 
+                    // char data[128]
                     // 0: 0-7 bits
                     // 1: 8-15 bits
                     // 2: 16-23 bits
@@ -93,28 +93,28 @@ int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *my
                     // 5: 40-47 bits
                     // 6: 48-55 bits
                     // 7: 56-63 bits
-                    // little endian: the least significant value in the sequence is stored first 
+                    // little endian: the least significant value in the sequence is stored first
                     /* ------------------------------------------------------------------------------------------------*/
 
                     spdrtime=(unsigned short *)(&data[0]);          // spider time  (16 bits)
                     nTOT=(unsigned short *)(&data[2]);              // ToT          (10 bits)
                     nTOA=(unsigned int *)(&data[3]);                // ToA          (14 bits)
                     mynewraw.myFToA= *nTOT & 0xF;                   // FToA         (4 bits)
-                    mynewraw.myTOT=(*nTOT >> 4) & 0x3FF;            
-                    mynewraw.myTOA=(*nTOA >> 6) & 0x3FFF;     
-                    
+                    mynewraw.myTOT=(*nTOT >> 4) & 0x3FF;
+                    mynewraw.myTOA=(*nTOA >> 6) & 0x3FFF;
+
                     npixaddr=(unsigned int *)(&data[4]);            // PixAddr      (16 bits)
-                    pixaddr=(*npixaddr >> 12) & 0xFFFF;  
+                    pixaddr=(*npixaddr >> 12) & 0xFFFF;
                     dcol=((pixaddr & 0xFE00)>>8);
                     spix=((pixaddr & 0x1F8) >>1);
-                    pix=pixaddr & 0x7;                              
+                    pix=pixaddr & 0x7;
                     mynewraw.x=dcol+(pix >> 2);                     // x coordinate
-                    mynewraw.y=spix+(pix & 0x3);                    // y coordinate 
+                    mynewraw.y=spix+(pix & 0x3);                    // y coordinate
 
-                    mynewraw.spdrtime=16384*(*spdrtime)+mynewraw.myTOA; // not the same as global_timestamp 
-                    mynewraw.tof=mynewraw.spdrtime-mytdc;               // supposedly for time-of-flight 
-                    
-                    itof=(int)(mynewraw.tof*0.25);                  // tof in seconds 
+                    mynewraw.spdrtime=16384*(*spdrtime)+mynewraw.myTOA; // not the same as global_timestamp
+                    mynewraw.tof=mynewraw.spdrtime-mytdc;               // supposedly for time-of-flight
+
+                    itof=(int)(mynewraw.tof*0.25);                  // tof in seconds
 
                     // not sure why the tofhist is updated this way...??
                     if (itof<MAXTOFINDEX && mynewraw.x > 250 && mynewraw.x < 425 && mynewraw.y > 125 && mynewraw.y < 325)
@@ -140,15 +140,15 @@ int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *my
 
                     myinfo->total_hits+=1;
 
-                    n=(myinfo->pi+1) & HSIZEM1;         // get the next slot n = (pi+1) & HSIZEM1 
+                    n=(myinfo->pi+1) & HSIZEM1;         // get the next slot n = (pi+1) & HSIZEM1
 
-                    while (n==myinfo->ci)               // let the program sleep for 100 usec 
-                    {                                   // while the next slot n == ci 
+                    while (n==myinfo->ci)               // let the program sleep for 100 usec
+                    {                                   // while the next slot n == ci
                         usleep(100);
                     }
 
-                    if (n !=  myinfo->ci)               // copy raw data to myhits 
-                    {                                   // otherwise the pi = n 
+                    if (n !=  myinfo->ci)               // copy raw data to myhits
+                    {                                   // otherwise the pi = n
                         memcpy(&myhits[myinfo->pi],&mynewraw,sizeof(mynewraw));
                         myinfo->pi=n;
                     }
@@ -157,7 +157,7 @@ int filetohits(QString filename, struct newRawPacket *myhits, struct hitinfo *my
                 {                                               // unclear what is going on here
                     myinfo->numTDCs+=1;
                     tdclast=(unsigned long *)(&data[0]);
-                    mytdc=(((*tdclast) >> 12) & 0x3fffffff); 
+                    mytdc=(((*tdclast) >> 12) & 0x3fffffff);
 
                 }
                 else if ((data[7] & 0xF0) == 0x40)      // for controls

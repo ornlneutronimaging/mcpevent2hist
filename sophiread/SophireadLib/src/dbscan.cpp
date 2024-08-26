@@ -170,7 +170,7 @@ void DBSCAN::fit(const std::vector<Hit>& hits) {
       m_events.emplace_back(
           NeutronEvent(centroids_2D[label_count.first].first * DSCALE /*X*/,
                        centroids_2D[label_count.first].second * DSCALE /*Y*/,
-                       info.m_time_mean,0, label_count.second));  
+                       info.m_time_mean, 0, label_count.second));
   }
 }
 
@@ -239,7 +239,7 @@ void DBSCAN::fit1D(std::vector<double>& data, size_t& number_of_clusters,
   // create an arma matrix from the data vector
   arma::mat data_mat(
       &data[0], 1 /*nrows*/, data.size() /*ncols*/,
-      false /*arma::mat will re-use the input data vector memory*/);
+      false /*arma::mat will reuse the input data vector memory*/);
 
   // create the dbscan object
   mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(
@@ -277,7 +277,7 @@ void DBSCAN::fit2D(std::vector<std::pair<double, double>>& data,
   // create an arma matrix from the data vector
   arma::mat data_mat(
       &(data[0].first), 2 /*nrows*/, data.size() /*ncols*/,
-      false /*arma::mat will re-use the input data vector memory*/);
+      false /*arma::mat will reuse the input data vector memory*/);
 
   // create the dbscan object
   mlpack::DBSCAN<mlpack::RangeSearch<>, mlpack::OrderedPointSelection> dbs(

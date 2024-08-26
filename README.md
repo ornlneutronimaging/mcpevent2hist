@@ -14,14 +14,14 @@ neutron events.
 
 - `Sophiread` is the updated version of the application, which contains three
   main parts:
-  - `libSophireadLib.a` is the static libary containing the core functions of
+  - `libSophireadLib.a` is the static library containing the core functions of
     the application.
   - `Sophiread` is the main command line application, which can be used to
     process raw data into clustered hits and neutron events.
   - `SophireadGUI` is the Qt GUI application, which can be used to process raw
     data into neutron events and display it as a 2D histogram via super-pixeling.
 
-- The input data, binary `tpx3` file must contain the global time stamp, GDC, which can be achieved by turning on GDC with GlobalTimestampInterval set to 1.0 in the detector settings. 
+- The input data, binary `tpx3` file must contain the global time stamp, GDC, which can be achieved by turning on GDC with GlobalTimestampInterval set to 1.0 in the detector settings.
 
 Developer Note
 --------------
