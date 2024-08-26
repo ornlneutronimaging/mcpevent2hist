@@ -7,18 +7,7 @@
  * @date 2023-09-18
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 #include "user_config.h"
 
@@ -31,16 +20,28 @@
 /**
  * @brief Construct a new UserConfig object with default values.
  */
-UserConfig::UserConfig() : m_abs_radius(5.0), m_abs_min_cluster_size(1), m_abs_spider_time_range(75), m_tof_binning(), m_super_resolution(1.0) {}
+UserConfig::UserConfig()
+    : m_abs_radius(5.0),
+      m_abs_min_cluster_size(1),
+      m_abs_spider_time_range(75),
+      m_tof_binning(),
+      m_super_resolution(1.0) {}
 
 /**
  * @brief Construct a new UserConfig object with user-defined values
  */
-UserConfig::UserConfig(double abs_radius, unsigned long int abs_min_cluster_size, unsigned long int abs_spider_time_range)
-    : m_abs_radius(abs_radius), m_abs_min_cluster_size(abs_min_cluster_size), m_abs_spider_time_range(abs_spider_time_range), m_tof_binning(), m_super_resolution(1.0) {}
+UserConfig::UserConfig(double abs_radius,
+                       unsigned long int abs_min_cluster_size,
+                       unsigned long int abs_spider_time_range)
+    : m_abs_radius(abs_radius),
+      m_abs_min_cluster_size(abs_min_cluster_size),
+      m_abs_spider_time_range(abs_spider_time_range),
+      m_tof_binning(),
+      m_super_resolution(1.0) {}
 
 /**
- * @brief Helper function to convert a user configuration to a string for console output.
+ * @brief Helper function to convert a user configuration to a string for
+ * console output.
  *
  * @return std::string User configuration as a string
  */
@@ -53,9 +54,11 @@ std::string UserConfig::toString() const {
   // Add TOF binning information
   if (m_tof_binning.isUniform()) {
     ss << ", TOF bins=" << m_tof_binning.num_bins.value_or(0)
-       << ", TOF max=" << (m_tof_binning.tof_max.value_or(0.0) * 1000) << " ms";  // Convert to milliseconds
+       << ", TOF max=" << (m_tof_binning.tof_max.value_or(0.0) * 1000)
+       << " ms";  // Convert to milliseconds
   } else if (m_tof_binning.isCustom()) {
-    ss << ", Custom TOF binning with " << m_tof_binning.custom_edges.size() - 1 << " bins";
+    ss << ", Custom TOF binning with " << m_tof_binning.custom_edges.size() - 1
+       << " bins";
   } else {
     ss << ", TOF binning not set";
   }
@@ -66,7 +69,8 @@ std::string UserConfig::toString() const {
 }
 
 /**
- * @brief Parse the user-defined configuration file and return a UserConfig object.
+ * @brief Parse the user-defined configuration file and return a UserConfig
+ * object.
  *
  * @param[in] filepath
  * @return UserConfig User-defined configuration
@@ -74,7 +78,8 @@ std::string UserConfig::toString() const {
 UserConfig parseUserDefinedConfigurationFile(const std::string& filepath) {
   // Check if the file exists
   if (!std::filesystem::exists(filepath)) {
-    spdlog::error("The user-defined configuration file {} does not exist.", filepath);
+    spdlog::error("The user-defined configuration file {} does not exist.",
+                  filepath);
     exit(1);
   }
 
@@ -118,9 +123,9 @@ UserConfig parseUserDefinedConfigurationFile(const std::string& filepath) {
     } else if (name == "tof_max") {
       double value;
       ss >> value;
-    }
-    else {
-      spdlog::warn("Unknown parameter {} in the user-defined configuration file.", name);
+    } else {
+      spdlog::warn(
+          "Unknown parameter {} in the user-defined configuration file.", name);
     }
   }
 
