@@ -99,7 +99,7 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
                 break;
             default:
                 print_usage(argv[0]);
-                throw std::runtime_error("Invalid argument");
+                throw std::runtime_error(std::string("Invalid argument: ") + static_cast<char>(optopt));
         }
     }
 
