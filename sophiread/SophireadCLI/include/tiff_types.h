@@ -13,6 +13,6 @@
 #include <cstdint>
 
 // Define bit-depth types for TIFF images
-using TIFF8Bit = uint8_t;      // 8-bit
-using TIFF16Bit = uint16_t;    // 16-bit
-using TIFF32Bit = uint32_t;    // 32-bit
+using TIFF8Bit = uint8_t;    // 8-bit
+using TIFF16Bit = uint16_t;  // 16-bit
+using TIFF32Bit = uint32_t;  // 32-bit
