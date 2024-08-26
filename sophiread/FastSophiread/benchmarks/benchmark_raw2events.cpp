@@ -6,18 +6,7 @@
  * @date 2023-08-31
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 #include <spdlog/spdlog.h>
 #include <tbb/tbb.h>
@@ -56,7 +45,8 @@ void check_bad_tof(const std::vector<TPX3> batches) {
 }
 
 /**
- * @brief benchmark converting raw data to neutron events performance, single thread.
+ * @brief benchmark converting raw data to neutron events performance, single
+ * thread.
  *
  * @param raw_data
  */
@@ -67,7 +57,9 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
   auto start = std::chrono::high_resolution_clock::now();
   auto batches = findTPX3H(raw_data);
   auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
   spdlog::info("Locate all headers: {} s", elapsed / 1e6);
   total_time += elapsed / 1e6;
   // locate all gdc timestamps
@@ -79,7 +71,8 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
     updateTimestamp(tpx3, raw_data, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
   end = std::chrono::high_resolution_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                .count();
   spdlog::info("Locate all gdc timestamps: {} s", elapsed / 1e6);
   total_time += elapsed / 1e6;
   /*
@@ -117,7 +110,8 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
     auto events = abs_alg->get_events(tpx3.hits);
   }
   end = std::chrono::high_resolution_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                .count();
   spdlog::info("Get all hits: {} s", elapsed / 1e6);
   total_time += elapsed / 1e6;
   // find out total number of hits
@@ -173,7 +167,8 @@ void run_single_thread(std::vector<char> raw_data, bool check_tof = false) {
       max_spidertime_ns_from_file = spi_time_ns;
     }
   }
-  spdlog::info("Max spidertime_ns from file: {} / s", max_spidertime_ns_from_file / 1e9);
+  spdlog::info("Max spidertime_ns from file: {} / s",
+               max_spidertime_ns_from_file / 1e9);
 }
 
 void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
@@ -189,19 +184,20 @@ void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
     updateTimestamp(tpx3, raw_data, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
   // use tbb parallel_for to process batches
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()), [&](const tbb::blocked_range<size_t>& r) {
-    auto abs_alg_mt = std::make_unique<ABS>(5.0, 1, 75);
-    for (size_t i = r.begin(); i != r.end(); ++i) {
-      auto& tpx3 = batches_mt[i];
-      extractHits(tpx3, raw_data);
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches_mt.size()),
+                    [&](const tbb::blocked_range<size_t>& r) {
+                      auto abs_alg_mt = std::make_unique<ABS>(5.0, 1, 75);
+                      for (size_t i = r.begin(); i != r.end(); ++i) {
+                        auto& tpx3 = batches_mt[i];
+                        extractHits(tpx3, raw_data);
 
-      abs_alg_mt->reset();
-      // fit hits into clusters
-      abs_alg_mt->fit(tpx3.hits);
-      // get neutron events
-      auto events = abs_alg_mt->get_events(tpx3.hits);
-    }
-  });
+                        abs_alg_mt->reset();
+                        // fit hits into clusters
+                        abs_alg_mt->fit(tpx3.hits);
+                        // get neutron events
+                        auto events = abs_alg_mt->get_events(tpx3.hits);
+                      }
+                    });
   auto end = std::chrono::high_resolution_clock::now();
   // -- gather statistics
   auto n_hits = 0;
@@ -210,7 +206,9 @@ void run_multi_thread(std::vector<char> raw_data, bool check_tof = false) {
     n_hits += hits.size();
   }
   spdlog::info("Number of hits: {}", n_hits);
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
   spdlog::info("Multi-thread processing: {} s", elapsed / 1e6);
   auto speed = n_hits / (elapsed / 1e6);
   spdlog::info("Multi-thread processing speed: {:<e} hits/s", speed);
@@ -236,7 +234,9 @@ int main(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   auto raw_data = readTPX3RawToCharVec(in_tpx3);
   auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
   spdlog::info("Read raw data: {} s", elapsed / 1e6);
 
   // single thread processing
