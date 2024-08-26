@@ -354,9 +354,9 @@ void timedSaveTOFImagingToTIFF(
           }
 
           // Accumulate counts for spectral file
-          spectral_counts[bin] = std::accumulate(accumulated_image.begin(), accumulated_image.end(), 0ULL,
-            [](unsigned long long sum, const std::vector<unsigned int>& row) {
-                return sum + std::accumulate(row.begin(), row.end(), 0ULL);
+          spectral_counts[bin] = std::accumulate(accumulated_image.cbegin(), accumulated_image.cend(), static_cast<uint64_t>(0),
+            [](const auto sum, const auto & row) {
+                return sum + std::accumulate(row.cbegin(), row.cend(), 0ULL);
             });
       }
     });
