@@ -10,7 +10,7 @@ It provides both command line (CLI) and graphical user interface (GUI) interface
 Sophiread is built using `cmake` and `make` under a sandboxed environment with `conda` (see [conda](https://conda.io/docs/)).
 The following steps have been tested under MaxOS and Linux, and it is in theory possible to build it under Windows.
 
-- Install `conda` or equivalent pacakge manager such as `miniconda`, `mamba`, `micromamba`, etc.
+- Install `conda` or equivalent package manager such as `miniconda`, `mamba`, `micromamba`, etc.
 - Create a new development environment with `conda` (assuming we are on linux):
 
     ```bash

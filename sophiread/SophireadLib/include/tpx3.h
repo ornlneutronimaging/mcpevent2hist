@@ -18,7 +18,14 @@
 class Hit {
  public:
   // default constructor
-  Hit() : m_x(0), m_y(0), m_tot(0), m_toa(0), m_ftoa(0), m_tof(0), m_spidertime(0){};
+  Hit()
+      : m_x(0),
+        m_y(0),
+        m_tot(0),
+        m_toa(0),
+        m_ftoa(0),
+        m_tof(0),
+        m_spidertime(0){};
   // copy constructor
   Hit(const Hit& hit)
       : m_x(hit.m_x),
@@ -41,7 +48,8 @@ class Hit {
 
   // special constructor that directly parse the raw packet from tpx3
   // into a hit
-  Hit(const char* packet, const unsigned long long tdc, const unsigned long long gdc, const int chip_layout_type);
+  Hit(const char* packet, const unsigned long long tdc,
+      const unsigned long long gdc, const int chip_layout_type);
 
   Hit& operator=(const Hit& hit) {
     m_x = hit.m_x;
@@ -100,7 +108,7 @@ class NeutronEvent {
       : m_x(x), m_y(y), m_tof(tof), m_tot(tot), m_nHits(nHits){};
   double getX() const { return m_x; };
   double getY() const { return m_y; };
-  double getTOT() const { return m_tot;}
+  double getTOT() const { return m_tot; }
   double getTOF() const { return m_tof; };
   double getTOF_ns() const { return m_tof * m_scale_to_ns_40mhz; };
   int getNHits() const { return m_nHits; };
@@ -117,28 +125,29 @@ class NeutronEvent {
 };
 
 /**
- *  @brief Class to store user-defined parameters for clustering algorithms 
+ *  @brief Class to store user-defined parameters for clustering algorithms
  * */
 class Params {
-public:
-  Params(const double abs_radius, 
-    unsigned long int abs_min_cluster_size,
-    unsigned long int abs_spider_time_range) :
-    m_abs_radius(abs_radius), 
-    m_abs_min_cluster_size(abs_min_cluster_size),
-    m_abs_spider_time_range(abs_spider_time_range){};
+ public:
+  Params(const double abs_radius, unsigned long int abs_min_cluster_size,
+         unsigned long int abs_spider_time_range)
+      : m_abs_radius(abs_radius),
+        m_abs_min_cluster_size(abs_min_cluster_size),
+        m_abs_spider_time_range(abs_spider_time_range){};
 
-  double getABSRadius() const {return m_abs_radius;};
-  unsigned long int getABSMinClusterSize() 
-        const {return m_abs_min_cluster_size;};
-  unsigned long int getABSSpidertimeRange() 
-        const {return m_abs_spider_time_range;};
+  double getABSRadius() const { return m_abs_radius; };
+  unsigned long int getABSMinClusterSize() const {
+    return m_abs_min_cluster_size;
+  };
+  unsigned long int getABSSpidertimeRange() const {
+    return m_abs_spider_time_range;
+  };
 
   std::string toString() const;
 
-private:
+ private:
   // ABS members (see abs.h for details)
-  double m_abs_radius;                            
+  double m_abs_radius;
   unsigned long int m_abs_min_cluster_size;
   unsigned long int m_abs_spider_time_range;
 };
@@ -160,7 +169,7 @@ void saveHitsToHDF5(const std::string out_file_name,
 void saveEventsToHDF5(const std::string out_file_name,
                       const std::vector<NeutronEvent>& events);
 
-// parse user-defined param file 
+// parse user-defined param file
 Params parseUserDefinedParams(const std::string& filepath);
 
 // for fast processing raw bytes into hit
@@ -170,8 +179,12 @@ struct TPX3H {
   const int num_packets;
   const int chip_layout_type;
 
-  TPX3H(std::size_t index, int packet_size, int num_packets, int chip_layout_type)
-      : index(index), packet_size(packet_size), num_packets(num_packets), chip_layout_type(chip_layout_type){};
+  TPX3H(std::size_t index, int packet_size, int num_packets,
+        int chip_layout_type)
+      : index(index),
+        packet_size(packet_size),
+        num_packets(num_packets),
+        chip_layout_type(chip_layout_type){};
 };
 std::vector<Hit> fastParseTPX3Raw(const std::vector<char>& raw_bytes);
 std::vector<Hit> processBatch(TPX3H batch, const std::vector<char>& raw_bytes);

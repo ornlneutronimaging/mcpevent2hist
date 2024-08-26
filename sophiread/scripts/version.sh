@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Adpated from TinyAlsa's version.sh script
+# Adapted from TinyAlsa's version.sh script
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #

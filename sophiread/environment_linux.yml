@@ -10,8 +10,6 @@ dependencies:
   - gtest
   - qwt
   - eigen
-  - mlpack
-  - cereal
   - tbb-devel
   - spdlog
   - nlohmann_json
@@ -31,3 +29,6 @@ dependencies:
   - graphviz
   # Mac users should use its native version, MacTex
   - texlive-core
+
+  # misc
+  - pre-commit

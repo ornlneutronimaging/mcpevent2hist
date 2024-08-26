@@ -60,7 +60,8 @@ class FastGaussianTest : public ::testing::Test {
 
     data.reserve(num_hit);
     for (int i = 0; i < num_hit; i++) {
-      data.emplace_back(Hit(pos(gen), pos(gen), tot(gen), toa(gen), ftoa(gen), tof(gen), spidertime(gen)));
+      data.emplace_back(Hit(pos(gen), pos(gen), tot(gen), toa(gen), ftoa(gen),
+                            tof(gen), spidertime(gen)));
     }
   }
 };

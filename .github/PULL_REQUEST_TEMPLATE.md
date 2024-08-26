@@ -27,6 +27,6 @@ If instructions for replicating the fault are contained in the linked issue then
 -->
 
 Fixes #xxxx.
-<!-- and fix #xxxx or close #xxxx xor resolves #xxxx 
+<!-- and fix #xxxx or close #xxxx xor resolves #xxxx
 NOTE: skip this part if not applicable to your PR.
 -->

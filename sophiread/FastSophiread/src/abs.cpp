@@ -7,18 +7,7 @@
  * @date 2023-09-04
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 
 #include "abs.h"
@@ -71,9 +60,12 @@ void ABS::fit(const std::vector<Hit>& data) {
       // case_1: cluster is not full, check if hit is within the feather range
       // of the cluster, if yes, add hit to cluster and update cluster bounds,
       // if not, id as noise
-      else if (std::abs(hit.getSPIDERTIME_ns() - cluster.spidertime) <= spiderTimeRange_) {
-        if (hit.getX() >= cluster.x_min - m_feature && hit.getX() <= cluster.x_max + m_feature &&
-            hit.getY() >= cluster.y_min - m_feature && hit.getY() <= cluster.y_max + m_feature) {
+      else if (std::abs(hit.getSPIDERTIME_ns() - cluster.spidertime) <=
+               spiderTimeRange_) {
+        if (hit.getX() >= cluster.x_min - m_feature &&
+            hit.getX() <= cluster.x_max + m_feature &&
+            hit.getY() >= cluster.y_min - m_feature &&
+            hit.getY() <= cluster.y_max + m_feature) {
           cluster.size++;
           cluster.x_min = std::min(cluster.x_min, hit.getX());
           cluster.x_max = std::max(cluster.x_max, hit.getX());
@@ -146,7 +138,8 @@ std::vector<Neutron> ABS::get_events(const std::vector<Hit>& data) {
   if (clusterLabels_.empty()) {
     return events;
   } else {
-    auto max_label_it = std::max_element(clusterLabels_.begin(), clusterLabels_.end());
+    auto max_label_it =
+        std::max_element(clusterLabels_.begin(), clusterLabels_.end());
     max_label = *max_label_it;
   }
 

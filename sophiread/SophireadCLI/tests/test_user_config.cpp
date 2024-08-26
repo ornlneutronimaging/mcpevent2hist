@@ -6,23 +6,14 @@
  * @date 2023-09-18
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 #include <gtest/gtest.h>
+
 #include <fstream>
-#include "user_config.h"
+
 #include "tof_binning.h"
+#include "user_config.h"
 
 // Test default constructor
 TEST(UserConfigTest, DefaultConstructor) {
@@ -30,11 +21,11 @@ TEST(UserConfigTest, DefaultConstructor) {
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 5.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 1);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 75);
-  
+
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);  // 1500 bins + 1
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
 }
 
 // Test parameterized constructor
@@ -43,12 +34,12 @@ TEST(UserConfigTest, ParameterizedConstructor) {
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 10.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 5);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 100);
-  
+
   // TOF binning should still be default
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
 }
 
 // Test setters
@@ -57,7 +48,7 @@ TEST(UserConfigTest, Setters) {
   config.setABSRadius(15.0);
   config.setABSMinClusterSize(10);
   config.setABSSpiderTimeRange(150);
-  
+
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 15.0);
   EXPECT_EQ(config.getABSMinClusterSize(), 10);
   EXPECT_EQ(config.getABSSpiderTimeRange(), 150);
@@ -70,7 +61,7 @@ TEST(UserConfigTest, TOFBinningSetter) {
   custom_binning.num_bins = 1000;
   custom_binning.tof_max = 20000.0;
   config.setTOFBinning(custom_binning);
-  
+
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1001);  // 1000 bins + 1
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
@@ -82,7 +73,7 @@ TEST(UserConfigTest, CustomTOFBinEdges) {
   UserConfig config;
   std::vector<double> custom_edges = {0.0, 100.0, 200.0, 300.0, 400.0};
   config.setCustomTOFBinEdges(custom_edges);
-  
+
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 5);
   EXPECT_DOUBLE_EQ(tof_edges[0], 0.0);
@@ -124,7 +115,7 @@ TEST(UserConfigTest, ParseValidConfigurationFile) {
   auto tof_edges = config.getTOFBinEdges();
   EXPECT_EQ(tof_edges.size(), 1501);
   EXPECT_DOUBLE_EQ(tof_edges.front(), 0.0);
-  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0/60);
+  EXPECT_DOUBLE_EQ(tof_edges.back(), 1.0 / 60);
 
   // Cleanup
   std::remove("testConfig.txt");
@@ -139,7 +130,8 @@ TEST(UserConfigTest, ParseInvalidConfigurationFile) {
   testFile.close();
 
   // It should ignore the unknown parameter and use the default value instead
-  UserConfig config = parseUserDefinedConfigurationFile("testInvalidConfig.txt");
+  UserConfig config =
+      parseUserDefinedConfigurationFile("testInvalidConfig.txt");
   EXPECT_DOUBLE_EQ(config.getABSRadius(), 5.0);   // Default value
   EXPECT_EQ(config.getABSMinClusterSize(), 1);    // Default value
   EXPECT_EQ(config.getABSSpiderTimeRange(), 75);  // Default value

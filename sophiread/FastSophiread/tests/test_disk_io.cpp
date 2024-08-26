@@ -88,7 +88,8 @@ class FileNameGeneratorTest : public ::testing::Test {
     extension = resultPath.extension().string();
 
     expectedPattern = std::regex(R"(.*_\d{6}\..*)");
-    ASSERT_TRUE(std::regex_match(generatedBaseName + extension, expectedPattern));
+    ASSERT_TRUE(
+        std::regex_match(generatedBaseName + extension, expectedPattern));
 
     // Check that the timestamp is recent (within the last second).
     auto position = generatedBaseName.find_last_of('_');
@@ -143,8 +144,10 @@ class SaveHitsTest : public ::testing::Test {
     std::uniform_int_distribution<int> distribution(1, 100);
 
     for (size_t i = 0; i < numHits; ++i) {
-      Hit hit(distribution(generator), distribution(generator), distribution(generator), distribution(generator),
-              distribution(generator), distribution(generator), distribution(generator));
+      Hit hit(distribution(generator), distribution(generator),
+              distribution(generator), distribution(generator),
+              distribution(generator), distribution(generator),
+              distribution(generator));
       hits.push_back(hit);
     }
     return hits;
@@ -197,8 +200,9 @@ class SaveNeutronTest : public ::testing::Test {
     std::uniform_int_distribution<int> distribution(1, 100);
 
     for (size_t i = 0; i < numNeutrons; ++i) {
-      Neutron neutron(distribution(generator), distribution(generator), distribution(generator),
-                      distribution(generator), distribution(generator));
+      Neutron neutron(distribution(generator), distribution(generator),
+                      distribution(generator), distribution(generator),
+                      distribution(generator));
       neutrons.push_back(neutron);
     }
     return neutrons;
@@ -230,7 +234,8 @@ TEST_F(SaveNeutronTest, TestSaveAndAppendToHDF5) {
   std::vector<Neutron> appendedNeutrons = generateRandomNeutrons(5);
   appendNeutronToHDF5(testFileName, appendedNeutrons);
 
-  // Ensure file still exists and now has a new group "neutrons_1" with 5 neutrons
+  // Ensure file still exists and now has a new group "neutrons_1" with 5
+  // neutrons
   file.openFile(testFileName, H5F_ACC_RDONLY);
   group = file.openGroup("neutrons_1");
   x_dataset = group.openDataSet("x");
