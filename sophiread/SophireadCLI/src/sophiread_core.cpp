@@ -124,8 +124,8 @@ void timedSaveHitsToHDF5(const std::string &out_hits, std::vector<TPX3> &batches
   // move all hits into a single vector
   std::vector<Hit> hits;
   for (const auto &tpx3 : batches) {
-    auto tpx3_hits = tpx3.hits;
-    hits.insert(hits.end(), tpx3_hits.begin(), tpx3_hits.end());
+    const auto &tpx3_hits = tpx3.hits;
+    hits.insert(hits.end(), tpx3_hits.cbegin(), tpx3_hits.cend());
   }
   // save hits to HDF5 file
   saveHitsToHDF5(out_hits, hits);
@@ -145,8 +145,8 @@ void timedSaveEventsToHDF5(const std::string &out_events, std::vector<TPX3> &bat
   // move all events into a single vector
   std::vector<Neutron> events;
   for (const auto &tpx3 : batches) {
-    auto tpx3_events = tpx3.neutrons;
-    events.insert(events.end(), tpx3_events.begin(), tpx3_events.end());
+    const auto &tpx3_events = tpx3.neutrons;
+    events.insert(events.end(), tpx3_events.cbegin(), tpx3_events.cend());
   }
   // save events to HDF5 file
   saveNeutronToHDF5(out_events, events);
