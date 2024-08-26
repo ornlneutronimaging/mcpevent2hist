@@ -64,13 +64,18 @@ TEST_F(TPX3Test, CheckIndex) { ASSERT_EQ(index, tpx3.index); }
 
 TEST_F(TPX3Test, CheckNumPackets) { ASSERT_EQ(num_packets, tpx3.num_packets); }
 
-TEST_F(TPX3Test, CheckChipLayoutType) { ASSERT_EQ(chip_layout_type, tpx3.chip_layout_type); }
+TEST_F(TPX3Test, CheckChipLayoutType) {
+  ASSERT_EQ(chip_layout_type, tpx3.chip_layout_type);
+}
 
-TEST_F(TPX3Test, CheckHitsSize) { ASSERT_EQ(num_packets, static_cast<int>(tpx3.hits.size())); }
+TEST_F(TPX3Test, CheckHitsSize) {
+  ASSERT_EQ(num_packets, static_cast<int>(tpx3.hits.size()));
+}
 
 TEST(TPX3FuncTest, TestFindTPX3H) {
   // read the testing raw data
-  auto rawdata = readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
+  auto rawdata =
+      readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
 
   //
   auto batches = findTPX3H(rawdata);
@@ -82,7 +87,8 @@ TEST(TPX3FuncTest, TestFindTPX3H) {
 
 TEST(TPX3FuncTest, TestFindTPX3H_read) {
   // read the testing raw data
-  auto mapdata = readTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  auto mapdata =
+      readTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
 
   //
   auto batches = findTPX3H(mapdata.map, mapdata.max);
@@ -94,7 +100,8 @@ TEST(TPX3FuncTest, TestFindTPX3H_read) {
 
 TEST(TPX3FuncTest, TestFindTPX3H_mmap) {
   // memory map the testing raw data
-  auto mapdata = mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  auto mapdata =
+      mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
 
   //
   auto batches = findTPX3H(mapdata.map, mapdata.max);
@@ -106,7 +113,8 @@ TEST(TPX3FuncTest, TestFindTPX3H_mmap) {
 
 TEST(TPX3FuncTest, TestExtractHits) {
   // read the testing raw data
-  auto rawdata = readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
+  auto rawdata =
+      readTPX3RawToCharVec("../data/suann_socket_background_serval32.tpx3");
 
   // locate all headers
   auto batches = findTPX3H(rawdata);
@@ -145,7 +153,8 @@ TEST(TPX3FuncTest, TestExtractHits) {
 
 TEST(TPX3FuncTest, TestExtractHits_read) {
   // read the testing raw data
-  auto mapdata = readTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  auto mapdata =
+      readTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
 
   // locate all headers
   auto batches = findTPX3H(mapdata.map, mapdata.max);
@@ -155,7 +164,8 @@ TEST(TPX3FuncTest, TestExtractHits_read) {
   unsigned long long int gdc_timestamp = 0;
   unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches) {
-    updateTimestamp(tpx3, mapdata.map, mapdata.max, tdc_timestamp, gdc_timestamp, timer_lsb32);
+    updateTimestamp(tpx3, mapdata.map, mapdata.max, tdc_timestamp,
+                    gdc_timestamp, timer_lsb32);
   }
 
   // extract hits
@@ -184,7 +194,8 @@ TEST(TPX3FuncTest, TestExtractHits_read) {
 
 TEST(TPX3FuncTest, TestExtractHits_mmap) {
   // memory map the testing raw data
-  auto mapdata = mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  auto mapdata =
+      mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
 
   // locate all headers
   auto batches = findTPX3H(mapdata.map, mapdata.max);
@@ -194,7 +205,8 @@ TEST(TPX3FuncTest, TestExtractHits_mmap) {
   unsigned long long int gdc_timestamp = 0;
   unsigned long timer_lsb32 = 0;
   for (auto& tpx3 : batches) {
-    updateTimestamp(tpx3, mapdata.map, mapdata.max, tdc_timestamp, gdc_timestamp, timer_lsb32);
+    updateTimestamp(tpx3, mapdata.map, mapdata.max, tdc_timestamp,
+                    gdc_timestamp, timer_lsb32);
   }
 
   // extract hits
@@ -223,61 +235,67 @@ TEST(TPX3FuncTest, TestExtractHits_mmap) {
 
 TEST(TPX3FuncTest, TestExtractHits_large) {
   // memory map the testing raw data
-  auto mapdata = mmapTPX3RawToMapInfo("../data/HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3");
-  const int n_hits_reference = 5303344;       // HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3
-  //auto mapdata = mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
-  //const int n_hits_reference = 98533;       // suann_socket_background_serval32.tpx3
+  auto mapdata = mmapTPX3RawToMapInfo(
+      "../data/"
+      "HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_"
+      "star_120s_000000.tpx3");
+  const int n_hits_reference =
+      5303344;  // HV2700_1500_500_THLrel_274_sophy_chopper_60Hz_4.1mm_aperture_siemen_star_120s_000000.tpx3
+  // auto mapdata =
+  // mmapTPX3RawToMapInfo("../data/suann_socket_background_serval32.tpx3");
+  // const int n_hits_reference = 98533;       //
+  // suann_socket_background_serval32.tpx3
   size_t raw_data_consumed = 0;
   size_t n_hits = 0;
-  // NB: these track timestamps; if they are reset improperly, the system keeps searching and gets the wrong answers!
+  // NB: these track timestamps; if they are reset improperly, the system keeps
+  // searching and gets the wrong answers!
   unsigned long tdc_timestamp = 0;
   unsigned long long int gdc_timestamp = 0;
   unsigned long timer_lsb32 = 0;
 
- while (raw_data_consumed < mapdata.max) {
+  while (raw_data_consumed < mapdata.max) {
+    // manage partial batches
+    size_t consumed = 0;
+    char* raw_data_ptr = mapdata.map + raw_data_consumed;
+    size_t raw_data_size = mapdata.max - raw_data_consumed;
 
-  // manage partial batches
-  size_t consumed = 0;
-  char *raw_data_ptr = mapdata.map + raw_data_consumed;
-  size_t raw_data_size = mapdata.max - raw_data_consumed;
+    // locate all headers
+    auto batches = findTPX3H(raw_data_ptr, raw_data_size, consumed);
 
-  // locate all headers
-  auto batches = findTPX3H(raw_data_ptr, raw_data_size, consumed);
-
-  // locate gdc and tdc
-  for (auto& tpx3 : batches) {
-    updateTimestamp(tpx3, raw_data_ptr, consumed, tdc_timestamp, gdc_timestamp, timer_lsb32);
-  }
-
-  // extract hits
-  for (auto& tpx3 : batches) {
-    extractHits(tpx3, raw_data_ptr, consumed);
-  }
-
-  // count all hits
-  for (const auto& tpx3 : batches) {
-    auto hits = tpx3.hits;
-    n_hits += hits.size();
-  }
-
-  // make sure no tof is above 16.67 ms
-  for (const auto& tpx3 : batches) {
-    auto hits = tpx3.hits;
-    for (const auto& hit : hits) {
-      auto tof_ms = hit.getTOF_ns() * 1e-6;
-      EXPECT_LT(tof_ms, 16670);
+    // locate gdc and tdc
+    for (auto& tpx3 : batches) {
+      updateTimestamp(tpx3, raw_data_ptr, consumed, tdc_timestamp,
+                      gdc_timestamp, timer_lsb32);
     }
-  }
 
-  // manage iterations on partial raw_data
-  raw_data_consumed += consumed;
- }
+    // extract hits
+    for (auto& tpx3 : batches) {
+      extractHits(tpx3, raw_data_ptr, consumed);
+    }
+
+    // count all hits
+    for (const auto& tpx3 : batches) {
+      auto hits = tpx3.hits;
+      n_hits += hits.size();
+    }
+
+    // make sure no tof is above 16.67 ms
+    for (const auto& tpx3 : batches) {
+      auto hits = tpx3.hits;
+      for (const auto& hit : hits) {
+        auto tof_ms = hit.getTOF_ns() * 1e-6;
+        EXPECT_LT(tof_ms, 16670);
+      }
+    }
+
+    // manage iterations on partial raw_data
+    raw_data_consumed += consumed;
+  }
 
   EXPECT_EQ(n_hits, n_hits_reference);
-
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

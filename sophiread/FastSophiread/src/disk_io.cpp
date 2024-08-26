@@ -6,18 +6,7 @@
  * @date 2023-09-01
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 #include "disk_io.h"
 
@@ -26,12 +15,13 @@
 #include "spdlog/spdlog.h"
 
 /**
- * @brief Read Timepix3 raw data from file into memory as a vector of char for subsequent analysis.
+ * @brief Read Timepix3 raw data from file into memory as a vector of char for
+ * subsequent analysis.
  *
  * @param[in] tpx3file
  * @return std::vector<char>
  */
-std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
+std::vector<char> readTPX3RawToCharVec(const std::string &tpx3file) {
   // Open the file
   std::ifstream file(tpx3file, std::ios::binary | std::ios::ate);
 
@@ -64,9 +54,8 @@ std::vector<char> readTPX3RawToCharVec(const std::string& tpx3file) {
  * @param tpx3file
  * @return mapinfo_t that defines { char *, and size_t }
  */
-mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file)
-{
-  mapinfo_t info = { -1, NULL, 0 };
+mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
+  mapinfo_t info = {-1, NULL, 0};
 
   // Open the file
   std::ifstream file(tpx3file, std::ios::binary | std::ios::ate);
@@ -87,8 +76,10 @@ mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file)
   info.map = reinterpret_cast<char *>(malloc(info.max));
 
   // Read the data from file and store it in the vector
-  if (info.map == NULL) info.max = 0;
-  else file.read(info.map, info.max);
+  if (info.map == NULL)
+    info.max = 0;
+  else
+    file.read(info.map, info.max);
 
   // Close the file
   file.close();
@@ -97,10 +88,10 @@ mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file)
 }
 
 // for mmap support
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/mman.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /**
@@ -109,9 +100,8 @@ mapinfo_t readTPX3RawToMapInfo(const std::string& tpx3file)
  * @param tpx3file
  * @return mapinfo_t that defines { char *, and size_t }
  */
-mapinfo_t mmapTPX3RawToMapInfo(const std::string& tpx3file)
-{
-  mapinfo_t info = { -1, NULL, 0 };
+mapinfo_t mmapTPX3RawToMapInfo(const std::string &tpx3file) {
+  mapinfo_t info = {-1, NULL, 0};
 
   std::ifstream file(tpx3file, std::ios::binary);
   if (!file.is_open()) {
@@ -119,17 +109,22 @@ mapinfo_t mmapTPX3RawToMapInfo(const std::string& tpx3file)
     exit(EXIT_FAILURE);
   }
 
-  info.fd = open(tpx3file.c_str(),O_RDWR,0666);
+  info.fd = open(tpx3file.c_str(), O_RDWR, 0666);
 
-  if( info.fd == -1 ) { perror(tpx3file.c_str()); exit(EXIT_FAILURE); }
-  info.max = lseek(info.fd,0,SEEK_END);     // determine the sizeof the file
-  info.map = reinterpret_cast<char *>(mmap(0, info.max, PROT_READ|PROT_WRITE, MAP_SHARED, info.fd, 0));
+  if (info.fd == -1) {
+    perror(tpx3file.c_str());
+    exit(EXIT_FAILURE);
+  }
+  info.max = lseek(info.fd, 0, SEEK_END);  // determine the sizeof the file
+  info.map = reinterpret_cast<char *>(
+      mmap(0, info.max, PROT_READ | PROT_WRITE, MAP_SHARED, info.fd, 0));
   // https://lemire.me/blog/2012/06/26/which-is-fastest-read-fread-ifstream-or-mmap/
   // says to add MAP_POPULATE to make it mmap() faster...
   // TODO: Test this
 
   return info;
-  // https://stackoverflow.com/questions/26569217/do-i-have-to-munmap-a-mmap-file ( consensus is that you do not need to do it )
+  // https://stackoverflow.com/questions/26569217/do-i-have-to-munmap-a-mmap-file
+  // ( consensus is that you do not need to do it )
 }
 
 /**
@@ -138,23 +133,26 @@ mapinfo_t mmapTPX3RawToMapInfo(const std::string& tpx3file)
  * @param[in] originalFileName
  * @return std::string
  */
-std::string generateFileNameWithMicroTimestamp(const std::string& originalFileName) {
+std::string generateFileNameWithMicroTimestamp(
+    const std::string &originalFileName) {
   auto now = std::chrono::high_resolution_clock::now();
   auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
-  auto micros = std::chrono::duration_cast<std::chrono::microseconds>(now - seconds);
+  auto micros =
+      std::chrono::duration_cast<std::chrono::microseconds>(now - seconds);
 
   std::filesystem::path filePath(originalFileName);
   std::string baseName = filePath.stem().string();
   std::string extension = filePath.extension().string();
   std::filesystem::path parentPath = filePath.parent_path();
 
-  // use h5 as extention if not specified
+  // use h5 as extension if not specified
   if (extension.empty()) {
     extension = ".h5";
   }
 
   std::stringstream newFileName;
-  newFileName << baseName << "_" << std::setfill('0') << std::setw(6) << micros.count() << extension;
+  newFileName << baseName << "_" << std::setfill('0') << std::setw(6)
+              << micros.count() << extension;
 
   if (!parentPath.empty()) {
     return (parentPath / newFileName.str()).string();
@@ -177,7 +175,8 @@ std::string generateFileNameWithMicroTimestamp(const std::string& originalFileNa
  * @param[in] data_type
  */
 template <typename T, typename ForwardIterator, typename Func>
-void writeDatasetToGroup(H5::Group &group, const std::string &dataset_name, ForwardIterator begin, ForwardIterator end,
+void writeDatasetToGroup(H5::Group &group, const std::string &dataset_name,
+                         ForwardIterator begin, ForwardIterator end,
                          Func transform_func, const H5::DataType &data_type) {
   std::vector<T> data;
   data.reserve(std::distance(begin, end));
@@ -220,9 +219,11 @@ std::string generateGroupName(H5::H5File &file, const std::string &baseName) {
  */
 template <typename T, typename ForwardIterator>
 void saveOrAppendToHDF5(
-    const std::string &out_file_name, ForwardIterator data_begin, ForwardIterator data_end,
-    const std::string &baseGroupName,
-    const std::vector<std::pair<std::string, std::function<T(const decltype(*data_begin) &)>>> &attributes,
+    const std::string &out_file_name, ForwardIterator data_begin,
+    ForwardIterator data_end, const std::string &baseGroupName,
+    const std::vector<
+        std::pair<std::string, std::function<T(const decltype(*data_begin) &)>>>
+        &attributes,
     bool append) {
   const size_t num_data = std::distance(data_begin, data_end);
 
@@ -238,14 +239,17 @@ void saveOrAppendToHDF5(
     out_file = H5::H5File(out_file_name, H5F_ACC_RDWR);
   }
 
-  std::string groupName = append ? generateGroupName(out_file, baseGroupName) : baseGroupName;
+  std::string groupName =
+      append ? generateGroupName(out_file, baseGroupName) : baseGroupName;
   H5::Group group = out_file.createGroup(groupName);
 
   for (const auto &[dataset_name, func] : attributes) {
     if constexpr (std::is_same_v<T, int>) {
-      writeDatasetToGroup<int>(group, dataset_name, data_begin, data_end, func, H5::IntType(H5::PredType::NATIVE_INT));
+      writeDatasetToGroup<int>(group, dataset_name, data_begin, data_end, func,
+                               H5::IntType(H5::PredType::NATIVE_INT));
     } else if constexpr (std::is_same_v<T, double>) {
-      writeDatasetToGroup<double>(group, dataset_name, data_begin, data_end, func,
+      writeDatasetToGroup<double>(group, dataset_name, data_begin, data_end,
+                                  func,
                                   H5::FloatType(H5::PredType::NATIVE_DOUBLE));
     }
   }
@@ -264,24 +268,29 @@ void saveOrAppendToHDF5(
  * @param[in] append
  */
 template <typename ForwardIterator>
-void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end,
-                            bool append) {
-  saveOrAppendToHDF5<double>(out_file_name, hits_begin, hits_end, "hits",
-                             {
-                                 {"x", [](const auto &hit) { return static_cast<double>(hit.getX()); }},
-                                 {"y", [](const auto &hit) { return static_cast<double>(hit.getY()); }},
-                                 {"tot_ns", [](const auto &hit) { return hit.getTOT_ns(); }},
-                                 {"toa_ns", [](const auto &hit) { return hit.getTOA_ns(); }},
-                                 {"ftoa_ns", [](const auto &hit) { return hit.getFTOA_ns(); }},
-                                 {"tof_ns", [](const auto &hit) { return hit.getTOF_ns(); }},
-                                 {"spidertime_ns", [](const auto &hit) { return hit.getSPIDERTIME_ns(); }},
-                             },
-                             append);
+void saveOrAppendHitsToHDF5(const std::string &out_file_name,
+                            ForwardIterator hits_begin,
+                            ForwardIterator hits_end, bool append) {
+  saveOrAppendToHDF5<double>(
+      out_file_name, hits_begin, hits_end, "hits",
+      {
+          {"x",
+           [](const auto &hit) { return static_cast<double>(hit.getX()); }},
+          {"y",
+           [](const auto &hit) { return static_cast<double>(hit.getY()); }},
+          {"tot_ns", [](const auto &hit) { return hit.getTOT_ns(); }},
+          {"toa_ns", [](const auto &hit) { return hit.getTOA_ns(); }},
+          {"ftoa_ns", [](const auto &hit) { return hit.getFTOA_ns(); }},
+          {"tof_ns", [](const auto &hit) { return hit.getTOF_ns(); }},
+          {"spidertime_ns",
+           [](const auto &hit) { return hit.getSPIDERTIME_ns(); }},
+      },
+      append);
 }
 
 /**
- * @brief Save a hit vector to a HDF5 file. If the file already exists, rename the file with a microsecond timestamp
- as suffix.
+ * @brief Save a hit vector to a HDF5 file. If the file already exists, rename
+ the file with a microsecond timestamp as suffix.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -289,10 +298,12 @@ void saveOrAppendHitsToHDF5(const std::string &out_file_name, ForwardIterator hi
  * @param[in] hits_end
  */
 template <typename ForwardIterator>
-void saveHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end) {
+void saveHitsToHDF5(const std::string &out_file_name,
+                    ForwardIterator hits_begin, ForwardIterator hits_end) {
   std::string finalFileName = out_file_name;
   if (std::filesystem::exists(out_file_name)) {
-    spdlog::warn("File '{}' already exists. Renaming the output file.", out_file_name);
+    spdlog::warn("File '{}' already exists. Renaming the output file.",
+                 out_file_name);
     finalFileName = generateFileNameWithMicroTimestamp(out_file_name);
     spdlog::info("New output file: '{}'", finalFileName);
   }
@@ -305,12 +316,14 @@ void saveHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin
  * @param[in] out_file_name
  * @param[in] hits
  */
-void saveHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hits) {
+void saveHitsToHDF5(const std::string &out_file_name,
+                    const std::vector<Hit> &hits) {
   saveHitsToHDF5(out_file_name, hits.cbegin(), hits.cend());
 }
 
 /**
- * @brief Append a hit vector to a HDF5 file. If the file already exists, append the hits to the existing file.
+ * @brief Append a hit vector to a HDF5 file. If the file already exists, append
+ * the hits to the existing file.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -318,7 +331,8 @@ void saveHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hi
  * @param[in] hits_end
  */
 template <typename ForwardIterator>
-void appendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_begin, ForwardIterator hits_end) {
+void appendHitsToHDF5(const std::string &out_file_name,
+                      ForwardIterator hits_begin, ForwardIterator hits_end) {
   saveOrAppendHitsToHDF5(out_file_name, hits_begin, hits_end, true);
 }
 
@@ -328,7 +342,8 @@ void appendHitsToHDF5(const std::string &out_file_name, ForwardIterator hits_beg
  * @param[in] out_file_name
  * @param[in] hits
  */
-void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &hits) {
+void appendHitsToHDF5(const std::string &out_file_name,
+                      const std::vector<Hit> &hits) {
   appendHitsToHDF5(out_file_name, hits.cbegin(), hits.cend());
 }
 
@@ -342,22 +357,26 @@ void appendHitsToHDF5(const std::string &out_file_name, const std::vector<Hit> &
  * @param[in] append
  */
 template <typename ForwardIterator>
-void saveOrAppendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin,
+void saveOrAppendNeutronToHDF5(const std::string &out_file_name,
+                               ForwardIterator neutron_begin,
                                ForwardIterator neutron_end, bool append) {
-  saveOrAppendToHDF5<double>(out_file_name, neutron_begin, neutron_end, "neutrons",
-                             {
-                                 {"x", [](const Neutron &neutron) { return neutron.getX(); }},
-                                 {"y", [](const Neutron &neutron) { return neutron.getY(); }},
-                                 {"tof_ns", [](const Neutron &neutron) { return neutron.getTOF_ns(); }},
-                                 {"tot_ns", [](const Neutron &neutron) { return neutron.getTOT_ns(); }},
-                                 {"nHits", [](const Neutron &neutron) { return neutron.getNHits(); }},
-                             },
-                             append);
+  saveOrAppendToHDF5<double>(
+      out_file_name, neutron_begin, neutron_end, "neutrons",
+      {
+          {"x", [](const Neutron &neutron) { return neutron.getX(); }},
+          {"y", [](const Neutron &neutron) { return neutron.getY(); }},
+          {"tof_ns",
+           [](const Neutron &neutron) { return neutron.getTOF_ns(); }},
+          {"tot_ns",
+           [](const Neutron &neutron) { return neutron.getTOT_ns(); }},
+          {"nHits", [](const Neutron &neutron) { return neutron.getNHits(); }},
+      },
+      append);
 }
 
 /**
- * @brief Save a neutron vector to a HDF5 file. If the file already exists, rename the file with a microsecond
- timestamp
+ * @brief Save a neutron vector to a HDF5 file. If the file already exists,
+ rename the file with a microsecond timestamp
  * as suffix.
  *
  * @tparam ForwardIterator
@@ -366,10 +385,13 @@ void saveOrAppendNeutronToHDF5(const std::string &out_file_name, ForwardIterator
  * @param[in] neutron_end
  */
 template <typename ForwardIterator>
-void saveNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end) {
+void saveNeutronToHDF5(const std::string &out_file_name,
+                       ForwardIterator neutron_begin,
+                       ForwardIterator neutron_end) {
   std::string finalFileName = out_file_name;
   if (std::filesystem::exists(out_file_name)) {
-    spdlog::warn("File '{}' already exists. Renaming the output file.", out_file_name);
+    spdlog::warn("File '{}' already exists. Renaming the output file.",
+                 out_file_name);
     finalFileName = generateFileNameWithMicroTimestamp(out_file_name);
     spdlog::info("New output file: '{}'", finalFileName);
   }
@@ -382,13 +404,14 @@ void saveNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron
  * @param[in] out_file_name
  * @param[in] neutrons
  */
-void saveNeutronToHDF5(const std::string &out_file_name, const std::vector<Neutron> &neutrons) {
+void saveNeutronToHDF5(const std::string &out_file_name,
+                       const std::vector<Neutron> &neutrons) {
   saveNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
 }
 
 /**
- * @brief Append a neutron vector to a HDF5 file. If group "neutrons" already exists, append the neutrons as a new
- * group.
+ * @brief Append a neutron vector to a HDF5 file. If group "neutrons" already
+ * exists, append the neutrons as a new group.
  *
  * @tparam ForwardIterator
  * @param[in] out_file_name
@@ -396,7 +419,9 @@ void saveNeutronToHDF5(const std::string &out_file_name, const std::vector<Neutr
  * @param[in] neutron_end
  */
 template <typename ForwardIterator>
-void appendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutron_begin, ForwardIterator neutron_end) {
+void appendNeutronToHDF5(const std::string &out_file_name,
+                         ForwardIterator neutron_begin,
+                         ForwardIterator neutron_end) {
   saveOrAppendNeutronToHDF5(out_file_name, neutron_begin, neutron_end, true);
 }
 
@@ -406,6 +431,7 @@ void appendNeutronToHDF5(const std::string &out_file_name, ForwardIterator neutr
  * @param[in] out_file_name
  * @param[in] neutrons
  */
-void appendNeutronToHDF5(const std::string &out_file_name, const std::vector<Neutron> &neutrons) {
+void appendNeutronToHDF5(const std::string &out_file_name,
+                         const std::vector<Neutron> &neutrons) {
   appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
 }

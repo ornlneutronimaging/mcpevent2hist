@@ -7,20 +7,10 @@
  * @date 2023-09-04
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  */
 #include "hit.h"
+
 #include <iostream>
 
 /**
@@ -31,8 +21,8 @@
  * @param[in] gdc
  * @param[in] chip_layout_type
  */
-Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsigned long long GDC_timestamp,
-         const int chip_layout_type) {
+Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
+         const unsigned long long GDC_timestamp, const int chip_layout_type) {
   // local variables
   unsigned short pixaddr, dcol, spix, pix;
   unsigned short *spider_time;
@@ -62,16 +52,16 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp, const unsig
   m_spidertime = (SPDR_MSB18 << 30) & 0xFFFFC0000000;
   m_spidertime = m_spidertime | spidertime;
 
-  // additional check to make sure rollover of spidertime is correct 
+  // additional check to make sure rollover of spidertime is correct
   // 4e7 is roughly 1 second in the units of 25 ns
   // 1073741824 is 2^30 (in units of 25 ns)
-  if ((m_spidertime-GDC_timestamp)>=4e7){
+  if ((m_spidertime - GDC_timestamp) >= 4e7) {
     m_spidertime -= 1073741824;
   }
 
   // tof calculation
   m_tof = m_spidertime - TDC_timestamp;
-  while (m_tof*25E-6 > 16.67){
+  while (m_tof * 25E-6 > 16.67) {
     m_tof -= 666667;
   }
 

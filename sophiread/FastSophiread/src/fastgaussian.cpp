@@ -6,18 +6,7 @@
  * @date 2023-09-04
  *
  * @copyright Copyright (c) 2023
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX - License - Identifier: GPL - 3.0 +
  *
  * @note Fast Gaussian peak fitting method works better when the number of hits
  * is large. It is not suitable for fitting tiny clsuters as it will throw away
@@ -39,7 +28,9 @@ double getMedian(const std::vector<double>& data) {
   std::vector<double> sorted_data = data;
   std::sort(sorted_data.begin(), sorted_data.end());
   if (sorted_data.size() % 2 == 0) {
-    return (sorted_data[sorted_data.size() / 2 - 1] + sorted_data[sorted_data.size() / 2]) / 2;
+    return (sorted_data[sorted_data.size() / 2 - 1] +
+            sorted_data[sorted_data.size() / 2]) /
+           2;
   } else {
     return sorted_data[sorted_data.size() / 2];
   }
@@ -122,10 +113,13 @@ Neutron FastGaussian::fit(const std::vector<Hit>& data) {
   double y_event = x_sol(1) / 2.0;
 
   // calculate the tof as the average of the tof of the filtered hits
-  double tof_event = std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) / tof_filtered.size();
+  double tof_event =
+      std::accumulate(tof_filtered.begin(), tof_filtered.end(), 0.0) /
+      tof_filtered.size();
 
   // calculate the tot
-  double tot_event = std::accumulate(tot_filtered.begin(), tot_filtered.end(), 0.0);
+  double tot_event =
+      std::accumulate(tot_filtered.begin(), tot_filtered.end(), 0.0);
 
   // even if we are throwing away to bottom half, we still need to return the
   // pre-filtered number of hits

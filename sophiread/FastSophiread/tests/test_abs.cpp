@@ -90,7 +90,8 @@ class ABSTest : public ::testing::Test {
   }
 };
 
-// Test the constructor and the methods set_method, get_cluster_labels, and reset
+// Test the constructor and the methods set_method, get_cluster_labels, and
+// reset
 TEST_F(ABSTest, ConstructorAndMethods) {
   ABS abs(5.0, 1, 75);
 

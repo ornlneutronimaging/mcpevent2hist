@@ -23,3 +23,6 @@ dependencies:
   # documentation
   - doxygen
   - graphviz
+
+  # misc
+  - pre-commit

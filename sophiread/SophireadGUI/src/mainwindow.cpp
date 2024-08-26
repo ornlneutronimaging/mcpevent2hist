@@ -67,7 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
   unsigned long int min_cluster_size = 1;
   unsigned long int spider_time_range = 75;
 
-  clustering_alg = new ABS(radius,min_cluster_size,spider_time_range);
+  clustering_alg = new ABS(radius, min_cluster_size, spider_time_range);
   clustering_alg->set_method("centroid");
   // clustering_alg->set_method("fast_gaussian");
 
@@ -86,7 +86,7 @@ MainWindow::~MainWindow() { delete ui; }
  */
 void MainWindow::handletimer() {
   // update percentage of data processed
-  // TODO: need to find a way to adapte the percentage number
+  // TODO: need to find a way to adapt the percentage number
   //
   // update time used to process data
   auto elapsed = myelapsedtime.elapsed();
