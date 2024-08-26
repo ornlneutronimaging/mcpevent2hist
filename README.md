@@ -1,3 +1,4 @@
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/ornlneutronimaging/mcpevent2hist/next.svg)](https://results.pre-commit.ci/latest/github/ornlneutronimaging/mcpevent2hist/next)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8299343.svg)](https://doi.org/10.5281/zenodo.8299343)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/7256/badge)](https://bestpractices.coreinfrastructure.org/projects/7256)
 
