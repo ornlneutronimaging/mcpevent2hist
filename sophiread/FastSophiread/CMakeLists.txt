@@ -6,9 +6,24 @@ set(SRC_FAST_FILES src/abs.cpp src/centroid.cpp src/disk_io.cpp
 add_library(FastSophiread ${SRC_FAST_FILES})
 target_include_directories(
   FastSophiread
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include $ENV{CONDA_PREFIX}/include
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> $ENV{CONDA_PREFIX}/include
          ${EIGEN3_INCLUDE_DIR} ${HDF5_INCLUDE_DIRS})
 target_link_directories(FastSophiread PRIVATE $ENV{CONDA_PREFIX}/lib)
+
+# Install the library
+install(
+  TARGETS FastSophiread
+  EXPORT sophireadTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# Install the headers
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # ----------------- TESTS ----------------- #
 function(add_sophiread_test test_name)

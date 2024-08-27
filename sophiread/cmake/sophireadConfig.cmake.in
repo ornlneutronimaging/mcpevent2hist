@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/sophireadTargets.cmake")
+
+# Optionally, include additional paths or variables
+set(SOPHIREAD_INCLUDE_DIRS "@CMAKE_INSTALL_FULL_INCLUDEDIR@")
+set(SOPHIREAD_LIBRARIES sophiread::FastSophiread)

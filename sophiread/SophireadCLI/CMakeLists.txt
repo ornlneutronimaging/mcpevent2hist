@@ -81,6 +81,17 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
       "/usr/local"
       CACHE PATH "Default install prefix" FORCE)
 endif()
-install(TARGETS Sophiread RUNTIME DESTINATION bin)
+
+# Install executables
+install(
+  TARGETS Sophiread venus_auto_reducer
+  EXPORT sophireadTargets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Install the headers
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# Set up packaging (optional)
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 include(CPack)
