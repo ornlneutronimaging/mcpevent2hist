@@ -1,6 +1,6 @@
 /**version.h
  *
- * Copyright 2023.
+ * Copyright 2024.
  */
 
 #ifndef VERSION_H
@@ -12,7 +12,7 @@
 
 // Version number
 #define VERSION_MAJOR 2
-#define VERSION_MINOR 0
+#define VERSION_MINOR 3
 #define VERSION_PATCH 0
 
 // Version number final
