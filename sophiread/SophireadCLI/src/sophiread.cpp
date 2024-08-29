@@ -35,6 +35,7 @@ struct ProgramOptions {
   std::string output_tof_imaging;
   std::string tof_filename_base = "tof_image";
   std::string tof_mode = "neutron";
+  size_t chunk_size = 5ULL * 1024 * 1024 * 1024;  // Default 5GB
   bool debug_logging = false;
   bool verbose = false;
 };
@@ -46,9 +47,12 @@ void print_usage(const char* program_name) {
       "<tof_mode>] [-d] [-v]",
       program_name);
   spdlog::info("Options:");
-  spdlog::info("  -i <input_tpx3>          Input TPX3 file");
-  spdlog::info("  -H <output_hits>         Output hits HDF5 file");
-  spdlog::info("  -E <output_events>       Output events HDF5 file");
+  spdlog::info(
+      "  -i <input_tpx3>          Input TPX3 file");
+  spdlog::info(
+      "  -H <output_hits>         Output hits HDF5 file");
+  spdlog::info(
+      "  -E <output_events>       Output events HDF5 file");
   spdlog::info(
       "  -u <config_file>         User configuration JSON file (optional)");
   spdlog::info(
@@ -60,15 +64,19 @@ void print_usage(const char* program_name) {
   spdlog::info(
       "  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: "
       "neutron)");
-  spdlog::info("  -d                       Enable debug logging");
-  spdlog::info("  -v                       Enable verbose logging");
+  spdlog::info(
+      "  -c <chunk_size>          Chunk size in MB (default: 5120)");
+  spdlog::info(
+      "  -d                       Enable debug logging");
+  spdlog::info(
+      "  -v                       Enable verbose logging");
 }
 
 ProgramOptions parse_arguments(int argc, char* argv[]) {
   ProgramOptions options;
   int opt;
 
-  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:dv")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:c:dv")) != -1) {
     switch (opt) {
       case 'i':
         options.input_tpx3 = optarg;
@@ -90,6 +98,9 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
         break;
       case 'm':
         options.tof_mode = optarg;
+        break;
+      case 'c':
+        options.chunk_size = static_cast<size_t>(std::stoull(optarg)) * 1024 * 1024;  // Convert MB to bytes
         break;
       case 'd':
         options.debug_logging = true;
@@ -146,6 +157,7 @@ int main(int argc, char* argv[]) {
     spdlog::info("TOF imaging folder: {}", options.output_tof_imaging);
     spdlog::info("TOF filename base: {}", options.tof_filename_base);
     spdlog::info("TOF mode: {}", options.tof_mode);
+    spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
 
     // Load configuration
     std::unique_ptr<IConfig> config;
@@ -171,39 +183,91 @@ int main(int argc, char* argv[]) {
 
     spdlog::info("Configuration: {}", config->toString());
 
-    // Process raw data
+    TPX3FileReader fileReader(options.input_tpx3);
+
     auto start = std::chrono::high_resolution_clock::now();
-    auto raw_data = sophiread::timedReadDataToCharVec(options.input_tpx3);
-    auto batches = sophiread::timedFindTPX3H(raw_data);
-    sophiread::timedLocateTimeStamp(batches, raw_data);
-    sophiread::timedProcessing(batches, raw_data, *config);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count();
-    spdlog::info("Total processing time: {} s", elapsed / 1e6);
 
-    // Release memory of raw data
-    std::vector<char>().swap(raw_data);
-
-    // Generate and save TOF images
-    if (!options.output_tof_imaging.empty()) {
-      auto tof_images = sophiread::timedCreateTOFImages(
-          batches, config->getSuperResolution(), config->getTOFBinEdges(),
-          options.tof_mode);
-      sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
-                                           tof_images, config->getTOFBinEdges(),
-                                           options.tof_filename_base);
-    }
-
-    // Save hits and events
+    // Initialize HDF5 files for hits and events (if needed)
+    H5::H5File hitsFile, eventsFile;
     if (!options.output_hits.empty()) {
-      sophiread::timedSaveHitsToHDF5(options.output_hits, batches);
+        hitsFile = H5::H5File(options.output_hits, H5F_ACC_TRUNC);
+    }
+    if (!options.output_events.empty()) {
+        eventsFile = H5::H5File(options.output_events, H5F_ACC_TRUNC);
     }
 
-    if (!options.output_events.empty()) {
-      sophiread::timedSaveEventsToHDF5(options.output_events, batches);
+    Initialize TOF images if needed
+    std::vector<std::vector<std::vector<unsigned int>>> tof_images;
+    if (!options.output_tof_imaging.empty()) {
+        tof_images = sophiread::initializeTOFImages(config->getSuperResolution(), config->getTOFBinEdges());
     }
+
+    while (!fileReader.isEOF()) {
+        auto chunk = fileReader.readChunk(options.chunk_size);
+        if (chunk.empty()) break;
+
+        auto batches = sophiread::timedFindTPX3H(chunk);
+        sophiread::timedLocateTimeStamp(batches, chunk);
+        sophiread::timedProcessing(batches, chunk, *config);
+
+        // Process hits and neutrons
+        for (const auto& batch : batches) {
+            // Append hits to HDF5 file
+            if (!options.output_hits.empty()) {
+                sophiread::appendHitsToHDF5(hitsFile, batch.hits);
+            }
+
+            // Append neutrons to HDF5 file
+            if (!options.output_events.empty()) {
+                sophiread::appendNeutronsToHDF5(eventsFile, batch.neutrons);
+            }
+
+            // Update TOF images
+            if (!options.output_tof_imaging.empty()) {
+                sophiread::updateTOFImages(tof_images, batch, config->getSuperResolution(), config->getTOFBinEdges(), options.tof_mode);
+            }
+        }
+
+        // Clear memory
+        std::vector<TPX3>().swap(batches);
+        std::vector<char>().swap(chunk);
+    }
+
+
+  //   // Process raw data
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   auto raw_data = sophiread::timedReadDataToCharVec(options.input_tpx3);
+  //   auto batches = sophiread::timedFindTPX3H(raw_data);
+  //   sophiread::timedLocateTimeStamp(batches, raw_data);
+  //   sophiread::timedProcessing(batches, raw_data, *config);
+
+  //   auto end = std::chrono::high_resolution_clock::now();
+  //   auto elapsed =
+  //       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+  //           .count();
+  //   spdlog::info("Total processing time: {} s", elapsed / 1e6);
+
+  //   // Release memory of raw data
+  //   std::vector<char>().swap(raw_data);
+
+  //   // Generate and save TOF images
+  //   if (!options.output_tof_imaging.empty()) {
+  //     auto tof_images = sophiread::timedCreateTOFImages(
+  //         batches, config->getSuperResolution(), config->getTOFBinEdges(),
+  //         options.tof_mode);
+  //     sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
+  //                                          tof_images, config->getTOFBinEdges(),
+  //                                          options.tof_filename_base);
+  //   }
+
+  //   // Save hits and events
+  //   if (!options.output_hits.empty()) {
+  //     sophiread::timedSaveHitsToHDF5(options.output_hits, batches);
+  //   }
+
+  //   if (!options.output_events.empty()) {
+  //     sophiread::timedSaveEventsToHDF5(options.output_events, batches);
+  //   }
 
   } catch (const std::exception& e) {
     spdlog::error("Error: {}", e.what());
