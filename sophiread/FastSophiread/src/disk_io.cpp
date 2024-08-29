@@ -87,13 +87,6 @@ mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
   return info;
 }
 
-// for mmap support
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 /**
  * @brief Memory-map a Timepix3 raw data file (without pre-reading it).
  *
@@ -434,4 +427,54 @@ void appendNeutronToHDF5(const std::string &out_file_name,
 void appendNeutronToHDF5(const std::string &out_file_name,
                          const std::vector<Neutron> &neutrons) {
   appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
+}
+
+TPX3FileReader::TPX3FileReader(const std::string& filename) {
+    fd = open(filename.c_str(), O_RDONLY);
+    if (fd == -1) {
+        spdlog::error("Failed to open file: {}", filename);
+        throw std::runtime_error("Failed to open file");
+    }
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+        spdlog::error("Failed to get file size");
+        close(fd);
+        throw std::runtime_error("Failed to get file size");
+    }
+
+    fileSize = sb.st_size;
+    map = static_cast<char*>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+    if (map == MAP_FAILED) {
+        spdlog::error("Failed to mmap file");
+        close(fd);
+        throw std::runtime_error("Failed to mmap file");
+    }
+
+    currentPosition = 0;
+    spdlog::info("Opened file: {}, size: {} bytes", filename, fileSize);
+}
+
+TPX3FileReader::~TPX3FileReader() {
+    if (map != MAP_FAILED) {
+        munmap(map, fileSize);
+    }
+    if (fd != -1) {
+        close(fd);
+    }
+}
+
+std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
+    if (currentPosition >= fileSize) {
+        return std::vector<char>();  // Return empty vector if we've reached the end of the file
+    }
+
+    size_t remainingBytes = fileSize - currentPosition;
+    size_t bytesToRead = std::min(chunkSize, remainingBytes);
+
+    std::vector<char> chunk(map + currentPosition, map + currentPosition + bytesToRead);
+    currentPosition += bytesToRead;
+
+    spdlog::debug("Read chunk of size {} bytes, current position: {}/{}", bytesToRead, currentPosition, fileSize);
+    return chunk;
 }

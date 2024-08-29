@@ -16,6 +16,11 @@
 #include <functional>
 #include <iostream>
 #include <vector>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "hit.h"
 #include "neutron.h"
@@ -82,3 +87,19 @@ void appendNeutronToHDF5(const std::string& out_file_name,
                          ForwardIterator neutron_end);
 void appendNeutronToHDF5(const std::string& out_file_name,
                          const std::vector<Neutron>& neutrons);
+
+class TPX3FileReader {
+public:
+    TPX3FileReader(const std::string& filename);
+    ~TPX3FileReader();
+
+    std::vector<char> readChunk(size_t chunkSize);
+    bool isEOF() const { return currentPosition >= fileSize; }
+    size_t getTotalSize() const { return fileSize; }
+
+private:
+    int fd;
+    char* map;
+    size_t fileSize;
+    size_t currentPosition;
+};
