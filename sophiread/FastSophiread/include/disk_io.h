@@ -103,3 +103,17 @@ private:
     size_t fileSize;
     size_t currentPosition;
 };
+
+// directly working with HDF5 handles
+void appendHitsToHDF5(H5::H5File& file, const std::vector<Hit>& hits);
+void appendNeutronsToHDF5(H5::H5File& file, const std::vector<Neutron>& neutrons);
+// Helper function for appending data to HDF5
+template <typename T, typename ForwardIterator>
+void appendToHDF5(
+    H5::H5File& out_file,
+    ForwardIterator data_begin,
+    ForwardIterator data_end,
+    const std::string& baseGroupName,
+    const std::vector
+        std::pair<std::string, std::function<T(const decltype(*data_begin)&)>>>
+        & attributes);
