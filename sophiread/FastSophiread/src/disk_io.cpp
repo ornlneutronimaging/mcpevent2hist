@@ -478,3 +478,64 @@ std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
     spdlog::debug("Read chunk of size {} bytes, current position: {}/{}", bytesToRead, currentPosition, fileSize);
     return chunk;
 }
+
+template <typename T, typename ForwardIterator>
+void appendToHDF5(
+    H5::H5File& out_file,
+    ForwardIterator data_begin,
+    ForwardIterator data_end,
+    const std::string& baseGroupName,
+    const std::vector
+        std::pair<std::string, std::function<T(const decltype(*data_begin)&)>>>
+        & attributes) {
+    const size_t num_data = std::distance(data_begin, data_end);
+
+    if (num_data == 0) {
+        spdlog::warn("No data to append. Exiting function.");
+        return;
+    }
+
+    std::string groupName = generateGroupName(out_file, baseGroupName);
+    H5::Group group = out_file.createGroup(groupName);
+
+    for (const auto& [dataset_name, func] : attributes) {
+        std::vector<T> data;
+        data.reserve(num_data);
+        std::transform(data_begin, data_end, std::back_inserter(data), func);
+        
+        hsize_t dims[1] = {data.size()};
+        H5::DataSpace dataspace(1, dims);
+        H5::DataSet dataset = group.createDataSet(dataset_name, 
+            H5::PredType::NATIVE_DOUBLE, dataspace);
+        dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE);
+        dataset.close();
+    }
+
+    group.close();
+}
+
+void appendHitsToHDF5(H5::H5File& file, const std::vector<Hit>& hits) {
+    appendToHDF5<double>(
+        file, hits.begin(), hits.end(), "hits",
+        {
+            {"x", [](const Hit& hit) { return static_cast<double>(hit.getX()); }},
+            {"y", [](const Hit& hit) { return static_cast<double>(hit.getY()); }},
+            {"tot_ns", [](const Hit& hit) { return hit.getTOT_ns(); }},
+            {"toa_ns", [](const Hit& hit) { return hit.getTOA_ns(); }},
+            {"ftoa_ns", [](const Hit& hit) { return hit.getFTOA_ns(); }},
+            {"tof_ns", [](const Hit& hit) { return hit.getTOF_ns(); }},
+            {"spidertime_ns", [](const Hit& hit) { return hit.getSPIDERTIME_ns(); }},
+        });
+}
+
+void appendNeutronsToHDF5(H5::H5File& file, const std::vector<Neutron>& neutrons) {
+    appendToHDF5<double>(
+        file, neutrons.begin(), neutrons.end(), "neutrons",
+        {
+            {"x", [](const Neutron& neutron) { return neutron.getX(); }},
+            {"y", [](const Neutron& neutron) { return neutron.getY(); }},
+            {"tof_ns", [](const Neutron& neutron) { return neutron.getTOF_ns(); }},
+            {"tot_ns", [](const Neutron& neutron) { return neutron.getTOT_ns(); }},
+            {"nHits", [](const Neutron& neutron) { return static_cast<double>(neutron.getNHits()); }},
+        });
+}
