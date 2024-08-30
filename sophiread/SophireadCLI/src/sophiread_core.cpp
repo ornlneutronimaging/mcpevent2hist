@@ -45,52 +45,55 @@ std::vector<char> timedReadDataToCharVec(const std::string &in_tpx3) {
 /**
  * @brief Timed find TPX3H.
  *
- * @param[in] rawdata
+ * @param[in] chunk
  * @return std::vector<TPX3>
  */
-std::vector<TPX3> timedFindTPX3H(const std::vector<char> &rawdata) {
+std::vector<TPX3> timedFindTPX3H(const std::vector<char> &chunk) {
   auto start = std::chrono::high_resolution_clock::now();
-  auto batches = findTPX3H(rawdata);
+  auto batches = findTPX3H(chunk);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
           .count();
-  spdlog::info("Locate all headers: {} s", elapsed / 1e6);
+  spdlog::info("Locate headers in chunk: {} s", elapsed / 1e6);
 
   return batches;
 }
 
 /**
- * @brief Timed locate timestamp.
+ * @brief Timed locate timestamps.
  *
  * @param[in, out] batches
- * @param[in] rawdata
+ * @param[in] chunk
+ * @param[in, out] tdc_timestamp
+ * @param[in, out] gdc_timestamp
+ * @param[in, out] timer_lsb32
  */
 void timedLocateTimeStamp(std::vector<TPX3> &batches,
-                          const std::vector<char> &rawdata) {
+                          const std::vector<char> &chunk,
+                          unsigned long &tdc_timestamp,
+                          unsigned long long &gdc_timestamp,
+                          unsigned long &timer_lsb32) {
   auto start = std::chrono::high_resolution_clock::now();
-  unsigned long tdc_timestamp = 0;
-  unsigned long long gdc_timestamp = 0;
-  unsigned long timer_lsb32 = 0;
   for (auto &tpx3 : batches) {
-    updateTimestamp(tpx3, rawdata, tdc_timestamp, gdc_timestamp, timer_lsb32);
+    updateTimestamp(tpx3, chunk, tdc_timestamp, gdc_timestamp, timer_lsb32);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
           .count();
-  spdlog::info("Locate all timestamps: {} s", elapsed / 1e6);
+  spdlog::debug("Locate timestamps in chunk: {} s", elapsed / 1e6);
 }
 
 /**
  * @brief Timed hits extraction and clustering via multi-threading.
  *
  * @param[in, out] batches
- * @param[in] rawdata
+ * @param[in] chunk
  * @param[in] config
  */
-void timedProcessing(std::vector<TPX3> &batches,
-                     const std::vector<char> &raw_data, const IConfig &config) {
+void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &chunk,
+                     const IConfig &config) {
   auto start = std::chrono::high_resolution_clock::now();
   tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
                     [&](const tbb::blocked_range<size_t> &r) {
@@ -102,7 +105,7 @@ void timedProcessing(std::vector<TPX3> &batches,
 
                       for (size_t i = r.begin(); i != r.end(); ++i) {
                         auto &tpx3 = batches[i];
-                        extractHits(tpx3, raw_data);
+                        extractHits(tpx3, chunk);
 
                         abs_alg_mt->reset();
                         abs_alg_mt->set_method("centroid");
@@ -116,6 +119,18 @@ void timedProcessing(std::vector<TPX3> &batches,
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
           .count();
   spdlog::info("Process all hits -> neutrons: {} s", elapsed / 1e6);
+}
+
+std::vector<std::vector<std::vector<unsigned int>>> initializeTOFImages(
+    double super_resolution, const std::vector<double> &tof_bin_edges) {
+  int dim_x = static_cast<int>(517 * super_resolution);
+  int dim_y = static_cast<int>(517 * super_resolution);
+  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
+      tof_bin_edges.size() - 1);
+  for (auto &tof_image : tof_images) {
+    tof_image.resize(dim_y, std::vector<unsigned int>(dim_x, 0));
+  }
+  return tof_images;
 }
 
 /**
@@ -164,6 +179,46 @@ void timedSaveEventsToHDF5(const std::string &out_events,
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
           .count();
   spdlog::info("Save events to HDF5: {} s", elapsed / 1e6);
+}
+
+void updateTOFImages(
+    std::vector<std::vector<std::vector<unsigned int>>> &tof_images,
+    const TPX3 &batch, double super_resolution,
+    const std::vector<double> &tof_bin_edges, const std::string &mode) {
+  int dim_x = static_cast<int>(517 * super_resolution);
+  int dim_y = static_cast<int>(517 * super_resolution);
+
+  const std::vector<const IPositionTOF *> entries = [&]() {
+    if (mode == "hit") {
+      std::vector<const IPositionTOF *> result;
+      result.reserve(batch.hits.size());
+      for (const auto &hit : batch.hits) {
+        result.push_back(static_cast<const IPositionTOF *>(&hit));
+      }
+      return result;
+    } else {
+      std::vector<const IPositionTOF *> result;
+      result.reserve(batch.neutrons.size());
+      for (const auto &neutron : batch.neutrons) {
+        result.push_back(static_cast<const IPositionTOF *>(&neutron));
+      }
+      return result;
+    }
+  }();
+
+  for (const auto &entry : entries) {
+    double tof_s = entry->iGetTOF_ns() / 1e9;
+    auto it =
+        std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
+    if (it != tof_bin_edges.begin()) {
+      size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
+      int x = std::round(entry->iGetX() * super_resolution);
+      int y = std::round(entry->iGetY() * super_resolution);
+      if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
+        tof_images[bin_index][y][x]++;
+      }
+    }
+  }
 }
 
 /**

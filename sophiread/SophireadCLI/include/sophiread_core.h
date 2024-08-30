@@ -37,4 +37,8 @@ void timedSaveTOFImagingToTIFF(
     const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
     const std::vector<double>& tof_bin_edges,
     const std::string& tof_filename_base);
+void updateTOFImages(
+    std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
+    const TPX3& batch, double super_resolution,
+    const std::vector<double>& tof_bin_edges, const std::string& mode);
 }  // namespace sophiread
