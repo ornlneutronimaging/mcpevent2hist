@@ -429,163 +429,172 @@ void appendNeutronToHDF5(const std::string &out_file_name,
   appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
 }
 
-TPX3FileReader::TPX3FileReader(const std::string& filename) {
-    fd = open(filename.c_str(), O_RDONLY);
-    if (fd == -1) {
-        spdlog::error("Failed to open file: {}", filename);
-        throw std::runtime_error("Failed to open file");
-    }
+TPX3FileReader::TPX3FileReader(const std::string &filename) {
+  fd = open(filename.c_str(), O_RDONLY);
+  if (fd == -1) {
+    spdlog::error("Failed to open file: {}", filename);
+    throw std::runtime_error("Failed to open file");
+  }
 
-    struct stat sb;
-    if (fstat(fd, &sb) == -1) {
-        spdlog::error("Failed to get file size");
-        close(fd);
-        throw std::runtime_error("Failed to get file size");
-    }
+  struct stat sb;
+  if (fstat(fd, &sb) == -1) {
+    spdlog::error("Failed to get file size");
+    close(fd);
+    throw std::runtime_error("Failed to get file size");
+  }
 
-    fileSize = sb.st_size;
-    map = static_cast<char*>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
-    if (map == MAP_FAILED) {
-        spdlog::error("Failed to mmap file");
-        close(fd);
-        throw std::runtime_error("Failed to mmap file");
-    }
+  fileSize = sb.st_size;
+  map = static_cast<char *>(
+      mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+  if (map == MAP_FAILED) {
+    spdlog::error("Failed to mmap file");
+    close(fd);
+    throw std::runtime_error("Failed to mmap file");
+  }
 
-    currentPosition = 0;
-    spdlog::info("Opened file: {}, size: {} bytes", filename, fileSize);
+  currentPosition = 0;
+  spdlog::info("Opened file: {}, size: {} bytes", filename, fileSize);
 }
 
 TPX3FileReader::~TPX3FileReader() {
-    if (map != MAP_FAILED) {
-        munmap(map, fileSize);
-    }
-    if (fd != -1) {
-        close(fd);
-    }
+  if (map != MAP_FAILED) {
+    munmap(map, fileSize);
+  }
+  if (fd != -1) {
+    close(fd);
+  }
 }
 
 std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
-    if (currentPosition >= fileSize) {
-        return std::vector<char>();  // Return empty vector if we've reached the end of the file
-    }
+  if (currentPosition >= fileSize) {
+    return std::vector<char>();  // Return empty vector if we've reached the end
+                                 // of the file
+  }
 
-    size_t remainingBytes = fileSize - currentPosition;
-    size_t bytesToRead = std::min(chunkSize, remainingBytes);
+  size_t remainingBytes = fileSize - currentPosition;
+  size_t bytesToRead = std::min(chunkSize, remainingBytes);
 
-    std::vector<char> chunk(map + currentPosition, map + currentPosition + bytesToRead);
-    currentPosition += bytesToRead;
+  std::vector<char> chunk(map + currentPosition,
+                          map + currentPosition + bytesToRead);
+  currentPosition += bytesToRead;
 
-    spdlog::debug("Read chunk of size {} bytes, current position: {}/{}", bytesToRead, currentPosition, fileSize);
-    return chunk;
+  spdlog::debug("Read chunk of size {} bytes, current position: {}/{}",
+                bytesToRead, currentPosition, fileSize);
+  return chunk;
 }
 
-void createOrExtendDataset(H5::Group& group, const std::string& datasetName, 
-                           const std::vector<double>& data) {
-    hsize_t dims[1] = {data.size()};
-    hsize_t maxdims[1] = {H5S_UNLIMITED};
-    hsize_t chunkdims[1] = {std::min(static_cast<hsize_t>(1024), dims[0])};  // Adjust chunk size as needed
+void createOrExtendDataset(H5::Group &group, const std::string &datasetName,
+                           const std::vector<double> &data) {
+  hsize_t dims[1] = {data.size()};
+  hsize_t maxdims[1] = {H5S_UNLIMITED};
+  hsize_t chunkdims[1] = {std::min(static_cast<hsize_t>(1024),
+                                   dims[0])};  // Adjust chunk size as needed
 
-    H5::DataSpace dataspace;
-    H5::DataSet dataset;
+  H5::DataSpace dataspace;
+  H5::DataSet dataset;
 
-    try {
-        // Try to open existing dataset
-        dataset = group.openDataSet(datasetName);
-        dataspace = dataset.getSpace();
-        
-        // Get current dimensions
-        hsize_t currentDims[1];
-        dataspace.getSimpleExtentDims(currentDims);
+  try {
+    // Try to open existing dataset
+    dataset = group.openDataSet(datasetName);
+    dataspace = dataset.getSpace();
 
-        // Extend the dataset
-        hsize_t newDims[1] = {currentDims[0] + dims[0]};
-        dataset.extend(newDims);
+    // Get current dimensions
+    hsize_t currentDims[1];
+    dataspace.getSimpleExtentDims(currentDims);
 
-        // Select the newly added portion of the dataset
-        dataspace = dataset.getSpace();
-        hsize_t offset[1] = {currentDims[0]};
-        dataspace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+    // Extend the dataset
+    hsize_t newDims[1] = {currentDims[0] + dims[0]};
+    dataset.extend(newDims);
 
-    } catch (H5::Exception& e) {
-        // Dataset doesn't exist, create a new one
-        H5::DSetCreatPropList propList;
-        propList.setChunk(1, chunkdims);
+    // Select the newly added portion of the dataset
+    dataspace = dataset.getSpace();
+    hsize_t offset[1] = {currentDims[0]};
+    dataspace.selectHyperslab(H5S_SELECT_SET, dims, offset);
 
-        dataspace = H5::DataSpace(1, dims, maxdims);
-        dataset = group.createDataSet(datasetName, H5::PredType::NATIVE_DOUBLE, dataspace, propList);
-    }
+  } catch (H5::Exception &e) {
+    // Dataset doesn't exist, create a new one
+    H5::DSetCreatPropList propList;
+    propList.setChunk(1, chunkdims);
 
-    // Write the data
-    H5::DataSpace memspace(1, dims);
-    dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace, dataspace);
+    dataspace = H5::DataSpace(1, dims, maxdims);
+    dataset = group.createDataSet(datasetName, H5::PredType::NATIVE_DOUBLE,
+                                  dataspace, propList);
+  }
+
+  // Write the data
+  H5::DataSpace memspace(1, dims);
+  dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace, dataspace);
 }
 
-void appendHitsToHDF5Extendible(H5::H5File& file, const std::vector<Hit>& hits) {
-    H5::Group group;
-    try {
-        group = file.openGroup("hits");
-    } catch (H5::Exception& e) {
-        group = file.createGroup("hits");
-    }
+void appendHitsToHDF5Extendible(H5::H5File &file,
+                                const std::vector<Hit> &hits) {
+  H5::Group group;
+  try {
+    group = file.openGroup("hits");
+  } catch (H5::Exception &e) {
+    group = file.createGroup("hits");
+  }
 
-    std::vector<double> xData, yData, totData, toaData, ftoaData, tofData, spidertimeData;
-    xData.reserve(hits.size());
-    yData.reserve(hits.size());
-    totData.reserve(hits.size());
-    toaData.reserve(hits.size());
-    ftoaData.reserve(hits.size());
-    tofData.reserve(hits.size());
-    spidertimeData.reserve(hits.size());
+  std::vector<double> xData, yData, totData, toaData, ftoaData, tofData,
+      spidertimeData;
+  xData.reserve(hits.size());
+  yData.reserve(hits.size());
+  totData.reserve(hits.size());
+  toaData.reserve(hits.size());
+  ftoaData.reserve(hits.size());
+  tofData.reserve(hits.size());
+  spidertimeData.reserve(hits.size());
 
-    for (const auto& hit : hits) {
-        xData.push_back(static_cast<double>(hit.getX()));
-        yData.push_back(static_cast<double>(hit.getY()));
-        totData.push_back(hit.getTOT_ns());
-        toaData.push_back(hit.getTOA_ns());
-        ftoaData.push_back(hit.getFTOA_ns());
-        tofData.push_back(hit.getTOF_ns());
-        spidertimeData.push_back(hit.getSPIDERTIME_ns());
-    }
+  for (const auto &hit : hits) {
+    xData.push_back(static_cast<double>(hit.getX()));
+    yData.push_back(static_cast<double>(hit.getY()));
+    totData.push_back(hit.getTOT_ns());
+    toaData.push_back(hit.getTOA_ns());
+    ftoaData.push_back(hit.getFTOA_ns());
+    tofData.push_back(hit.getTOF_ns());
+    spidertimeData.push_back(hit.getSPIDERTIME_ns());
+  }
 
-    createOrExtendDataset(group, "x", xData);
-    createOrExtendDataset(group, "y", yData);
-    createOrExtendDataset(group, "tot_ns", totData);
-    createOrExtendDataset(group, "toa_ns", toaData);
-    createOrExtendDataset(group, "ftoa_ns", ftoaData);
-    createOrExtendDataset(group, "tof_ns", tofData);
-    createOrExtendDataset(group, "spidertime_ns", spidertimeData);
+  createOrExtendDataset(group, "x", xData);
+  createOrExtendDataset(group, "y", yData);
+  createOrExtendDataset(group, "tot_ns", totData);
+  createOrExtendDataset(group, "toa_ns", toaData);
+  createOrExtendDataset(group, "ftoa_ns", ftoaData);
+  createOrExtendDataset(group, "tof_ns", tofData);
+  createOrExtendDataset(group, "spidertime_ns", spidertimeData);
 
-    group.close();
+  group.close();
 }
 
-void appendNeutronsToHDF5Extendible(H5::H5File& file, const std::vector<Neutron>& neutrons) {
-    H5::Group group;
-    try {
-        group = file.openGroup("neutrons");
-    } catch (H5::Exception& e) {
-        group = file.createGroup("neutrons");
-    }
+void appendNeutronsToHDF5Extendible(H5::H5File &file,
+                                    const std::vector<Neutron> &neutrons) {
+  H5::Group group;
+  try {
+    group = file.openGroup("neutrons");
+  } catch (H5::Exception &e) {
+    group = file.createGroup("neutrons");
+  }
 
-    std::vector<double> xData, yData, tofData, totData, nHitsData;
-    xData.reserve(neutrons.size());
-    yData.reserve(neutrons.size());
-    tofData.reserve(neutrons.size());
-    totData.reserve(neutrons.size());
-    nHitsData.reserve(neutrons.size());
+  std::vector<double> xData, yData, tofData, totData, nHitsData;
+  xData.reserve(neutrons.size());
+  yData.reserve(neutrons.size());
+  tofData.reserve(neutrons.size());
+  totData.reserve(neutrons.size());
+  nHitsData.reserve(neutrons.size());
 
-    for (const auto& neutron : neutrons) {
-        xData.push_back(neutron.getX());
-        yData.push_back(neutron.getY());
-        tofData.push_back(neutron.getTOF_ns());
-        totData.push_back(neutron.getTOT_ns());
-        nHitsData.push_back(static_cast<double>(neutron.getNHits()));
-    }
+  for (const auto &neutron : neutrons) {
+    xData.push_back(neutron.getX());
+    yData.push_back(neutron.getY());
+    tofData.push_back(neutron.getTOF_ns());
+    totData.push_back(neutron.getTOT_ns());
+    nHitsData.push_back(static_cast<double>(neutron.getNHits()));
+  }
 
-    createOrExtendDataset(group, "x", xData);
-    createOrExtendDataset(group, "y", yData);
-    createOrExtendDataset(group, "tof_ns", tofData);
-    createOrExtendDataset(group, "tot_ns", totData);
-    createOrExtendDataset(group, "nHits", nHitsData);
+  createOrExtendDataset(group, "x", xData);
+  createOrExtendDataset(group, "y", yData);
+  createOrExtendDataset(group, "tof_ns", tofData);
+  createOrExtendDataset(group, "tot_ns", totData);
+  createOrExtendDataset(group, "nHits", nHitsData);
 
-    group.close();
+  group.close();
 }
