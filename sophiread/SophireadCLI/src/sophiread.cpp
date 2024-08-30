@@ -42,6 +42,11 @@ struct ProgramOptions {
   bool verbose = false;
 };
 
+/**
+ * @brief Print usage information.
+ *
+ * @param[in] program_name
+ */
 void print_usage(const char* program_name) {
   spdlog::info(
       "Usage: {} -i <input_tpx3> -H <output_hits> -E <output_events> [-u "
@@ -68,6 +73,12 @@ void print_usage(const char* program_name) {
   spdlog::info("  -v                       Enable verbose logging");
 }
 
+/**
+ * @brief Parse command line arguments.
+ *
+ * @param[in] argc
+ * @param[in] argv
+ */
 ProgramOptions parse_arguments(int argc, char* argv[]) {
   ProgramOptions options;
   int opt;

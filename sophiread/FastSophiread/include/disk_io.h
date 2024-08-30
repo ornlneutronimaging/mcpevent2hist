@@ -104,7 +104,7 @@ class TPX3FileReader {
   size_t currentPosition;
 };
 
-//
+// Helper functions to append data to extendible datasets
 void createOrExtendDataset(H5::Group& group, const std::string& datasetName,
                            const std::vector<double>& data);
 void appendHitsToHDF5Extendible(H5::H5File& file, const std::vector<Hit>& hits);

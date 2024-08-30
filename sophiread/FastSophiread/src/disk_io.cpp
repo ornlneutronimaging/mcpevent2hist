@@ -429,6 +429,11 @@ void appendNeutronToHDF5(const std::string &out_file_name,
   appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
 }
 
+/**
+ * @brief Construct a new TPX3FileReader::TPX3FileReader object
+ *
+ * @param[in] filename
+ */
 TPX3FileReader::TPX3FileReader(const std::string &filename) {
   fd = open(filename.c_str(), O_RDONLY);
   if (fd == -1) {
@@ -456,6 +461,9 @@ TPX3FileReader::TPX3FileReader(const std::string &filename) {
   spdlog::info("Opened file: {}, size: {} bytes", filename, fileSize);
 }
 
+/**
+ * @brief Destroy the TPX3FileReader::TPX3FileReader object
+ */
 TPX3FileReader::~TPX3FileReader() {
   if (map != MAP_FAILED) {
     munmap(map, fileSize);
@@ -465,6 +473,11 @@ TPX3FileReader::~TPX3FileReader() {
   }
 }
 
+/**
+ * @brief Read a chunk of data from the file.
+ *
+ * @param[in] chunkSize: size of the chunk to read
+ */
 std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
   if (currentPosition >= fileSize) {
     return std::vector<char>();  // Return empty vector if we've reached the end
@@ -483,6 +496,13 @@ std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
   return chunk;
 }
 
+/**
+ * @brief Create or extend a dataset in a HDF5 group.
+ *
+ * @param[in] group: HDF5 group
+ * @param[in] datasetName: name of the dataset
+ * @param[in] data: data to write to the dataset
+ */
 void createOrExtendDataset(H5::Group &group, const std::string &datasetName,
                            const std::vector<double> &data) {
   spdlog::debug("Creating or extending dataset '{}' with {} elements",
@@ -546,6 +566,12 @@ void createOrExtendDataset(H5::Group &group, const std::string &datasetName,
   }
 }
 
+/**
+ * @brief Append hits to an extendible HDF5 file.
+ *
+ * @param[in] file: HDF5 file
+ * @param[in] hits: vector of hits to append
+ */
 void appendHitsToHDF5Extendible(H5::H5File &file,
                                 const std::vector<Hit> &hits) {
   if (hits.empty()) {
@@ -597,6 +623,12 @@ void appendHitsToHDF5Extendible(H5::H5File &file,
   group.close();
 }
 
+/**
+ * @brief Append neutrons to an extendible HDF5 file.
+ *
+ * @param[in] file: HDF5 file
+ * @param[in] neutrons: vector of neutrons to append
+ */
 void appendNeutronsToHDF5Extendible(H5::H5File &file,
                                     const std::vector<Neutron> &neutrons) {
   if (neutrons.empty()) {
