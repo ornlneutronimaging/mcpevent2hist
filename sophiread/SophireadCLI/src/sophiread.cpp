@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -191,9 +192,8 @@ int main(int argc, char* argv[]) {
       eventsFile = H5::H5File(options.output_events, H5F_ACC_TRUNC);
     }
 
-    Initialize TOF
-        images if needed std::vector<std::vector<std::vector<unsigned int>>>
-            tof_images;
+    // Initialize TOF images if needed
+    std::vector<std::vector<std::vector<unsigned int>>> tof_images;
     if (!options.output_tof_imaging.empty()) {
       tof_images = sophiread::initializeTOFImages(config->getSuperResolution(),
                                                   config->getTOFBinEdges());
@@ -211,13 +211,18 @@ int main(int argc, char* argv[]) {
     spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
 
     int chunkCounter = 0;
-    int totalHits = 0;
-    int totalNeutrons = 0;
+    uint64_t totalHits = 0;
+    uint64_t totalNeutrons = 0;
 
     while (!fileReader.isEOF()) {
       try {
         auto chunk = fileReader.readChunk(options.chunk_size);
         if (chunk.empty()) break;
+
+        // report timing info
+        spdlog::info("TDC timestamp: {}", tdc_timestamp);
+        spdlog::info("GDC timestamp: {}", gdc_timestamp);
+        spdlog::info("Timer LSB32: {}", timer_lsb32);
 
         auto batches = sophiread::timedFindTPX3H(chunk);
         sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp,
@@ -248,10 +253,6 @@ int main(int argc, char* argv[]) {
           totalNeutrons += batch.neutrons.size();
         }
 
-        // Clear memory
-        std::vector<TPX3>().swap(batches);
-        std::vector<char>().swap(chunk);
-
         // Update progress
         processedSize += chunk.size();
         float progress = static_cast<float>(processedSize) / totalSize * 100.0f;
@@ -259,6 +260,10 @@ int main(int argc, char* argv[]) {
 
         // Update counters
         chunkCounter++;
+
+        // Clear memory
+        std::vector<TPX3>().swap(batches);
+        std::vector<char>().swap(chunk);
       } catch (const std::exception& e) {
         spdlog::error("Error processing chunk: {}", e.what());
       }
@@ -274,9 +279,9 @@ int main(int argc, char* argv[]) {
 
     // Save TOF images if needed
     if (!options.output_tof_imaging.empty()) {
-      sophiread::saveTOFImagingToTIFF(options.output_tof_imaging, tof_images,
-                                      config->getTOFBinEdges(),
-                                      options.tof_filename_base);
+      sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
+                                           tof_images, config->getTOFBinEdges(),
+                                           options.tof_filename_base);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -284,6 +289,9 @@ int main(int argc, char* argv[]) {
         std::chrono::duration_cast<std::chrono::microseconds>(end - start)
             .count();
     spdlog::info("Total processing time: {} s", elapsed / 1e6);
+    spdlog::info("Total chunks processed: {}", chunkCounter);
+    spdlog::info("Total hits: {}", totalHits);
+    spdlog::info("Total neutrons: {}", totalNeutrons);
 
   } catch (const std::exception& e) {
     spdlog::error("Error: {}", e.what());
