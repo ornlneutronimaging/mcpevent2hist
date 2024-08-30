@@ -479,63 +479,113 @@ std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
     return chunk;
 }
 
-template <typename T, typename ForwardIterator>
-void appendToHDF5(
-    H5::H5File& out_file,
-    ForwardIterator data_begin,
-    ForwardIterator data_end,
-    const std::string& baseGroupName,
-    const std::vector
-        std::pair<std::string, std::function<T(const decltype(*data_begin)&)>>>
-        & attributes) {
-    const size_t num_data = std::distance(data_begin, data_end);
+void createOrExtendDataset(H5::Group& group, const std::string& datasetName, 
+                           const std::vector<double>& data) {
+    hsize_t dims[1] = {data.size()};
+    hsize_t maxdims[1] = {H5S_UNLIMITED};
+    hsize_t chunkdims[1] = {std::min(static_cast<hsize_t>(1024), dims[0])};  // Adjust chunk size as needed
 
-    if (num_data == 0) {
-        spdlog::warn("No data to append. Exiting function.");
-        return;
-    }
+    H5::DataSpace dataspace;
+    H5::DataSet dataset;
 
-    std::string groupName = generateGroupName(out_file, baseGroupName);
-    H5::Group group = out_file.createGroup(groupName);
-
-    for (const auto& [dataset_name, func] : attributes) {
-        std::vector<T> data;
-        data.reserve(num_data);
-        std::transform(data_begin, data_end, std::back_inserter(data), func);
+    try {
+        // Try to open existing dataset
+        dataset = group.openDataSet(datasetName);
+        dataspace = dataset.getSpace();
         
-        hsize_t dims[1] = {data.size()};
-        H5::DataSpace dataspace(1, dims);
-        H5::DataSet dataset = group.createDataSet(dataset_name, 
-            H5::PredType::NATIVE_DOUBLE, dataspace);
-        dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE);
-        dataset.close();
+        // Get current dimensions
+        hsize_t currentDims[1];
+        dataspace.getSimpleExtentDims(currentDims);
+
+        // Extend the dataset
+        hsize_t newDims[1] = {currentDims[0] + dims[0]};
+        dataset.extend(newDims);
+
+        // Select the newly added portion of the dataset
+        dataspace = dataset.getSpace();
+        hsize_t offset[1] = {currentDims[0]};
+        dataspace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+
+    } catch (H5::Exception& e) {
+        // Dataset doesn't exist, create a new one
+        H5::DSetCreatPropList propList;
+        propList.setChunk(1, chunkdims);
+
+        dataspace = H5::DataSpace(1, dims, maxdims);
+        dataset = group.createDataSet(datasetName, H5::PredType::NATIVE_DOUBLE, dataspace, propList);
     }
+
+    // Write the data
+    H5::DataSpace memspace(1, dims);
+    dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace, dataspace);
+}
+
+void appendHitsToHDF5Extendible(H5::H5File& file, const std::vector<Hit>& hits) {
+    H5::Group group;
+    try {
+        group = file.openGroup("hits");
+    } catch (H5::Exception& e) {
+        group = file.createGroup("hits");
+    }
+
+    std::vector<double> xData, yData, totData, toaData, ftoaData, tofData, spidertimeData;
+    xData.reserve(hits.size());
+    yData.reserve(hits.size());
+    totData.reserve(hits.size());
+    toaData.reserve(hits.size());
+    ftoaData.reserve(hits.size());
+    tofData.reserve(hits.size());
+    spidertimeData.reserve(hits.size());
+
+    for (const auto& hit : hits) {
+        xData.push_back(static_cast<double>(hit.getX()));
+        yData.push_back(static_cast<double>(hit.getY()));
+        totData.push_back(hit.getTOT_ns());
+        toaData.push_back(hit.getTOA_ns());
+        ftoaData.push_back(hit.getFTOA_ns());
+        tofData.push_back(hit.getTOF_ns());
+        spidertimeData.push_back(hit.getSPIDERTIME_ns());
+    }
+
+    createOrExtendDataset(group, "x", xData);
+    createOrExtendDataset(group, "y", yData);
+    createOrExtendDataset(group, "tot_ns", totData);
+    createOrExtendDataset(group, "toa_ns", toaData);
+    createOrExtendDataset(group, "ftoa_ns", ftoaData);
+    createOrExtendDataset(group, "tof_ns", tofData);
+    createOrExtendDataset(group, "spidertime_ns", spidertimeData);
 
     group.close();
 }
 
-void appendHitsToHDF5(H5::H5File& file, const std::vector<Hit>& hits) {
-    appendToHDF5<double>(
-        file, hits.begin(), hits.end(), "hits",
-        {
-            {"x", [](const Hit& hit) { return static_cast<double>(hit.getX()); }},
-            {"y", [](const Hit& hit) { return static_cast<double>(hit.getY()); }},
-            {"tot_ns", [](const Hit& hit) { return hit.getTOT_ns(); }},
-            {"toa_ns", [](const Hit& hit) { return hit.getTOA_ns(); }},
-            {"ftoa_ns", [](const Hit& hit) { return hit.getFTOA_ns(); }},
-            {"tof_ns", [](const Hit& hit) { return hit.getTOF_ns(); }},
-            {"spidertime_ns", [](const Hit& hit) { return hit.getSPIDERTIME_ns(); }},
-        });
-}
+void appendNeutronsToHDF5Extendible(H5::H5File& file, const std::vector<Neutron>& neutrons) {
+    H5::Group group;
+    try {
+        group = file.openGroup("neutrons");
+    } catch (H5::Exception& e) {
+        group = file.createGroup("neutrons");
+    }
 
-void appendNeutronsToHDF5(H5::H5File& file, const std::vector<Neutron>& neutrons) {
-    appendToHDF5<double>(
-        file, neutrons.begin(), neutrons.end(), "neutrons",
-        {
-            {"x", [](const Neutron& neutron) { return neutron.getX(); }},
-            {"y", [](const Neutron& neutron) { return neutron.getY(); }},
-            {"tof_ns", [](const Neutron& neutron) { return neutron.getTOF_ns(); }},
-            {"tot_ns", [](const Neutron& neutron) { return neutron.getTOT_ns(); }},
-            {"nHits", [](const Neutron& neutron) { return static_cast<double>(neutron.getNHits()); }},
-        });
+    std::vector<double> xData, yData, tofData, totData, nHitsData;
+    xData.reserve(neutrons.size());
+    yData.reserve(neutrons.size());
+    tofData.reserve(neutrons.size());
+    totData.reserve(neutrons.size());
+    nHitsData.reserve(neutrons.size());
+
+    for (const auto& neutron : neutrons) {
+        xData.push_back(neutron.getX());
+        yData.push_back(neutron.getY());
+        tofData.push_back(neutron.getTOF_ns());
+        totData.push_back(neutron.getTOT_ns());
+        nHitsData.push_back(static_cast<double>(neutron.getNHits()));
+    }
+
+    createOrExtendDataset(group, "x", xData);
+    createOrExtendDataset(group, "y", yData);
+    createOrExtendDataset(group, "tof_ns", tofData);
+    createOrExtendDataset(group, "tot_ns", totData);
+    createOrExtendDataset(group, "nHits", nHitsData);
+
+    group.close();
 }
