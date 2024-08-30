@@ -485,55 +485,82 @@ std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
 
 void createOrExtendDataset(H5::Group &group, const std::string &datasetName,
                            const std::vector<double> &data) {
+  spdlog::debug("Creating or extending dataset '{}' with {} elements",
+                datasetName, data.size());
+
+  if (data.empty()) {
+    spdlog::warn("Attempting to create or extend dataset '{}' with no data",
+                 datasetName);
+    return;  // Skip creating/extending if there's no data
+  }
+
   hsize_t dims[1] = {data.size()};
   hsize_t maxdims[1] = {H5S_UNLIMITED};
-  hsize_t chunkdims[1] = {std::min(static_cast<hsize_t>(1024),
-                                   dims[0])};  // Adjust chunk size as needed
+  hsize_t chunkdims[1] = {
+      std::max<hsize_t>(1, std::min<hsize_t>(1024, data.size()))};
 
-  H5::DataSpace dataspace;
-  H5::DataSet dataset;
-
+  bool datasetExists = false;
   try {
-    // Try to open existing dataset
-    dataset = group.openDataSet(datasetName);
-    dataspace = dataset.getSpace();
+    group.openDataSet(datasetName);
+    datasetExists = true;
+  } catch (H5::Exception &) {
+    // Dataset doesn't exist, we'll create it
+  }
 
-    // Get current dimensions
+  if (datasetExists) {
+    spdlog::debug("Dataset '{}' exists, extending it", datasetName);
+    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::DataSpace filespace = dataset.getSpace();
     hsize_t currentDims[1];
-    dataspace.getSimpleExtentDims(currentDims);
+    filespace.getSimpleExtentDims(currentDims);
 
-    // Extend the dataset
     hsize_t newDims[1] = {currentDims[0] + dims[0]};
     dataset.extend(newDims);
 
-    // Select the newly added portion of the dataset
-    dataspace = dataset.getSpace();
+    filespace = dataset.getSpace();
     hsize_t offset[1] = {currentDims[0]};
-    dataspace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+    filespace.selectHyperslab(H5S_SELECT_SET, dims, offset);
 
-  } catch (H5::Exception &e) {
-    // Dataset doesn't exist, create a new one
+    H5::DataSpace memspace(1, dims);
+    dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace,
+                  filespace);
+  } else {
+    spdlog::debug("Dataset '{}' doesn't exist, creating a new one",
+                  datasetName);
+
+    H5::DataSpace dataspace(1, dims, maxdims);
+
     H5::DSetCreatPropList propList;
+    spdlog::debug("Setting chunk size to {}", chunkdims[0]);
     propList.setChunk(1, chunkdims);
 
-    dataspace = H5::DataSpace(1, dims, maxdims);
-    dataset = group.createDataSet(datasetName, H5::PredType::NATIVE_DOUBLE,
-                                  dataspace, propList);
+    try {
+      H5::DataSet dataset = group.createDataSet(
+          datasetName, H5::PredType::NATIVE_DOUBLE, dataspace, propList);
+      dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE);
+    } catch (H5::Exception &create_e) {
+      spdlog::error("Failed to create dataset '{}': {}", datasetName,
+                    create_e.getDetailMsg());
+      throw;
+    }
   }
-
-  // Write the data
-  H5::DataSpace memspace(1, dims);
-  dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace, dataspace);
 }
 
 void appendHitsToHDF5Extendible(H5::H5File &file,
                                 const std::vector<Hit> &hits) {
+  if (hits.empty()) {
+    spdlog::debug("Attempting to append empty hit vector to HDF5 file");
+    return;
+  }
+
   H5::Group group;
   try {
     group = file.openGroup("hits");
   } catch (H5::Exception &e) {
     group = file.createGroup("hits");
   }
+
+  spdlog::debug("Appending {} hits to HDF5 file", hits.size());
 
   std::vector<double> xData, yData, totData, toaData, ftoaData, tofData,
       spidertimeData;
@@ -555,19 +582,28 @@ void appendHitsToHDF5Extendible(H5::H5File &file,
     spidertimeData.push_back(hit.getSPIDERTIME_ns());
   }
 
-  createOrExtendDataset(group, "x", xData);
-  createOrExtendDataset(group, "y", yData);
-  createOrExtendDataset(group, "tot_ns", totData);
-  createOrExtendDataset(group, "toa_ns", toaData);
-  createOrExtendDataset(group, "ftoa_ns", ftoaData);
-  createOrExtendDataset(group, "tof_ns", tofData);
-  createOrExtendDataset(group, "spidertime_ns", spidertimeData);
+  try {
+    createOrExtendDataset(group, "x", xData);
+    createOrExtendDataset(group, "y", yData);
+    createOrExtendDataset(group, "tot_ns", totData);
+    createOrExtendDataset(group, "toa_ns", toaData);
+    createOrExtendDataset(group, "ftoa_ns", ftoaData);
+    createOrExtendDataset(group, "tof_ns", tofData);
+    createOrExtendDataset(group, "spidertime_ns", spidertimeData);
+  } catch (H5::Exception &e) {
+    spdlog::error("Failed to append hits to HDF5 file: {}", e.getDetailMsg());
+  }
 
   group.close();
 }
 
 void appendNeutronsToHDF5Extendible(H5::H5File &file,
                                     const std::vector<Neutron> &neutrons) {
+  if (neutrons.empty()) {
+    spdlog::debug("Attempting to append empty neutron vector to HDF5 file");
+    return;
+  }
+
   H5::Group group;
   try {
     group = file.openGroup("neutrons");

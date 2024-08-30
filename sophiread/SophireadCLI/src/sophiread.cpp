@@ -9,6 +9,7 @@
  * @copyright Copyright (c) 2024
  * SPDX - License - Identifier: GPL - 3.0 +
  */
+#include <H5Epublic.h>
 #include <spdlog/spdlog.h>
 #include <tbb/tbb.h>
 #include <tiffio.h>
@@ -134,6 +135,10 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
  */
 int main(int argc, char* argv[]) {
   try {
+    // Turn off HDF5 error printing
+    // NOTE: we handle the errors ourselves
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
+
     ProgramOptions options = parse_arguments(argc, argv);
 
     // Set logging level based on debug and verbose flags
