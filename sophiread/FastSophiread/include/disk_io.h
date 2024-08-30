@@ -11,16 +11,16 @@
 #pragma once
 
 #include <H5Cpp.h>
-
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <vector>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <vector>
 
 #include "hit.h"
 #include "neutron.h"
@@ -89,23 +89,24 @@ void appendNeutronToHDF5(const std::string& out_file_name,
                          const std::vector<Neutron>& neutrons);
 
 class TPX3FileReader {
-public:
-    TPX3FileReader(const std::string& filename);
-    ~TPX3FileReader();
+ public:
+  TPX3FileReader(const std::string& filename);
+  ~TPX3FileReader();
 
-    std::vector<char> readChunk(size_t chunkSize);
-    bool isEOF() const { return currentPosition >= fileSize; }
-    size_t getTotalSize() const { return fileSize; }
+  std::vector<char> readChunk(size_t chunkSize);
+  bool isEOF() const { return currentPosition >= fileSize; }
+  size_t getTotalSize() const { return fileSize; }
 
-private:
-    int fd;
-    char* map;
-    size_t fileSize;
-    size_t currentPosition;
+ private:
+  int fd;
+  char* map;
+  size_t fileSize;
+  size_t currentPosition;
 };
 
 //
-void createOrExtendDataset(H5::Group& group, const std::string& datasetName, 
+void createOrExtendDataset(H5::Group& group, const std::string& datasetName,
                            const std::vector<double>& data);
 void appendHitsToHDF5Extendible(H5::H5File& file, const std::vector<Hit>& hits);
-void appendNeutronsToHDF5Extendible(H5::H5File& file, const std::vector<Neutron>& neutrons);
+void appendNeutronsToHDF5Extendible(H5::H5File& file,
+                                    const std::vector<Neutron>& neutrons);
