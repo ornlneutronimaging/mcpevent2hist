@@ -14,6 +14,7 @@
 
 #include "json_config_parser.h"
 #include "sophiread_core.h"
+#include "tiff_types.h"
 
 class SophireadCoreTest : public ::testing::Test {
  protected:
@@ -93,8 +94,13 @@ TEST_F(SophireadCoreTest, TimedFindTPX3H) {
 TEST_F(SophireadCoreTest, TimedLocateTimeStamp) {
   std::vector<char> raw_data(8000, 'T');         // Simulating TPX3 data
   std::vector<TPX3> batches = {TPX3(0, 10, 0)};  // Create a dummy TPX3 batch
-  sophiread::timedLocateTimeStamp(batches, raw_data);
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
+  sophiread::timedLocateTimeStamp(batches, raw_data, tdc_timestamp,
+                                  gdc_timestamp, timer_lsb32);
   // Add assertions based on expected behavior
+  // NO value to check as we are using dummy data
 }
 
 TEST_F(SophireadCoreTest, TimedProcessing) {
@@ -103,6 +109,7 @@ TEST_F(SophireadCoreTest, TimedProcessing) {
   JSONConfigParser config = JSONConfigParser::createDefault();
   sophiread::timedProcessing(batches, raw_data, config);
   // Add assertions based on expected behavior
+  // No value to check as we are using dummy data
 }
 
 TEST_F(SophireadCoreTest, TimedSaveHitsToHDF5) {
@@ -127,13 +134,15 @@ TEST_F(SophireadCoreTest, TimedCreateTOFImages) {
   std::vector<double> tof_bin_edges = {0.0, 0.1, 0.2, 0.3};
   auto images =
       sophiread::timedCreateTOFImages(batches, 1.0, tof_bin_edges, "neutron");
-  EXPECT_EQ(images.size(), 3);  // 3 bins
+  EXPECT_EQ(images.size(), 3);       // 3 bins
+  EXPECT_EQ(images[0].size(), 517);  // Assuming no super resolution
+  EXPECT_EQ(images[0][0].size(), 517);
 }
 
 TEST_F(SophireadCoreTest, TimedSaveTOFImagingToTIFF) {
-  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
-      3, std::vector<std::vector<unsigned int>>(
-             10, std::vector<unsigned int>(10, 1)));
+  std::vector<std::vector<std::vector<TIFF32Bit>>> tof_images(
+      3,
+      std::vector<std::vector<TIFF32Bit>>(10, std::vector<TIFF32Bit>(10, 1)));
   std::vector<double> tof_bin_edges = {0.0, 0.1, 0.2, 0.3};
   sophiread::timedSaveTOFImagingToTIFF("test_tof", tof_images, tof_bin_edges,
                                        "test");
@@ -142,6 +151,33 @@ TEST_F(SophireadCoreTest, TimedSaveTOFImagingToTIFF) {
   EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0003.tiff"));
   EXPECT_TRUE(std::filesystem::exists("test_tof/test_Spectra.txt"));
   std::filesystem::remove_all("test_tof");
+}
+
+TEST_F(SophireadCoreTest, UpdateTOFImages) {
+  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
+      3, std::vector<std::vector<unsigned int>>(
+             517, std::vector<unsigned int>(517, 0)));
+  TPX3 batch =
+      generateMockTPX3Batches(1, 5)[0];  // Create a single dummy TPX3 batch
+  std::vector<double> tof_bin_edges = {0.0, 0.1, 0.2, 0.3};
+  double super_resolution = 1.0;
+
+  sophiread::updateTOFImages(tof_images, batch, super_resolution, tof_bin_edges,
+                             "neutron");
+
+  // Check if any updates were made to the images
+  bool updated = false;
+  for (const auto& image : tof_images) {
+    for (const auto& row : image) {
+      if (std::any_of(row.begin(), row.end(),
+                      [](unsigned int val) { return val > 0; })) {
+        updated = true;
+        break;
+      }
+    }
+    if (updated) break;
+  }
+  EXPECT_TRUE(updated);
 }
 
 int main(int argc, char** argv) {

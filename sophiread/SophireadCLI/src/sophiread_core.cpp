@@ -121,18 +121,6 @@ void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &chunk,
   spdlog::info("Process all hits -> neutrons: {} s", elapsed / 1e6);
 }
 
-std::vector<std::vector<std::vector<unsigned int>>> initializeTOFImages(
-    double super_resolution, const std::vector<double> &tof_bin_edges) {
-  int dim_x = static_cast<int>(517 * super_resolution);
-  int dim_y = static_cast<int>(517 * super_resolution);
-  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
-      tof_bin_edges.size() - 1);
-  for (auto &tof_image : tof_images) {
-    tof_image.resize(dim_y, std::vector<unsigned int>(dim_x, 0));
-  }
-  return tof_images;
-}
-
 /**
  * @brief Timed save hits to HDF5.
  *
@@ -179,6 +167,18 @@ void timedSaveEventsToHDF5(const std::string &out_events,
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
           .count();
   spdlog::info("Save events to HDF5: {} s", elapsed / 1e6);
+}
+
+std::vector<std::vector<std::vector<unsigned int>>> initializeTOFImages(
+    double super_resolution, const std::vector<double> &tof_bin_edges) {
+  int dim_x = static_cast<int>(517 * super_resolution);
+  int dim_y = static_cast<int>(517 * super_resolution);
+  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
+      tof_bin_edges.size() - 1);
+  for (auto &tof_image : tof_images) {
+    tof_image.resize(dim_y, std::vector<unsigned int>(dim_x, 0));
+  }
+  return tof_images;
 }
 
 void updateTOFImages(
