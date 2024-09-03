@@ -9,12 +9,14 @@
  * @copyright Copyright (c) 2024
  * SPDX - License - Identifier: GPL - 3.0 +
  */
+#include <H5Epublic.h>
 #include <spdlog/spdlog.h>
 #include <tbb/tbb.h>
 #include <tiffio.h>
 #include <unistd.h>
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -35,10 +37,16 @@ struct ProgramOptions {
   std::string output_tof_imaging;
   std::string tof_filename_base = "tof_image";
   std::string tof_mode = "neutron";
+  size_t chunk_size = 5ULL * 1024 * 1024 * 1024;  // Default 5GB
   bool debug_logging = false;
   bool verbose = false;
 };
 
+/**
+ * @brief Print usage information.
+ *
+ * @param[in] program_name
+ */
 void print_usage(const char* program_name) {
   spdlog::info(
       "Usage: {} -i <input_tpx3> -H <output_hits> -E <output_events> [-u "
@@ -60,15 +68,22 @@ void print_usage(const char* program_name) {
   spdlog::info(
       "  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: "
       "neutron)");
+  spdlog::info("  -c <chunk_size>          Chunk size in MB (default: 5120)");
   spdlog::info("  -d                       Enable debug logging");
   spdlog::info("  -v                       Enable verbose logging");
 }
 
+/**
+ * @brief Parse command line arguments.
+ *
+ * @param[in] argc
+ * @param[in] argv
+ */
 ProgramOptions parse_arguments(int argc, char* argv[]) {
   ProgramOptions options;
   int opt;
 
-  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:dv")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:c:dv")) != -1) {
     switch (opt) {
       case 'i':
         options.input_tpx3 = optarg;
@@ -90,6 +105,10 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
         break;
       case 'm':
         options.tof_mode = optarg;
+        break;
+      case 'c':
+        options.chunk_size = static_cast<size_t>(std::stoull(optarg)) * 1024 *
+                             1024;  // Convert MB to bytes
         break;
       case 'd':
         options.debug_logging = true;
@@ -127,6 +146,10 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
  */
 int main(int argc, char* argv[]) {
   try {
+    // Turn off HDF5 error printing
+    // NOTE: we handle the errors ourselves
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
+
     ProgramOptions options = parse_arguments(argc, argv);
 
     // Set logging level based on debug and verbose flags
@@ -146,6 +169,7 @@ int main(int argc, char* argv[]) {
     spdlog::info("TOF imaging folder: {}", options.output_tof_imaging);
     spdlog::info("TOF filename base: {}", options.tof_filename_base);
     spdlog::info("TOF mode: {}", options.tof_mode);
+    spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
 
     // Load configuration
     std::unique_ptr<IConfig> config;
@@ -171,44 +195,123 @@ int main(int argc, char* argv[]) {
 
     spdlog::info("Configuration: {}", config->toString());
 
-    // Process raw data
+    TPX3FileReader fileReader(options.input_tpx3);
+
     auto start = std::chrono::high_resolution_clock::now();
-    auto raw_data = sophiread::timedReadDataToCharVec(options.input_tpx3);
-    auto batches = sophiread::timedFindTPX3H(raw_data);
-    sophiread::timedLocateTimeStamp(batches, raw_data);
-    sophiread::timedProcessing(batches, raw_data, *config);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count();
-    spdlog::info("Total processing time: {} s", elapsed / 1e6);
 
-    // Release memory of raw data
-    std::vector<char>().swap(raw_data);
+    // Initialize HDF5 files for hits and events (if needed)
+    H5::H5File hitsFile, eventsFile;
+    if (!options.output_hits.empty()) {
+      hitsFile = H5::H5File(options.output_hits, H5F_ACC_TRUNC);
+    }
+    if (!options.output_events.empty()) {
+      eventsFile = H5::H5File(options.output_events, H5F_ACC_TRUNC);
+    }
 
-    // Generate and save TOF images
+    // Initialize TOF images if needed
+    std::vector<std::vector<std::vector<unsigned int>>> tof_images;
     if (!options.output_tof_imaging.empty()) {
-      auto tof_images = sophiread::timedCreateTOFImages(
-          batches, config->getSuperResolution(), config->getTOFBinEdges(),
-          options.tof_mode);
+      tof_images = sophiread::initializeTOFImages(config->getSuperResolution(),
+                                                  config->getTOFBinEdges());
+    }
+
+    unsigned long tdc_timestamp = 0;
+    unsigned long long gdc_timestamp = 0;
+    unsigned long timer_lsb32 = 0;
+
+    const size_t totalSize = fileReader.getTotalSize();
+    size_t processedSize = 0;
+
+    spdlog::info("Starting chunk-based processing of file: {}",
+                 options.input_tpx3);
+    spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
+
+    int chunkCounter = 0;
+    uint64_t totalHits = 0;
+    uint64_t totalNeutrons = 0;
+
+    while (!fileReader.isEOF()) {
+      try {
+        auto chunk = fileReader.readChunk(options.chunk_size);
+        if (chunk.empty()) break;
+
+        // report timing info
+        spdlog::info("TDC timestamp: {}", tdc_timestamp);
+        spdlog::info("GDC timestamp: {}", gdc_timestamp);
+        spdlog::info("Timer LSB32: {}", timer_lsb32);
+
+        auto batches = sophiread::timedFindTPX3H(chunk);
+        sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp,
+                                        gdc_timestamp, timer_lsb32);
+        sophiread::timedProcessing(batches, chunk, *config);
+
+        // Process hits and neutrons
+        for (const auto& batch : batches) {
+          // Append hits to HDF5 file
+          if (!options.output_hits.empty()) {
+            appendHitsToHDF5Extendible(hitsFile, batch.hits);
+          }
+
+          // Append neutrons to HDF5 file
+          if (!options.output_events.empty()) {
+            appendNeutronsToHDF5Extendible(eventsFile, batch.neutrons);
+          }
+
+          // Update TOF images
+          if (!options.output_tof_imaging.empty()) {
+            sophiread::updateTOFImages(
+                tof_images, batch, config->getSuperResolution(),
+                config->getTOFBinEdges(), options.tof_mode);
+          }
+
+          // Update counters
+          totalHits += batch.hits.size();
+          totalNeutrons += batch.neutrons.size();
+        }
+
+        // Update progress
+        processedSize += chunk.size();
+        float progress = static_cast<float>(processedSize) / totalSize * 100.0f;
+        spdlog::info("Progress: {:.2f}%", progress);
+
+        // Update counters
+        chunkCounter++;
+
+        // Clear memory
+        std::vector<TPX3>().swap(batches);
+        std::vector<char>().swap(chunk);
+      } catch (const std::exception& e) {
+        spdlog::error("Error processing chunk: {}", e.what());
+      }
+    }
+
+    // Close HDF5 files
+    if (!options.output_hits.empty()) {
+      hitsFile.close();
+    }
+    if (!options.output_events.empty()) {
+      eventsFile.close();
+    }
+
+    // Save TOF images if needed
+    if (!options.output_tof_imaging.empty()) {
       sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
                                            tof_images, config->getTOFBinEdges(),
                                            options.tof_filename_base);
     }
 
-    // Save hits and events
-    if (!options.output_hits.empty()) {
-      sophiread::timedSaveHitsToHDF5(options.output_hits, batches);
-    }
-
-    if (!options.output_events.empty()) {
-      sophiread::timedSaveEventsToHDF5(options.output_events, batches);
-    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
+    spdlog::info("Total processing time: {} s", elapsed / 1e6);
+    spdlog::info("Total chunks processed: {}", chunkCounter);
+    spdlog::info("Total hits: {}", totalHits);
+    spdlog::info("Total neutrons: {}", totalNeutrons);
 
   } catch (const std::exception& e) {
     spdlog::error("Error: {}", e.what());
     return 1;
   }
-
   return 0;
 }

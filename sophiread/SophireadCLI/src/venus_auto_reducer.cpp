@@ -126,6 +126,10 @@ void process_existing_files(const std::string& input_dir,
                             std::unordered_set<std::string>& processed_files) {
   spdlog::info("Processing existing files in {}", input_dir);
 
+  unsigned long tdc_timestamp = 0;
+  unsigned long long gdc_timestamp = 0;
+  unsigned long timer_lsb32 = 0;
+
   // NOTE: we need to process files sequentially as we are accumulating the
   // counts to the
   //       same set of tiff files in the output folder
@@ -149,7 +153,8 @@ void process_existing_files(const std::string& input_dir,
         auto batches = sophiread::timedFindTPX3H(raw_data);
 
         // Process the data
-        sophiread::timedLocateTimeStamp(batches, raw_data);
+        sophiread::timedLocateTimeStamp(batches, raw_data, tdc_timestamp,
+                                        gdc_timestamp, timer_lsb32);
         sophiread::timedProcessing(batches, raw_data, config);
 
         // Generate output file name
