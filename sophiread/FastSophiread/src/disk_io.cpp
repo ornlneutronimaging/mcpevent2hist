@@ -87,13 +87,6 @@ mapinfo_t readTPX3RawToMapInfo(const std::string &tpx3file) {
   return info;
 }
 
-// for mmap support
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 /**
  * @brief Memory-map a Timepix3 raw data file (without pre-reading it).
  *
@@ -434,4 +427,242 @@ void appendNeutronToHDF5(const std::string &out_file_name,
 void appendNeutronToHDF5(const std::string &out_file_name,
                          const std::vector<Neutron> &neutrons) {
   appendNeutronToHDF5(out_file_name, neutrons.cbegin(), neutrons.cend());
+}
+
+/**
+ * @brief Construct a new TPX3FileReader::TPX3FileReader object
+ *
+ * @param[in] filename
+ */
+TPX3FileReader::TPX3FileReader(const std::string &filename) {
+  fd = open(filename.c_str(), O_RDONLY);
+  if (fd == -1) {
+    spdlog::error("Failed to open file: {}", filename);
+    throw std::runtime_error("Failed to open file");
+  }
+
+  struct stat sb;
+  if (fstat(fd, &sb) == -1) {
+    spdlog::error("Failed to get file size");
+    close(fd);
+    throw std::runtime_error("Failed to get file size");
+  }
+
+  fileSize = sb.st_size;
+  map = static_cast<char *>(
+      mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fd, 0));
+  if (map == MAP_FAILED) {
+    spdlog::error("Failed to mmap file");
+    close(fd);
+    throw std::runtime_error("Failed to mmap file");
+  }
+
+  currentPosition = 0;
+  spdlog::info("Opened file: {}, size: {} bytes", filename, fileSize);
+}
+
+/**
+ * @brief Destroy the TPX3FileReader::TPX3FileReader object
+ */
+TPX3FileReader::~TPX3FileReader() {
+  if (map != MAP_FAILED) {
+    munmap(map, fileSize);
+  }
+  if (fd != -1) {
+    close(fd);
+  }
+}
+
+/**
+ * @brief Read a chunk of data from the file.
+ *
+ * @param[in] chunkSize: size of the chunk to read
+ */
+std::vector<char> TPX3FileReader::readChunk(size_t chunkSize) {
+  if (currentPosition >= fileSize) {
+    return std::vector<char>();  // Return empty vector if we've reached the end
+                                 // of the file
+  }
+
+  size_t remainingBytes = fileSize - currentPosition;
+  size_t bytesToRead = std::min(chunkSize, remainingBytes);
+
+  std::vector<char> chunk(map + currentPosition,
+                          map + currentPosition + bytesToRead);
+  currentPosition += bytesToRead;
+
+  spdlog::debug("Read chunk of size {} bytes, current position: {}/{}",
+                bytesToRead, currentPosition, fileSize);
+  return chunk;
+}
+
+/**
+ * @brief Create or extend a dataset in a HDF5 group.
+ *
+ * @param[in] group: HDF5 group
+ * @param[in] datasetName: name of the dataset
+ * @param[in] data: data to write to the dataset
+ */
+void createOrExtendDataset(H5::Group &group, const std::string &datasetName,
+                           const std::vector<double> &data) {
+  spdlog::debug("Creating or extending dataset '{}' with {} elements",
+                datasetName, data.size());
+
+  if (data.empty()) {
+    spdlog::warn("Attempting to create or extend dataset '{}' with no data",
+                 datasetName);
+    return;  // Skip creating/extending if there's no data
+  }
+
+  hsize_t dims[1] = {data.size()};
+  hsize_t maxdims[1] = {H5S_UNLIMITED};
+  hsize_t chunkdims[1] = {
+      std::max<hsize_t>(1, std::min<hsize_t>(1024, data.size()))};
+
+  bool datasetExists = false;
+  try {
+    group.openDataSet(datasetName);
+    datasetExists = true;
+  } catch (H5::Exception &) {
+    // Dataset doesn't exist, we'll create it
+  }
+
+  if (datasetExists) {
+    spdlog::debug("Dataset '{}' exists, extending it", datasetName);
+    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::DataSpace filespace = dataset.getSpace();
+    hsize_t currentDims[1];
+    filespace.getSimpleExtentDims(currentDims);
+
+    hsize_t newDims[1] = {currentDims[0] + dims[0]};
+    dataset.extend(newDims);
+
+    filespace = dataset.getSpace();
+    hsize_t offset[1] = {currentDims[0]};
+    filespace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+
+    H5::DataSpace memspace(1, dims);
+    dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE, memspace,
+                  filespace);
+  } else {
+    spdlog::debug("Dataset '{}' doesn't exist, creating a new one",
+                  datasetName);
+
+    H5::DataSpace dataspace(1, dims, maxdims);
+
+    H5::DSetCreatPropList propList;
+    spdlog::debug("Setting chunk size to {}", chunkdims[0]);
+    propList.setChunk(1, chunkdims);
+
+    try {
+      H5::DataSet dataset = group.createDataSet(
+          datasetName, H5::PredType::NATIVE_DOUBLE, dataspace, propList);
+      dataset.write(data.data(), H5::PredType::NATIVE_DOUBLE);
+    } catch (H5::Exception &create_e) {
+      spdlog::error("Failed to create dataset '{}': {}", datasetName,
+                    create_e.getDetailMsg());
+      throw;
+    }
+  }
+}
+
+/**
+ * @brief Append hits to an extendible HDF5 file.
+ *
+ * @param[in] file: HDF5 file
+ * @param[in] hits: vector of hits to append
+ */
+void appendHitsToHDF5Extendible(H5::H5File &file,
+                                const std::vector<Hit> &hits) {
+  if (hits.empty()) {
+    spdlog::debug("Attempting to append empty hit vector to HDF5 file");
+    return;
+  }
+
+  H5::Group group;
+  try {
+    group = file.openGroup("hits");
+  } catch (H5::Exception &e) {
+    group = file.createGroup("hits");
+  }
+
+  spdlog::debug("Appending {} hits to HDF5 file", hits.size());
+
+  std::vector<double> xData, yData, totData, toaData, ftoaData, tofData,
+      spidertimeData;
+  xData.reserve(hits.size());
+  yData.reserve(hits.size());
+  totData.reserve(hits.size());
+  toaData.reserve(hits.size());
+  ftoaData.reserve(hits.size());
+  tofData.reserve(hits.size());
+  spidertimeData.reserve(hits.size());
+
+  for (const auto &hit : hits) {
+    xData.push_back(static_cast<double>(hit.getX()));
+    yData.push_back(static_cast<double>(hit.getY()));
+    totData.push_back(hit.getTOT_ns());
+    toaData.push_back(hit.getTOA_ns());
+    ftoaData.push_back(hit.getFTOA_ns());
+    tofData.push_back(hit.getTOF_ns());
+    spidertimeData.push_back(hit.getSPIDERTIME_ns());
+  }
+
+  try {
+    createOrExtendDataset(group, "x", xData);
+    createOrExtendDataset(group, "y", yData);
+    createOrExtendDataset(group, "tot_ns", totData);
+    createOrExtendDataset(group, "toa_ns", toaData);
+    createOrExtendDataset(group, "ftoa_ns", ftoaData);
+    createOrExtendDataset(group, "tof_ns", tofData);
+    createOrExtendDataset(group, "spidertime_ns", spidertimeData);
+  } catch (H5::Exception &e) {
+    spdlog::error("Failed to append hits to HDF5 file: {}", e.getDetailMsg());
+  }
+
+  group.close();
+}
+
+/**
+ * @brief Append neutrons to an extendible HDF5 file.
+ *
+ * @param[in] file: HDF5 file
+ * @param[in] neutrons: vector of neutrons to append
+ */
+void appendNeutronsToHDF5Extendible(H5::H5File &file,
+                                    const std::vector<Neutron> &neutrons) {
+  if (neutrons.empty()) {
+    spdlog::debug("Attempting to append empty neutron vector to HDF5 file");
+    return;
+  }
+
+  H5::Group group;
+  try {
+    group = file.openGroup("neutrons");
+  } catch (H5::Exception &e) {
+    group = file.createGroup("neutrons");
+  }
+
+  std::vector<double> xData, yData, tofData, totData, nHitsData;
+  xData.reserve(neutrons.size());
+  yData.reserve(neutrons.size());
+  tofData.reserve(neutrons.size());
+  totData.reserve(neutrons.size());
+  nHitsData.reserve(neutrons.size());
+
+  for (const auto &neutron : neutrons) {
+    xData.push_back(neutron.getX());
+    yData.push_back(neutron.getY());
+    tofData.push_back(neutron.getTOF_ns());
+    totData.push_back(neutron.getTOT_ns());
+    nHitsData.push_back(static_cast<double>(neutron.getNHits()));
+  }
+
+  createOrExtendDataset(group, "x", xData);
+  createOrExtendDataset(group, "y", yData);
+  createOrExtendDataset(group, "tof_ns", tofData);
+  createOrExtendDataset(group, "tot_ns", totData);
+  createOrExtendDataset(group, "nHits", nHitsData);
+
+  group.close();
 }

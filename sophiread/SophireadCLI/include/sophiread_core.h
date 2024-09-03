@@ -22,7 +22,10 @@ namespace sophiread {
 std::vector<char> timedReadDataToCharVec(const std::string& in_tpx3);
 std::vector<TPX3> timedFindTPX3H(const std::vector<char>& rawdata);
 void timedLocateTimeStamp(std::vector<TPX3>& batches,
-                          const std::vector<char>& rawdata);
+                          const std::vector<char>& chunk,
+                          unsigned long& tdc_timestamp,
+                          unsigned long long& gdc_timestamp,
+                          unsigned long& timer_lsb32);
 void timedProcessing(std::vector<TPX3>& batches,
                      const std::vector<char>& raw_data, const IConfig& config);
 void timedSaveHitsToHDF5(const std::string& out_hits,
@@ -37,4 +40,10 @@ void timedSaveTOFImagingToTIFF(
     const std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
     const std::vector<double>& tof_bin_edges,
     const std::string& tof_filename_base);
+std::vector<std::vector<std::vector<unsigned int>>> initializeTOFImages(
+    double super_resolution, const std::vector<double>& tof_bin_edges);
+void updateTOFImages(
+    std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
+    const TPX3& batch, double super_resolution,
+    const std::vector<double>& tof_bin_edges, const std::string& mode);
 }  // namespace sophiread
