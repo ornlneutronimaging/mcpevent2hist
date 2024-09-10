@@ -150,6 +150,23 @@ TEST_F(SophireadCoreTest, TimedSaveTOFImagingToTIFF) {
   EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0002.tiff"));
   EXPECT_TRUE(std::filesystem::exists("test_tof/test_bin_0003.tiff"));
   EXPECT_TRUE(std::filesystem::exists("test_tof/test_Spectra.txt"));
+
+  // Check spectra file contents
+  std::ifstream spectra_file("test_tof/test_Spectra.txt");
+  std::string line;
+  std::vector<std::string> lines;
+  while (std::getline(spectra_file, line)) {
+    lines.push_back(line);
+  }
+  // close the file
+  spectra_file.close();
+
+  EXPECT_EQ(lines.size(), 4);  // Header + 3 data lines
+  EXPECT_EQ(lines[0], "shutter_time,counts");
+  EXPECT_EQ(lines[1], "0.1,100");  // 10 * 10 * 1 = 100 counts for each bin
+  EXPECT_EQ(lines[2], "0.2,100");
+  EXPECT_EQ(lines[3], "0.3,100");
+
   std::filesystem::remove_all("test_tof");
 }
 
@@ -178,6 +195,46 @@ TEST_F(SophireadCoreTest, UpdateTOFImages) {
     if (updated) break;
   }
   EXPECT_TRUE(updated);
+}
+
+TEST_F(SophireadCoreTest, CalculateSpectralCounts) {
+  std::vector<std::vector<std::vector<unsigned int>>> tof_images(
+      3, std::vector<std::vector<unsigned int>>(
+             5, std::vector<unsigned int>(
+                    5, 2)));  // 3 bins, 5x5 images, all values 2
+
+  auto spectral_counts = sophiread::calculateSpectralCounts(tof_images);
+
+  EXPECT_EQ(spectral_counts.size(), 3);  // 3 bins
+  for (const auto& count : spectral_counts) {
+    EXPECT_EQ(count, 50);  // 5 * 5 * 2 = 50 for each bin
+  }
+}
+
+TEST_F(SophireadCoreTest, WriteSpectralFile) {
+  std::vector<uint64_t> spectral_counts = {10, 20, 30};
+  std::vector<double> tof_bin_edges = {0.0, 0.1, 0.2, 0.3};
+  std::string filename = "test_spectra.txt";
+
+  sophiread::writeSpectralFile(filename, spectral_counts, tof_bin_edges);
+
+  EXPECT_TRUE(std::filesystem::exists(filename));
+
+  // Read and check file contents
+  std::ifstream file(filename);
+  std::string line;
+  std::vector<std::string> lines;
+  while (std::getline(file, line)) {
+    lines.push_back(line);
+  }
+
+  EXPECT_EQ(lines.size(), 4);  // Header + 3 data lines
+  EXPECT_EQ(lines[0], "shutter_time,counts");
+  EXPECT_EQ(lines[1], "0.1,10");
+  EXPECT_EQ(lines[2], "0.2,20");
+  EXPECT_EQ(lines[3], "0.3,30");
+
+  std::filesystem::remove(filename);
 }
 
 int main(int argc, char** argv) {
