@@ -46,4 +46,9 @@ void updateTOFImages(
     std::vector<std::vector<std::vector<unsigned int>>>& tof_images,
     const TPX3& batch, double super_resolution,
     const std::vector<double>& tof_bin_edges, const std::string& mode);
+std::vector<uint64_t> calculateSpectralCounts(
+    const std::vector<std::vector<std::vector<unsigned int>>>& tof_images);
+void writeSpectralFile(const std::string& filename,
+                       const std::vector<uint64_t>& spectral_counts,
+                       const std::vector<double>& tof_bin_edges);
 }  // namespace sophiread

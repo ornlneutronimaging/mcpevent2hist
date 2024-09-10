@@ -37,6 +37,7 @@ struct ProgramOptions {
   std::string output_tof_imaging;
   std::string tof_filename_base = "tof_image";
   std::string tof_mode = "neutron";
+  std::string spectra_filen = "Spectra";
   size_t chunk_size = 5ULL * 1024 * 1024 * 1024;  // Default 5GB
   bool debug_logging = false;
   bool verbose = false;
@@ -68,6 +69,7 @@ void print_usage(const char* program_name) {
   spdlog::info(
       "  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: "
       "neutron)");
+  spdlog::info("  -s <spectra_filename>    Output filename for spectra");
   spdlog::info("  -c <chunk_size>          Chunk size in MB (default: 5120)");
   spdlog::info("  -d                       Enable debug logging");
   spdlog::info("  -v                       Enable verbose logging");
@@ -83,7 +85,7 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
   ProgramOptions options;
   int opt;
 
-  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:c:dv")) != -1) {
+  while ((opt = getopt(argc, argv, "i:H:E:u:T:f:m:s:c:dv")) != -1) {
     switch (opt) {
       case 'i':
         options.input_tpx3 = optarg;
@@ -105,6 +107,9 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
         break;
       case 'm':
         options.tof_mode = optarg;
+        break;
+      case 's':
+        options.spectra_filen = optarg;
         break;
       case 'c':
         options.chunk_size = static_cast<size_t>(std::stoull(optarg)) * 1024 *
@@ -210,7 +215,9 @@ int main(int argc, char* argv[]) {
 
     // Initialize TOF images if needed
     std::vector<std::vector<std::vector<unsigned int>>> tof_images;
-    if (!options.output_tof_imaging.empty()) {
+    const bool needs_tof_images =
+        !options.output_tof_imaging.empty() || !options.spectra_filen.empty();
+    if (needs_tof_images) {
       tof_images = sophiread::initializeTOFImages(config->getSuperResolution(),
                                                   config->getTOFBinEdges());
     }
@@ -258,7 +265,7 @@ int main(int argc, char* argv[]) {
           }
 
           // Update TOF images
-          if (!options.output_tof_imaging.empty()) {
+          if (needs_tof_images) {
             sophiread::updateTOFImages(
                 tof_images, batch, config->getSuperResolution(),
                 config->getTOFBinEdges(), options.tof_mode);
@@ -293,13 +300,6 @@ int main(int argc, char* argv[]) {
       eventsFile.close();
     }
 
-    // Save TOF images if needed
-    if (!options.output_tof_imaging.empty()) {
-      sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
-                                           tof_images, config->getTOFBinEdges(),
-                                           options.tof_filename_base);
-    }
-
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start)
@@ -308,6 +308,25 @@ int main(int argc, char* argv[]) {
     spdlog::info("Total chunks processed: {}", chunkCounter);
     spdlog::info("Total hits: {}", totalHits);
     spdlog::info("Total neutrons: {}", totalNeutrons);
+
+    // Save TOF images if needed
+    if (!options.output_tof_imaging.empty()) {
+      spdlog::info("Saving TOF imaging to TIFF: {}",
+                   options.output_tof_imaging);
+      sophiread::timedSaveTOFImagingToTIFF(options.output_tof_imaging,
+                                           tof_images, config->getTOFBinEdges(),
+                                           options.tof_filename_base);
+    }
+
+    // Save spectra if needed
+    if (!options.spectra_filen.empty()) {
+      spdlog::info("Saving spectra to file: {}", options.spectra_filen);
+      std::string spectral_filename = options.spectra_filen + ".txt";
+      std::vector<uint64_t> spectral_counts =
+          sophiread::calculateSpectralCounts(tof_images);
+      sophiread::writeSpectralFile(spectral_filename, spectral_counts,
+                                   config->getTOFBinEdges());
+    }
 
   } catch (const std::exception& e) {
     spdlog::error("Error: {}", e.what());
