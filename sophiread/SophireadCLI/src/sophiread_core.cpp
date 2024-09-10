@@ -365,10 +365,7 @@ void timedSaveTOFImagingToTIFF(
     spdlog::info("Created output directory: {}", out_tof_imaging);
   }
 
-  // 2. Initialize vector for spectral data
-  std::vector<uint64_t> spectral_counts(tof_images.size(), 0);
-
-  // 3. Iterate through each TOF bin and save TIFF files
+  // 2. Iterate through each TOF bin and save TIFF files
   tbb::parallel_for(
       tbb::blocked_range<size_t>(0, tof_images.size()),
       [&](const tbb::blocked_range<size_t> &range) {
@@ -439,21 +436,42 @@ void timedSaveTOFImagingToTIFF(
           } else {
             spdlog::error("Failed to open TIFF file for writing: {}", filename);
           }
-
-          // Accumulate counts for spectral file
-          spectral_counts[bin] = std::accumulate(
-              accumulated_image.cbegin(), accumulated_image.cend(),
-              static_cast<uint64_t>(0), [](const auto sum, const auto &row) {
-                return sum + std::accumulate(row.cbegin(), row.cend(), 0ULL);
-              });
         }
       });
 
+  // 3. Calculate spectral counts
+  std::vector<uint64_t> spectral_counts = calculateSpectralCounts(tof_images);
   // 4. Write spectral file
   std::string spectral_filename =
       fmt::format("{}/{}_Spectra.txt", out_tof_imaging, tof_filename_base);
-  // Write spectral data to file
-  std::ofstream spectral_file(spectral_filename);
+  writeSpectralFile(spectral_filename, spectral_counts, tof_bin_edges);
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  spdlog::info("TIFF and spectra file writing completed in {} ms",
+               duration.count());
+}
+
+std::vector<uint64_t> calculateSpectralCounts(
+    const std::vector<std::vector<std::vector<unsigned int>>> &tof_images) {
+  std::vector<uint64_t> spectral_counts(tof_images.size(), 0);
+
+  for (size_t bin = 0; bin < tof_images.size(); ++bin) {
+    spectral_counts[bin] = std::accumulate(
+        tof_images[bin].cbegin(), tof_images[bin].cend(),
+        static_cast<uint64_t>(0), [](const auto sum, const auto &row) {
+          return sum + std::accumulate(row.cbegin(), row.cend(), 0ULL);
+        });
+  }
+
+  return spectral_counts;
+}
+
+void writeSpectralFile(const std::string &filename,
+                       const std::vector<uint64_t> &spectral_counts,
+                       const std::vector<double> &tof_bin_edges) {
+  std::ofstream spectral_file(filename);
   if (spectral_file.is_open()) {
     spectral_file << "shutter_time,counts\n";
     for (size_t bin = 0; bin < tof_bin_edges.size() - 1; ++bin) {
@@ -461,17 +479,10 @@ void timedSaveTOFImagingToTIFF(
                     << "\n";
     }
     spectral_file.close();
-    spdlog::info("Wrote spectral file: {}", spectral_filename);
+    spdlog::info("Wrote spectral file: {}", filename);
   } else {
-    spdlog::error("Failed to open spectra file for writing: {}",
-                  spectral_filename);
+    spdlog::error("Failed to open spectra file for writing: {}", filename);
   }
-
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-  spdlog::info("TIFF and spectra file writing completed in {} ms",
-               duration.count());
 }
 
 }  // namespace sophiread
