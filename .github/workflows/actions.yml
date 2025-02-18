@@ -15,12 +15,14 @@ jobs:
   ubuntu-latest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          mamba-version: "*"
+          channels: conda-forge,defaults
+          use-mamba: true
           environment-file: sophiread/environment_linux.yml
+          activate-environment: test
       - name: build_sophiread
         shell: bash -l {0}
         run: |
