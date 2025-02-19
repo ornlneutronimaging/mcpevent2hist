@@ -12,15 +12,17 @@
 
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <fstream>
 
 #include "disk_io.h"
 
+namespace fs = std::filesystem;
 namespace sophiread {
 
 bool GDCExtractorOptions::validate() const {
   // Check input file existence
-  if (!std::filesystem::exists(input_tpx3)) {
+  if (!fs::exists(input_tpx3)) {
     spdlog::error("Input file does not exist: {}", input_tpx3);
     return false;
   }
