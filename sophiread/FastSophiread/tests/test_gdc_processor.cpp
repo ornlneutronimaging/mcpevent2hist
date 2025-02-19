@@ -2,15 +2,19 @@
  * @file test_gdc_processor.cpp
  * @brief Unit tests for GDCProcessor class
  */
+#include <fmt/format.h>
 #include <gtest/gtest.h>
 
 #include <iostream>
 
 #include "gdc_processor.h"
+#include "spdlog/spdlog.h"
 
 TEST(GDCProcessorTest, TwoChipsSequence) {
   std::vector<char> data(48);
   char* ptr = data.data();
+
+  spdlog::set_level(spdlog::level::debug);
 
   // Define integer values
   const int timer_lsb32 = 1987;  // 0x07C3
@@ -55,13 +59,19 @@ TEST(GDCProcessorTest, TwoChipsSequence) {
   memcpy(ptr, &gdc_val, 8);
 
   // Debug: Print raw bytes
-  std::cout << "Corrected Mock Data Bytes:" << std::endl;
+  SPDLOG_DEBUG("Corrected Mock Data Bytes:");
   for (size_t i = 0; i < data.size(); i += 8) {
-    std::cout << "Packet at offset " << i << ": ";
-    for (size_t j = 0; j < 8; ++j) {
-      printf("%02X ", static_cast<unsigned char>(data[i + j]));
-    }
-    std::cout << std::endl;
+    SPDLOG_DEBUG(
+        "Packet at offset {}: {}", i,
+        fmt::format("{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}",
+                    static_cast<unsigned char>(data[i + 0]),
+                    static_cast<unsigned char>(data[i + 1]),
+                    static_cast<unsigned char>(data[i + 2]),
+                    static_cast<unsigned char>(data[i + 3]),
+                    static_cast<unsigned char>(data[i + 4]),
+                    static_cast<unsigned char>(data[i + 5]),
+                    static_cast<unsigned char>(data[i + 6]),
+                    static_cast<unsigned char>(data[i + 7])));
   }
 
   // Process data
