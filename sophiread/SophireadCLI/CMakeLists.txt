@@ -64,6 +64,13 @@ target_link_libraries(
           ${TIFF_LIBRARIES}
           TBB::tbb)
 gtest_discover_tests(SophireadCoreTest)
+# GDC extractor test
+add_executable(GDCExtractorTest tests/test_gdc_extractor.cpp
+                                src/gdc_extractor.cpp)
+target_link_libraries(
+  GDCExtractorTest PRIVATE FastSophiread spdlog::spdlog GTest::GTest
+                           GTest::Main ${HDF5_LIBRARIES})
+gtest_discover_tests(GDCExtractorTest)
 
 # ----------------- SYMLINK ----------------- # symlink the executable to the
 # build directory
