@@ -18,6 +18,54 @@
 
 namespace sophiread {
 
+bool GDCExtractorOptions::validate() const {
+  // Check input file existence
+  if (!std::filesystem::exists(input_tpx3)) {
+    spdlog::error("Input file does not exist: {}", input_tpx3);
+    return false;
+  }
+
+  // Check input file is readable
+  std::ifstream test_input(input_tpx3);
+  if (!test_input.good()) {
+    spdlog::error("Input file is not readable: {}", input_tpx3);
+    return false;
+  }
+  test_input.close();
+
+  // Check output directory exists or can be created
+  std::filesystem::path output_path =
+      std::filesystem::path(output_csv).parent_path();
+  if (!output_path.empty()) {
+    std::error_code ec;
+    if (!std::filesystem::exists(output_path)) {
+      if (!std::filesystem::create_directories(output_path, ec)) {
+        spdlog::error("Failed to create output directory: {}",
+                      output_path.string());
+        return false;
+      }
+    }
+  }
+
+  // Test if output file is writable
+  std::ofstream test_output(output_csv, std::ios::app);
+  if (!test_output.good()) {
+    spdlog::error("Output file is not writable: {}", output_csv);
+    return false;
+  }
+  test_output.close();
+
+  // Validate chunk size
+  if (chunk_size < MIN_CHUNK_SIZE || chunk_size > MAX_CHUNK_SIZE) {
+    spdlog::error("Invalid chunk size: {}. Must be between {} MB and {} GB",
+                  chunk_size / (1024 * 1024), MIN_CHUNK_SIZE / (1024 * 1024),
+                  MAX_CHUNK_SIZE / (1024 * 1024 * 1024));
+    return false;
+  }
+
+  return true;
+}
+
 GDCExtractor::GDCExtractor(const GDCExtractorOptions& options)
     : options_(options) {}
 

@@ -28,34 +28,56 @@ void print_usage(const char* program_name) {
 sophiread::GDCExtractorOptions parse_arguments(int argc, char* argv[]) {
   sophiread::GDCExtractorOptions options;
   int opt;
+  bool chunk_size_set = false;
 
   while ((opt = getopt(argc, argv, "i:o:c:dv")) != -1) {
-    switch (opt) {
-      case 'i':
-        options.input_tpx3 = optarg;
-        break;
-      case 'o':
-        options.output_csv = optarg;
-        break;
-      case 'c':
-        options.chunk_size =
-            static_cast<size_t>(std::stoull(optarg)) * 1024 * 1024;
-        break;
-      case 'd':
-        options.debug_logging = true;
-        break;
-      case 'v':
-        options.verbose = true;
-        break;
-      default:
-        print_usage(argv[0]);
-        throw std::runtime_error("Invalid argument");
+    try {
+      switch (opt) {
+        case 'i':
+          options.input_tpx3 = optarg;
+          break;
+        case 'o':
+          options.output_csv = optarg;
+          break;
+        case 'c': {
+          size_t chunk_mb = std::stoull(optarg);
+          options.chunk_size = chunk_mb * 1024 * 1024;
+          chunk_size_set = true;
+        } break;
+        case 'd':
+          options.debug_logging = true;
+          break;
+        case 'v':
+          options.verbose = true;
+          break;
+        default:
+          print_usage(argv[0]);
+          throw std::runtime_error("Invalid argument");
+      }
+    } catch (const std::exception& e) {
+      throw std::runtime_error(std::string("Error parsing argument '") +
+                               static_cast<char>(opt) + "': " + e.what());
     }
   }
 
-  if (options.input_tpx3.empty() || options.output_csv.empty()) {
+  // Check required arguments
+  if (options.input_tpx3.empty()) {
     print_usage(argv[0]);
-    throw std::runtime_error("Missing required arguments");
+    throw std::runtime_error("Input file (-i) is required");
+  }
+  if (options.output_csv.empty()) {
+    print_usage(argv[0]);
+    throw std::runtime_error("Output file (-o) is required");
+  }
+
+  // Validate complete options
+  if (!options.validate()) {
+    throw std::runtime_error("Failed to validate program options");
+  }
+
+  // Warn users if chunk size is not set, we will use the default
+  if (!chunk_size_set) {
+    spdlog::warn("Chunk size not set, using default of 5GB");
   }
 
   return options;
