@@ -23,6 +23,12 @@ struct GDCExtractorOptions {
   size_t chunk_size = 5ULL * 1024 * 1024 * 1024;  // Default 5GB
   bool debug_logging = false;
   bool verbose = false;
+
+  // Validation constants
+  static constexpr size_t MIN_CHUNK_SIZE = 1ULL * 1024 * 1024;          // 1MB
+  static constexpr size_t MAX_CHUNK_SIZE = 20ULL * 1024 * 1024 * 1024;  // 20GB
+
+  bool validate() const;
 };
 
 class GDCExtractor {
