@@ -30,6 +30,13 @@ target_link_libraries(
           ${HDF5_LIBRARIES}
           ${TIFF_LIBRARIES})
 
+# ----------------- GDC EXTRACTOR APP ----------------- #
+add_executable(SophireadGDCExtractor src/main_gdc_extractor.cpp
+                                     src/gdc_extractor.cpp)
+target_link_libraries(
+  SophireadGDCExtractor PRIVATE FastSophiread pthread TBB::tbb spdlog::spdlog
+                                ${HDF5_LIBRARIES})
+
 # ----------------- TESTS ----------------- # UserConfig tests
 add_executable(UserConfigTest tests/test_user_config.cpp src/user_config.cpp)
 target_link_libraries(UserConfigTest PRIVATE FastSophiread spdlog::spdlog
@@ -57,6 +64,13 @@ target_link_libraries(
           ${TIFF_LIBRARIES}
           TBB::tbb)
 gtest_discover_tests(SophireadCoreTest)
+# GDC extractor test
+add_executable(GDCExtractorTest tests/test_gdc_extractor.cpp
+                                src/gdc_extractor.cpp)
+target_link_libraries(
+  GDCExtractorTest PRIVATE FastSophiread spdlog::spdlog GTest::GTest
+                           GTest::Main ${HDF5_LIBRARIES})
+gtest_discover_tests(GDCExtractorTest)
 
 # ----------------- SYMLINK ----------------- # symlink the executable to the
 # build directory
@@ -74,6 +88,13 @@ add_custom_command(
     ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_BINARY_DIR}/SophireadCLI/venus_auto_reducer
     ${PROJECT_BINARY_DIR}/venus_auto_reducer)
+add_custom_command(
+  TARGET SophireadGDCExtractor
+  POST_BUILD
+  COMMAND
+    ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_BINARY_DIR}/SophireadCLI/SophireadGDCExtractor
+    ${PROJECT_BINARY_DIR}/SophireadGDCExtractor)
 
 # ----------------- INSTALL ----------------- #
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -91,6 +112,10 @@ install(
 # Install the headers
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# Install GDC Extractor
+install(TARGETS SophireadGDCExtractor
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Set up packaging (optional)
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
