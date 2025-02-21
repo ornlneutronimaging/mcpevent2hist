@@ -1,6 +1,12 @@
 # Config FastSophireadLib
-set(SRC_FAST_FILES src/abs.cpp src/centroid.cpp src/disk_io.cpp
-                   src/fastgaussian.cpp src/hit.cpp src/tpx3_fast.cpp)
+set(SRC_FAST_FILES
+    src/abs.cpp
+    src/centroid.cpp
+    src/disk_io.cpp
+    src/fastgaussian.cpp
+    src/hit.cpp
+    src/tpx3_fast.cpp
+    src/gdc_processor.cpp)
 
 # ------------- SophireadLibFast -------------- #
 add_library(FastSophiread ${SRC_FAST_FILES})
@@ -46,6 +52,7 @@ add_sophiread_test(tpx3 ${HDF5_LIBRARIES})
 add_sophiread_test(abs)
 add_sophiread_test(centroid)
 add_sophiread_test(fastgaussian)
+add_sophiread_test(gdc_processor)
 
 # ------------------ Benchmarks ------------------ # Define a function to add
 # benchmark targets
