@@ -16,6 +16,12 @@ The following steps have been tested with M-series Mac as well as Linux-64, and 
     curl -sSL https://pixi.sh/install | bash
     ```
 
+- [Optional] Set the cache directory in your shell profile.
+
+    ```bash
+    export PIXI_CACHE_DIR=$HOME/.cache
+    ```
+
 - Clone this repository and navigate to the `sophiread` folder.
 
 - Build the project with the following `pixi` tasks:
