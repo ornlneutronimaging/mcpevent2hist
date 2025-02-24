@@ -14,18 +14,17 @@ on:
 jobs:
   ubuntu-latest:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sophiread
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.8.3
         with:
           pixi-version: v0.41.4
-      - name: Install dependencies
-        run: |
-          cd sophiread
-          pixi install
+          manifest-path: sophiread/pixi.toml
       - name: Build and test
         run: |
-          cd sophiread
           pixi run build
           pixi run test
 
