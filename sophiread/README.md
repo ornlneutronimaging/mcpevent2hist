@@ -3,9 +3,38 @@
 Sophiread is a simple, fast, and extensible toolkit for reading and processing raw data (`*.tpx3`) from the Timepix3 chip.
 It provides both command line (CLI) and graphical user interface (GUI) interfaces.
 
-> As of 2024-08-22, the GUI application is still undergoing development to use the new fast sophiread backend, only command line applications are available.
+> As of 2025-02-24, the GUI application is still undergoing development to use the new fast sophiread backend, only command line applications are available.
 
-## How to build
+## How to build (with `pixi`)
+
+As NDP is gradually shifting away from `anaconda` suite, we are offering an alternative to build `Sophiread` project with [pixi](https://pixi.sh/latest/).
+The following steps have been tested with M-series Mac as well as Linux-64, and it is in theory possible to build it under Windows.
+
+- Install `pixi` at the system level (assuming we are on linux):
+
+    ```bash
+    curl -sSL https://pixi.sh/install | bash
+    ```
+
+- [Optional] Set the cache directory in your shell profile.
+
+    ```bash
+    export PIXI_CACHE_DIR=$HOME/.cache
+    ```
+
+- Clone this repository and navigate to the `sophiread` folder.
+
+- Build the project with the following `pixi` tasks:
+  - `pixi run configure` to configure the project.
+  - `pixi run build` to build the project.
+  - `pixi run test` to invoke `ctest` for testing.
+  - `pixi run package` to create a release package (optional).
+  - `pixi run docs` to build the documentation (optional).
+    - **IMPORTANT** MacOS by default does not have the Tex typesetting system installed, please install [MacTex](https://www.tug.org/mactex/) before building the documentation.
+
+Once the above steps are complete, you can find all the binary apps under the `build` directory.
+
+## How to build (with `conda`)
 
 Sophiread is built using `cmake` and `make` under a sandboxed environment with `conda` (see [conda](https://conda.io/docs/)).
 The following steps have been tested under MaxOS and Linux, and it is in theory possible to build it under Windows.

@@ -1,0 +1,33 @@
+[project]
+authors = ["Chen Zhang <zhangc@ornl.gov>"]
+channels = ["conda-forge"]
+name = "sophiread"
+platforms = ["osx-arm64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+configure = "cmake -G Ninja -S . -B build"
+build = { cmd = "ninja -C build", depends-on = ["configure"] }
+test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = ["build"] }
+package = { cmd = "ninja -C build package", depends-on = ["build"] }
+docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
+clean = "rm -rf build"
+
+[dependencies]
+python = ">=3.13.2,<3.14"
+cmake = ">=3.31.5,<4"
+ninja = ">=1.12.1,<2"
+clang-format = ">=19.1.7,<20"
+hdf5 = ">=1.14.4,<2"
+gtest = ">=1.16.0,<2"
+eigen = ">=3.4.0,<4"
+tbb-devel = ">=2022.0.0,<2023"
+spdlog = ">=1.15.1,<2"
+nlohmann_json = ">=3.11.3,<4"
+doxygen = ">=1.13.2,<2"
+graphviz = ">=12.2.1,<13"
+pre-commit = ">=4.1.0,<5"
+
+[target.linux-64.dependencies]
+gxx_linux-64 = ">=14.2.0,<15"
+libglu = ">=9.0.3,<10"
