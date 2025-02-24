@@ -20,9 +20,12 @@ jobs:
         with:
           pixi-version: v0.41.4
       - name: Install dependencies
-        run: pixi install
+        run: |
+          cd sophiread
+          pixi install
       - name: Build and test
         run: |
+          cd sophiread
           pixi run build
           pixi run test
 
