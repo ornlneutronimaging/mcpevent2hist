@@ -26,6 +26,10 @@ void timedLocateTimeStamp(std::vector<TPX3>& batches,
                           unsigned long& tdc_timestamp,
                           unsigned long long& gdc_timestamp,
                           unsigned long& timer_lsb32);
+// Overloaded version without GDC timestamp for TDC-only processing
+void timedLocateTimeStamp(std::vector<TPX3>& batches,
+                          const std::vector<char>& chunk,
+                          unsigned long& tdc_timestamp);
 void timedProcessing(std::vector<TPX3>& batches,
                      const std::vector<char>& raw_data, const IConfig& config);
 void timedSaveHitsToHDF5(const std::string& out_hits,

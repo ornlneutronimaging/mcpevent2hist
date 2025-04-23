@@ -86,6 +86,30 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches,
 }
 
 /**
+ * @brief Timed locate timestamps without using GDC.
+ * 
+ * This overloaded version processes timestamps using only TDC values,
+ * useful for data streams where GDC information is not available or not needed.
+ *
+ * @param[in, out] batches The TPX3 batches to process
+ * @param[in] chunk The raw data chunk
+ * @param[in, out] tdc_timestamp The TDC timestamp to update
+ */
+void timedLocateTimeStamp(std::vector<TPX3> &batches,
+                          const std::vector<char> &chunk,
+                          unsigned long &tdc_timestamp) {
+  auto start = std::chrono::high_resolution_clock::now();
+  for (auto &tpx3 : batches) {
+    updateTimestamp(tpx3, chunk, tdc_timestamp);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
+  spdlog::debug("Locate timestamps (TDC only) in chunk: {} s", elapsed / 1e6);
+}
+
+/**
  * @brief Timed hits extraction and clustering via multi-threading.
  *
  * @param[in, out] batches
