@@ -41,8 +41,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   spidertime = 16384 * (*spider_time) + m_toa;
 
 
-  //////// Need to change below ?/ ///////
-
   // convert spidertime to global timestamp
   unsigned long SPDR_LSB30 = 0;
   unsigned long SPDR_MSB18 = 0;
@@ -68,8 +66,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
     m_tof -= 666667;
   }
 
-
-  //////// Need to change above ?/ ///////
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
@@ -121,7 +117,7 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   // Calculate spidertime (in 25ns units)
   Timestamp25ns = 16384 * (*spider_time) + m_toa;
   
-  // Check if we need to handle rollover according to the Python logic
+  // Check if we need to handle rollover according to the Python logic. We need to come back to see if we are missing an edge case here (i.e. after the bit extension, we still face Timestamp25ns < TDC_timestamp.
   if (Timestamp25ns + 0x400000 < TDC_timestamp) {
     Timestamp25ns = Timestamp25ns | 0x40000000;
     PxHit_rollover = true;
@@ -133,11 +129,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   // TOF calculation
   if (Timestamp25ns >= TDC_timestamp) {
     m_tof = Timestamp25ns - TDC_timestamp;}
-  // } else {
-  //   // If spidertime is smaller than TDC_timestamp, we need special handling
-  //   // This typically means the spidertime wrapped around
-  //   m_tof = TDC_timestamp - Timestamp25ns;
-  // }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
