@@ -118,7 +118,7 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   
   // TODO: Check if we need to handle rollover according to the Python logic.
   // We need to come back to see if we are missing an edge case here (i.e. after the bit extension, we still face Timestamp25ns < TDC_timestamp.
-  if (Timestamp25ns + 0x400000 < TDC_timestamp) {
+  if (TDC_timestamp> (Timestamp25ns + 0x10000000 ) ) {
     Timestamp25ns = Timestamp25ns | 0x40000000;
   }
   
