@@ -40,6 +40,9 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   m_toa = (*nTOA >> 6) & 0x3FFF;
   spidertime = 16384 * (*spider_time) + m_toa;
 
+
+  //////// Need to change below ?/ ///////
+
   // convert spidertime to global timestamp
   unsigned long SPDR_LSB30 = 0;
   unsigned long SPDR_MSB18 = 0;
@@ -65,6 +68,9 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
     m_tof -= 666667;
   }
 
+
+  //////// Need to change above ?/ ///////
+
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -73,6 +79,75 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   pix = pixaddr & 0x7;
   m_x = dcol + (pix >> 2);   // x coordinate
   m_y = spix + (pix & 0x3);  // y coordinate
+  // adjustment for chip layout
+  if (chip_layout_type == 0) {  // single
+    m_x += 260;
+    // m_y = m_y;
+  } else if (chip_layout_type == 1) {  // double
+    m_x = 255 - m_x + 260;
+    m_y = 255 - m_y + 260;
+  } else if (chip_layout_type == 2) {  // triple
+    m_x = 255 - m_x;
+    m_y = 255 - m_y + 260;
+  }
+}
+
+/**
+ * @brief Simplified constructor that constructs a Hit from raw bytes without GDC logic.
+ *
+ * @param[in] packet Raw data packet
+ * @param[in] TDC_timestamp Time stamp collected from the monitor
+ * @param[in] chip_layout_type Chip layout ID number
+ */
+Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
+         const int chip_layout_type) {
+  // local variables
+  unsigned short pixaddr, dcol, spix, pix;
+  unsigned short *spider_time;
+  unsigned short *nTOT;    // bytes 2,3, raw time over threshold
+  unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
+  unsigned int *npixaddr;  // bytes 4,5,6,7
+  unsigned long long Timestamp25ns = 0;
+  bool PxHit_rollover = false;
+
+  // timing information
+  spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
+  nTOT = (unsigned short *)(&packet[2]);         // ToT          (10 bits)
+  nTOA = (unsigned int *)(&packet[3]);           // ToA          (14 bits)
+  m_ftoa = *nTOT & 0xF;                          // fine ToA     (4 bits)
+  m_tot = (*nTOT >> 4) & 0x3FF;
+  m_toa = (*nTOA >> 6) & 0x3FFF;
+  
+  // Calculate spidertime (in 25ns units)
+  Timestamp25ns = 16384 * (*spider_time) + m_toa;
+  
+  // Check if we need to handle rollover according to the Python logic
+  if (Timestamp25ns + 0x400000 < TDC_timestamp) {
+    Timestamp25ns = Timestamp25ns | 0x40000000;
+    PxHit_rollover = true;
+  }
+  
+  // Store the spidertime
+  m_spidertime = Timestamp25ns;
+  
+  // TOF calculation
+  if (Timestamp25ns >= TDC_timestamp) {
+    m_tof = Timestamp25ns - TDC_timestamp;}
+  // } else {
+  //   // If spidertime is smaller than TDC_timestamp, we need special handling
+  //   // This typically means the spidertime wrapped around
+  //   m_tof = TDC_timestamp - Timestamp25ns;
+  // }
+
+  // pixel address
+  npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
+  pixaddr = (*npixaddr >> 12) & 0xFFFF;
+  dcol = ((pixaddr & 0xFE00) >> 8);
+  spix = ((pixaddr & 0x1F8) >> 1);
+  pix = pixaddr & 0x7;
+  m_x = dcol + (pix >> 2);   // x coordinate
+  m_y = spix + (pix & 0x3);  // y coordinate
+  
   // adjustment for chip layout
   if (chip_layout_type == 0) {  // single
     m_x += 260;
