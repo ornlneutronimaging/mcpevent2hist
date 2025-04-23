@@ -74,6 +74,14 @@ void updateTimestamp(TPX3& tpx3h, char* raw_bytes, std::size_t size,
                      unsigned long& timer_lsb32);
 
 template <typename ForwardIter>
+void updateTimestamp(TPX3& tpx3h, ForwardIter bytes_begin,
+                     ForwardIter bytes_end, unsigned long& tdc_timestamp);
+void updateTimestamp(TPX3& tpx3h, const std::vector<char>& raw_bytes,
+                     unsigned long& tdc_timestamp);
+void updateTimestamp(TPX3& tpx3h, char* raw_bytes, std::size_t size,
+                     unsigned long& tdc_timestamp);
+
+template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
@@ -81,6 +89,8 @@ void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
 void update_tdc_timestamp(const char* char_array,
                           const unsigned long long& gdc_timestamp,
                           unsigned long& tdc_timestamp);
+
+void update_tdc_timestamp(const char* char_array, unsigned long& tdc_timestamp);
 
 void update_gdc_timestamp_and_timer_lsb32(const char* char_array,
                                           unsigned long& timer_lsb32,
@@ -91,3 +101,8 @@ void process_tpx3_packets(TPX3& tpx3h, ForwardIter bytes_begin,
                           ForwardIter bytes_end, unsigned long& tdc_timestamp,
                           unsigned long long int& gdc_timestamp,
                           unsigned long& timer_lsb32, bool extract_hits = true);
+
+template <typename ForwardIter>
+void process_tpx3_packets(TPX3& tpx3h, ForwardIter bytes_begin,
+                          ForwardIter bytes_end, unsigned long& tdc_timestamp,
+                          bool extract_hits = true);
