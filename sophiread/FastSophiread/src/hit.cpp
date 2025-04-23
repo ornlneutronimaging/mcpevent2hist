@@ -104,7 +104,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   unsigned int *nTOA;      // bytes 3,4,5,6, raw time of arrival
   unsigned int *npixaddr;  // bytes 4,5,6,7
   unsigned long long Timestamp25ns = 0;
-  bool PxHit_rollover = false;
 
   // timing information
   spider_time = (unsigned short *)(&packet[0]);  // Spider time  (16 bits)
@@ -117,18 +116,18 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   // Calculate spidertime (in 25ns units)
   Timestamp25ns = 16384 * (*spider_time) + m_toa;
   
-  // Check if we need to handle rollover according to the Python logic. We need to come back to see if we are missing an edge case here (i.e. after the bit extension, we still face Timestamp25ns < TDC_timestamp.
+  // TODO: Check if we need to handle rollover according to the Python logic.
+  // We need to come back to see if we are missing an edge case here (i.e. after the bit extension, we still face Timestamp25ns < TDC_timestamp.
   if (Timestamp25ns + 0x400000 < TDC_timestamp) {
     Timestamp25ns = Timestamp25ns | 0x40000000;
-    PxHit_rollover = true;
   }
   
   // Store the spidertime
   m_spidertime = Timestamp25ns;
-  
   // TOF calculation
   if (Timestamp25ns >= TDC_timestamp) {
-    m_tof = Timestamp25ns - TDC_timestamp;}
+    m_tof = Timestamp25ns - TDC_timestamp;
+  }
 
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)

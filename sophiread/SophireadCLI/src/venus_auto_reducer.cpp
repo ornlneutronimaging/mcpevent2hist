@@ -155,7 +155,7 @@ void process_existing_files(const std::string& input_dir,
         // Process the data
         sophiread::timedLocateTimeStamp(batches, raw_data, tdc_timestamp,
                                         gdc_timestamp, timer_lsb32);
-        sophiread::timedProcessing(batches, raw_data, config);
+        sophiread::timedProcessing(batches, raw_data, config, true);  // GDC mode
 
         // Generate output file name
         std::string output_file =

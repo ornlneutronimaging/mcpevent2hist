@@ -184,13 +184,7 @@ int main(int argc, char* argv[]) {
     spdlog::info("TOF imaging folder: {}", options.output_tof_imaging);
     spdlog::info("TOF filename base: {}", options.tof_filename_base);
     spdlog::info("TOF mode: {}", options.tof_mode);
-    spdlog::info("Timing mode: {}", options.timing_mode);
-    
-    // Check timing mode and warn if TDC is selected
-    if (options.timing_mode == "tdc") {
-      spdlog::warn("TDC mode is currently not implemented. Functionality will be limited.");
-    }
-    
+    spdlog::info("Timing mode: {}", options.timing_mode);    
     spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
 
     // Load configuration
@@ -265,24 +259,43 @@ int main(int argc, char* argv[]) {
         spdlog::info("Timer LSB32: {}", timer_lsb32);
 
         auto batches = sophiread::timedFindTPX3H(chunk);
-        sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp,
-                                        gdc_timestamp, timer_lsb32);
-        sophiread::timedProcessing(batches, chunk, *config);
+        // GDC route
+        if (options.timing_mode == "gdc") {
+          spdlog::info("Using GDC mode for timestamp processing");
+          // update timestamp
+          sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp,
+                                          gdc_timestamp, timer_lsb32);
+          // extract hits and neutrons
+          sophiread::timedProcessing(batches, chunk, *config, true);
+        } else if (options.timing_mode == "tdc") {
+          // TDC route
+          spdlog::info("Using TDC mode for timestamp processing");
+          sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp);
+          sophiread::timedProcessing(batches, chunk, *config, false);
+        } else {
+          throw std::runtime_error("Invalid timing mode. Use 'gdc' or 'tdc'.");
+        }
+        // sophiread::timedLocateTimeStamp(batches, chunk, tdc_timestamp,
+        //                                 gdc_timestamp, timer_lsb32);
+        // sophiread::timedProcessing(batches, chunk, *config);
 
         // Process hits and neutrons
         for (const auto& batch : batches) {
           // Append hits to HDF5 file
           if (!options.output_hits.empty()) {
+            spdlog::debug("Appending hits to HDF5 file");
             appendHitsToHDF5Extendible(hitsFile, batch.hits);
           }
 
           // Append neutrons to HDF5 file
           if (!options.output_events.empty()) {
+            spdlog::debug("Appending neutrons to HDF5 file");
             appendNeutronsToHDF5Extendible(eventsFile, batch.neutrons);
           }
 
           // Update TOF images
           if (needs_tof_images) {
+            spdlog::debug("Updating TOF images");
             sophiread::updateTOFImages(
                 tof_images, batch, config->getSuperResolution(),
                 config->getTOFBinEdges(), options.tof_mode);
@@ -291,9 +304,17 @@ int main(int argc, char* argv[]) {
           // Update counters
           totalHits += batch.hits.size();
           totalNeutrons += batch.neutrons.size();
+
+          // Print debug information
+          spdlog::debug("Chunk {}: Hits: {}, Neutrons: {}", chunkCounter,
+                        batch.hits.size(), batch.neutrons.size());
+          spdlog::debug("Total Hits: {}, Total Neutrons: {}", totalHits,
+                        totalNeutrons);
         }
 
         // Update progress
+        spdlog::debug("Processed chunk {}: {} bytes", chunkCounter,
+                      chunk.size());
         processedSize += chunk.size();
         float progress = static_cast<float>(processedSize) / totalSize * 100.0f;
         spdlog::info("Progress: {:.2f}%", progress);

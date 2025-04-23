@@ -31,7 +31,7 @@ void timedLocateTimeStamp(std::vector<TPX3>& batches,
                           const std::vector<char>& chunk,
                           unsigned long& tdc_timestamp);
 void timedProcessing(std::vector<TPX3>& batches,
-                     const std::vector<char>& raw_data, const IConfig& config);
+                     const std::vector<char>& raw_data, const IConfig& config, bool useGDC);
 void timedSaveHitsToHDF5(const std::string& out_hits,
                          std::vector<TPX3>& batches);
 void timedSaveEventsToHDF5(const std::string& out_events,

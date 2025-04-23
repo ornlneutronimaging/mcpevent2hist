@@ -45,6 +45,10 @@ struct TPX3 {
                     const unsigned long long gdc) {
     hits.emplace_back(packet, tdc, gdc, chip_layout_type);
   };
+
+  void emplace_back(const char* packet, const unsigned long long tdc) {
+    hits.emplace_back(packet, tdc, chip_layout_type);
+  };
 };
 
 template <typename ForwardIter>
@@ -85,6 +89,7 @@ template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
+void extractHitsTDC(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 
 void update_tdc_timestamp(const char* char_array,
                           const unsigned long long& gdc_timestamp,

@@ -308,6 +308,14 @@ void extractHits(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
 }
 
 /**
+ * @brief Get the Hits object via TDC route
+ */
+void extractHitsTDC(TPX3 &tpx3h, const std::vector<char> &raw_bytes) {
+  process_tpx3_packets(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(),
+                       tpx3h.tdc_timestamp, true);
+}
+
+/**
  * @brief Get the Hits object
  *
  * @param[in, out] tpx3h
@@ -521,7 +529,7 @@ void process_tpx3_packets(TPX3 &tpx3h, ForwardIter bytes_begin,
         // Data packet - only need tdc_timestamp
         if (tdc_timestamp != 0) {
           // Using 0 for GDC since we're not tracking it
-          tpx3h.emplace_back(char_array, tdc_timestamp, 0);
+          tpx3h.emplace_back(char_array, tdc_timestamp);
         }
       }
     }
