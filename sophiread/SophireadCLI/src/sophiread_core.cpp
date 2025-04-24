@@ -89,7 +89,7 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches,
 
 /**
  * @brief Timed locate timestamps without using GDC.
- * 
+ *
  * This overloaded version processes timestamps using only TDC values,
  * useful for data streams where GDC information is not available or not needed.
  *
@@ -165,7 +165,7 @@ void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &chunk,
                       }
                     });
   }
-  
+
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
@@ -272,44 +272,44 @@ void updateTOFImages(
       }
 
       double tof_ns = entry->iGetTOF_ns();
-      
+
       // Safety check for invalid TOF values
       if (tof_ns < 0 || std::isnan(tof_ns) || std::isinf(tof_ns)) {
         spdlog::debug("Skipping entry with invalid TOF: {}", tof_ns);
         continue;
       }
-      
+
       double tof_s = tof_ns / 1e9;
-      
+
       // Safety check to make sure tof_s is in range
       if (tof_s < tof_bin_edges.front() || tof_s >= tof_bin_edges.back()) {
         spdlog::debug("TOF out of bin range: {}", tof_s);
         continue;
       }
-      
+
       auto it = std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
       if (it != tof_bin_edges.begin()) {
         size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
-        
+
         // Safety check for bin index
         if (bin_index >= tof_images.size()) {
           spdlog::debug("Bin index out of range: {}", bin_index);
           continue;
         }
-        
+
         // Check and clamp x,y values to valid ranges
         double raw_x = entry->iGetX();
         double raw_y = entry->iGetY();
-        
+
         // Skip invalid coordinates
-        if (std::isnan(raw_x) || std::isnan(raw_y) || 
+        if (std::isnan(raw_x) || std::isnan(raw_y) ||
             std::isinf(raw_x) || std::isinf(raw_y)) {
           continue;
         }
-        
+
         int x = std::round(raw_x * super_resolution);
         int y = std::round(raw_y * super_resolution);
-        
+
         if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
           tof_images[bin_index][y][x]++;
         }
@@ -410,18 +410,18 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
         if (!entry) {
           continue;
         }
-        
+
         total_entries++;
         const double tof_ns = entry->iGetTOF_ns();
-        
+
         // Safety check for invalid TOF values
         if (tof_ns < 0 || std::isnan(tof_ns) || std::isinf(tof_ns)) {
           spdlog::debug("Skipping entry with invalid TOF: {}", tof_ns);
           continue;
         }
-        
+
         const double tof_s = tof_ns / 1e9;
-        
+
         // Safety check to make sure tof_s is in range
         if (tof_s < tof_bin_edges.front() || tof_s >= tof_bin_edges.back()) {
           spdlog::debug("TOF out of bin range: {}", tof_s);
@@ -436,7 +436,7 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
                                             tof_bin_edges.cend(), tof_s);
             it != tof_bin_edges.cbegin()) {
           const size_t bin_index = std::distance(tof_bin_edges.cbegin(), it) - 1;
-          
+
           // Safety check for bin index
           if (bin_index >= tof_images.size()) {
             spdlog::debug("Bin index out of range: {}", bin_index);
@@ -446,13 +446,13 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
           // Calculate the x and y indices in the 2D histogram
           double raw_x = entry->iGetX();
           double raw_y = entry->iGetY();
-          
+
           // Skip invalid coordinates
-          if (std::isnan(raw_x) || std::isnan(raw_y) || 
+          if (std::isnan(raw_x) || std::isnan(raw_y) ||
               std::isinf(raw_x) || std::isinf(raw_y)) {
             continue;
           }
-          
+
           const int x = std::round(raw_x * super_resolution);
           const int y = std::round(raw_y * super_resolution);
 

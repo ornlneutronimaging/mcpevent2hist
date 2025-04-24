@@ -389,10 +389,10 @@ void update_tdc_timestamp(const char *char_array, unsigned long &tdc_timestamp) 
   // extract the data from the data packet
   tdclast = (unsigned long *)(&char_array[0]);
   mytdc = (((*tdclast) >> 12) & 0xFFFFFFFF);  // get 32-bit tdc
-  
+
   // Maintain the high bits of the existing timestamp
   unsigned long high_bits = tdc_timestamp & 0xFFFF00000000;
-  
+
   // Apply the new low bits, handling potential rollover
   // If new value is much smaller than current low bits, we assume a rollover
   unsigned long current_low_bits = tdc_timestamp & 0xFFFFFFFF;
@@ -400,7 +400,7 @@ void update_tdc_timestamp(const char *char_array, unsigned long &tdc_timestamp) 
     // Large decrease suggests a rollover, increment high bits
     high_bits += 0x100000000;
   }
-  
+
   tdc_timestamp = high_bits | mytdc;
 }
 
