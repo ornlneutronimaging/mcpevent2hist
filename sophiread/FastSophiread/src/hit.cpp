@@ -40,7 +40,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   m_toa = (*nTOA >> 6) & 0x3FFF;
   spidertime = 16384 * (*spider_time) + m_toa;
 
-
   // convert spidertime to global timestamp
   unsigned long SPDR_LSB30 = 0;
   unsigned long SPDR_MSB18 = 0;
@@ -66,7 +65,6 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
     m_tof -= 666667;
   }
 
-
   // pixel address
   npixaddr = (unsigned int *)(&packet[4]);  // Pixel address (14 bits)
   pixaddr = (*npixaddr >> 12) & 0xFFFF;
@@ -89,7 +87,8 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
 }
 
 /**
- * @brief Simplified constructor that constructs a Hit from raw bytes without GDC logic.
+ * @brief Simplified constructor that constructs a Hit from raw bytes without
+ * GDC logic.
  *
  * @param[in] packet Raw data packet
  * @param[in] TDC_timestamp Time stamp collected from the monitor
@@ -112,16 +111,17 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   m_ftoa = *nTOT & 0xF;                          // fine ToA     (4 bits)
   m_tot = (*nTOT >> 4) & 0x3FF;
   m_toa = (*nTOA >> 6) & 0x3FFF;
-  
+
   // Calculate spidertime (in 25ns units)
-  Timestamp25ns = 16384 * (*spider_time) + m_toa;
-  
+  // Timestamp25ns = 16384 + (*spider_time) + m_toa;
+  Timestamp25ns = (*spider_time << 14) | m_toa;
   // TODO: Check if we need to handle rollover according to the Python logic.
-  // We need to come back to see if we are missing an edge case here (i.e. after the bit extension, we still face Timestamp25ns < TDC_timestamp.
-  if (TDC_timestamp> (Timestamp25ns + 0x10000000 ) ) {
+  // We need to come back to see if we are missing an edge case here (i.e. after
+  // the bit extension, we still face Timestamp25ns < TDC_timestamp.
+  if (TDC_timestamp > (Timestamp25ns + 0x400000)) {
     Timestamp25ns = Timestamp25ns | 0x40000000;
   }
-  
+
   // Store the spidertime
   m_spidertime = Timestamp25ns;
   // TOF calculation
@@ -137,7 +137,7 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   pix = pixaddr & 0x7;
   m_x = dcol + (pix >> 2);   // x coordinate
   m_y = spix + (pix & 0x3);  // y coordinate
-  
+
   // adjustment for chip layout
   if (chip_layout_type == 0) {  // single
     m_x += 260;
