@@ -90,7 +90,7 @@ It is a single executable file, `Sophiread`, which can be found in the `build` d
 The current version of the CLI supports the following input arguments:
 
 ```bash
-Sophiread -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>] [-T <tof_imaging_folder>] [-f <tof_filename_base>] [-m <tof_mode>] [-d] [-v]
+Sophiread -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>] [-T <tof_imaging_folder>] [-f <tof_filename_base>] [-m <tof_mode>] [-t <timing_mode>] [-d] [-v]
 ```
 
 - `-i <input_tpx3>`: Input TPX3 file
@@ -100,13 +100,14 @@ Sophiread -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>]
 - `-T <tof_imaging_folder>`: Output folder for TIFF TOF images (optional)
 - `-f <tof_filename_base>`: Base name for TIFF files (default: tof_image)
 - `-m <tof_mode>`: TOF mode: 'hit' or 'neutron' (default: neutron)
+- `-t <timing_mode>`: Timing mode: 'tdc' or 'gdc' (default: tdc)
 - `-d`: Enable debug logging
 - `-v`: Enable verbose logging
 
 One **important** thing to check before using this software is that you need to check your chip layout before using it.
 By default, `Sophiread` is assuming the detector has a `2x2` layout with a 5 pixel gap between chips.
 Each chip has `512x512` pixels.
-If your chip has different spec, you will need to modify the source code to make it work for your detector.
+If your chip has different spec, you will need to modify the source code to make it work for your detector. For the ToF calculation, using tdc mode `-t tdc` (default) for timing calculation is recommended because the GDC signal is unrelaiable with `2x2` layout.
 
 A temporary auto reduction code binary is also available for the commission of [VENUS](https://neutrons.ornl.gov/venus), `venus_auto_reducer`:
 
