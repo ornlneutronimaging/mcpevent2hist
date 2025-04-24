@@ -38,7 +38,7 @@ struct ProgramOptions {
   std::string tof_filename_base = "tof_image";
   std::string tof_mode = "neutron";
   std::string spectra_filen = "Spectra";
-  std::string timing_mode = "gdc";    // Default is GDC mode
+  std::string timing_mode = "tdc";                // Default is TDC mode
   size_t chunk_size = 5ULL * 1024 * 1024 * 1024;  // Default 5GB
   bool debug_logging = false;
   bool verbose = false;
@@ -70,7 +70,8 @@ void print_usage(const char* program_name) {
   spdlog::info(
       "  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: "
       "neutron)");
-  spdlog::info("  -t <timing_mode>         Timing mode: 'gdc' or 'tdc' (default: gdc)");
+  spdlog::info(
+      "  -t <timing_mode>         Timing mode: 'gdc' or 'tdc' (default: gdc)");
   spdlog::info("  -s <spectra_filename>    Output filename for spectra");
   spdlog::info("  -c <chunk_size>          Chunk size in MB (default: 5120)");
   spdlog::info("  -d                       Enable debug logging");
@@ -143,7 +144,7 @@ ProgramOptions parse_arguments(int argc, char* argv[]) {
   if (options.tof_mode != "hit" && options.tof_mode != "neutron") {
     throw std::runtime_error("Invalid TOF mode. Use 'hit' or 'neutron'.");
   }
-  
+
   // Validate timing mode
   if (options.timing_mode != "gdc" && options.timing_mode != "tdc") {
     throw std::runtime_error("Invalid timing mode. Use 'gdc' or 'tdc'.");
@@ -184,7 +185,7 @@ int main(int argc, char* argv[]) {
     spdlog::info("TOF imaging folder: {}", options.output_tof_imaging);
     spdlog::info("TOF filename base: {}", options.tof_filename_base);
     spdlog::info("TOF mode: {}", options.tof_mode);
-    spdlog::info("Timing mode: {}", options.timing_mode);    
+    spdlog::info("Timing mode: {}", options.timing_mode);
     spdlog::info("Chunk size: {} MB", options.chunk_size / (1024 * 1024));
 
     // Load configuration
