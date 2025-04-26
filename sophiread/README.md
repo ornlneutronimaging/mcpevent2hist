@@ -107,7 +107,7 @@ Sophiread -i <input_tpx3> -H <output_hits> -E <output_events> [-u <config_file>]
 One **important** thing to check before using this software is that you need to check your chip layout before using it.
 By default, `Sophiread` is assuming the detector has a `2x2` layout with a 5 pixel gap between chips.
 Each chip has `512x512` pixels.
-If your chip has different spec, you will need to modify the source code to make it work for your detector. For the ToF calculation, using tdc mode `-t tdc` (default) for timing calculation is recommended because the GDC signal is unrelaiable with `2x2` layout.
+If your chip has different spec, you will need to modify the source code to make it work for your detector. For the ToF calculation, using tdc mode `-t tdc` (default) for timing calculation is recommended because the GDC signal is unreliable with `2x2` layout.
 
 A temporary auto reduction code binary is also available for the commission of [VENUS](https://neutrons.ornl.gov/venus), `venus_auto_reducer`:
 
