@@ -139,7 +139,9 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   m_y = spix + (pix & 0x3);  // y coordinate
 
   // The actual pixels  of the gap is 2 pixels instead of 4. We should make this
-  // something configurable in the future. adjustment for chip layout
+  // something configurable in the future.
+  
+  // Adjustment for chip layout
   if (chip_layout_type == 0) {  // single
     m_x += 260;
     // m_y = m_y;

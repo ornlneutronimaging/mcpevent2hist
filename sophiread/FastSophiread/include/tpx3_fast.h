@@ -37,7 +37,10 @@ struct TPX3 {
   TPX3(std::size_t index, int num_packets, int chip_layout_type)
       : index(index),
         num_packets(num_packets),
-        chip_layout_type(chip_layout_type) {
+        chip_layout_type(chip_layout_type),
+        tdc_timestamp(0),
+        gdc_timestamp(0),  // Not using GDC by default
+        timer_lsb32(0) {   // We don't need timer_lsb32 when not using GDC
     hits.reserve(num_packets);  // assuming 1 hit per data packet
   };
 
