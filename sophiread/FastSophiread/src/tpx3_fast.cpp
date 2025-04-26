@@ -249,7 +249,7 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin,
                      ForwardIter bytes_end, unsigned long &tdc_timestamp) {
   // record the starting timestamp
   tpx3h.tdc_timestamp = tdc_timestamp;
-  tpx3h.gdc_timestamp = 0; // Not using GDC
+  tpx3h.gdc_timestamp = 0;  // Not using GDC
   // We don't need timer_lsb32 when not using GDC, but set to 0 for consistency
   tpx3h.timer_lsb32 = 0;
 
@@ -333,18 +333,19 @@ void extractHits(TPX3 &tpx3h, char *raw_bytes, std::size_t size) {
  * @param[in, out] tpx3h
  * @param[in] bytes_begin
  * @param[in] bytes_end
- * @param[in] useGDC Whether to use GDC timestamps (true) or only TDC timestamps (false)
+ * @param[in] useGDC Whether to use GDC timestamps (true) or only TDC timestamps
+ * (false)
  */
 template <typename ForwardIter>
-void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end, bool useGDC) {
+void extractHits(TPX3 &tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end,
+                 bool useGDC) {
   if (useGDC) {
     process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tpx3h.tdc_timestamp,
-                       tpx3h.gdc_timestamp, tpx3h.timer_lsb32, true);
+                         tpx3h.gdc_timestamp, tpx3h.timer_lsb32, true);
   } else {
     process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tpx3h.tdc_timestamp);
   }
 }
-
 
 /**
  * @brief Update the tdc_timestamp with given char_array and gdc_timestamp
@@ -381,7 +382,8 @@ void update_tdc_timestamp(const char *char_array,
  * @param[in] char_array: the char array of the data packet
  * @param[out] tdc_timestamp: the target to update
  */
-void update_tdc_timestamp(const char *char_array, unsigned long &tdc_timestamp) {
+void update_tdc_timestamp(const char *char_array,
+                          unsigned long &tdc_timestamp) {
   // local var for updating tdc_timestamp
   unsigned long *tdclast;
   unsigned long long mytdc = 0;
@@ -492,8 +494,8 @@ void process_tpx3_packets(TPX3 &tpx3h, ForwardIter bytes_begin,
 }
 
 /**
- * @brief Main function to process packets (time data only) in the given TPX3 batch
- * without using GDC timestamp references
+ * @brief Main function to process packets (time data only) in the given TPX3
+ * batch without using GDC timestamp references
  *
  * @tparam ForwardIter
  * @param[in, out] tpx3h
