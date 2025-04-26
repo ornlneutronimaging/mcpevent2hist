@@ -268,19 +268,7 @@ void updateTimestamp(TPX3 &tpx3h, const std::vector<char> &raw_bytes,
   updateTimestamp(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(), tdc_timestamp);
 }
 
-/**
- * @brief Record the given timestamp as starting timestamp of the dataset batch,
- * and evolve the timestamp without using GDC.
- *
- * @param[in, out] tpx3h
- * @param[in] raw_bytes
- * @param[in] size
- * @param[in, out] tdc_timestamp
- */
-void updateTimestamp(TPX3 &tpx3h, char *raw_bytes, std::size_t size,
-                     unsigned long &tdc_timestamp) {
-  updateTimestamp(tpx3h, raw_bytes, raw_bytes + size, tdc_timestamp);
-}
+
 
 /**
  * @brief Get the Hits object
