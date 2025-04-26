@@ -249,7 +249,8 @@ void updateTimestamp(TPX3 &tpx3h, ForwardIter bytes_begin,
                      ForwardIter bytes_end, unsigned long &tdc_timestamp) {
   // record the starting timestamp
   tpx3h.tdc_timestamp = tdc_timestamp;
-  // Note: gdc_timestamp and timer_lsb32 are already initialized to 0 in the TPX3 constructor
+  // Note: gdc_timestamp and timer_lsb32 are already initialized to 0 in the
+  // TPX3 constructor
 
   process_tpx3_packets(tpx3h, bytes_begin, bytes_end, tdc_timestamp, false);
 }
