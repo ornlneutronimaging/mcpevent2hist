@@ -125,45 +125,47 @@ void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &chunk,
   if (useGDC) {
     spdlog::info("Using GDC mode for processing");
     tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [&](const tbb::blocked_range<size_t> &r) {
-                      // Define ABS algorithm with user-defined parameters for
-                      // each thread
-                      auto abs_alg_mt = std::make_unique<ABS>(
-                          config.getABSRadius(), config.getABSMinClusterSize(),
-                          config.getABSSpiderTimeRange());
+                      [&](const tbb::blocked_range<size_t> &r) {
+                        // Define ABS algorithm with user-defined parameters for
+                        // each thread
+                        auto abs_alg_mt = std::make_unique<ABS>(
+                            config.getABSRadius(),
+                            config.getABSMinClusterSize(),
+                            config.getABSSpiderTimeRange());
 
-                      for (size_t i = r.begin(); i != r.end(); ++i) {
-                        auto &tpx3 = batches[i];
-                        extractHits(tpx3, chunk);
+                        for (size_t i = r.begin(); i != r.end(); ++i) {
+                          auto &tpx3 = batches[i];
+                          extractHits(tpx3, chunk);
 
-                        abs_alg_mt->reset();
-                        abs_alg_mt->set_method("centroid");
-                        abs_alg_mt->fit(tpx3.hits);
+                          abs_alg_mt->reset();
+                          abs_alg_mt->set_method("centroid");
+                          abs_alg_mt->fit(tpx3.hits);
 
-                        tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
-                      }
-                    });
+                          tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+                        }
+                      });
   } else {
     spdlog::info("Using TDC mode for processing");
     tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [&](const tbb::blocked_range<size_t> &r) {
-                      // Define ABS algorithm with user-defined parameters for
-                      // each thread
-                      auto abs_alg_mt = std::make_unique<ABS>(
-                          config.getABSRadius(), config.getABSMinClusterSize(),
-                          config.getABSSpiderTimeRange());
+                      [&](const tbb::blocked_range<size_t> &r) {
+                        // Define ABS algorithm with user-defined parameters for
+                        // each thread
+                        auto abs_alg_mt = std::make_unique<ABS>(
+                            config.getABSRadius(),
+                            config.getABSMinClusterSize(),
+                            config.getABSSpiderTimeRange());
 
-                      for (size_t i = r.begin(); i != r.end(); ++i) {
-                        auto &tpx3 = batches[i];
-                        extractHitsTDC(tpx3, chunk);
+                        for (size_t i = r.begin(); i != r.end(); ++i) {
+                          auto &tpx3 = batches[i];
+                          extractHitsTDC(tpx3, chunk);
 
-                        abs_alg_mt->reset();
-                        abs_alg_mt->set_method("centroid");
-                        abs_alg_mt->fit(tpx3.hits);
+                          abs_alg_mt->reset();
+                          abs_alg_mt->set_method("centroid");
+                          abs_alg_mt->fit(tpx3.hits);
 
-                        tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
-                      }
-                    });
+                          tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+                        }
+                      });
   }
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -287,7 +289,8 @@ void updateTOFImages(
         continue;
       }
 
-      auto it = std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
+      auto it =
+          std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
       if (it != tof_bin_edges.begin()) {
         size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
 
@@ -302,8 +305,8 @@ void updateTOFImages(
         double raw_y = entry->iGetY();
 
         // Skip invalid coordinates
-        if (std::isnan(raw_x) || std::isnan(raw_y) ||
-            std::isinf(raw_x) || std::isinf(raw_y)) {
+        if (std::isnan(raw_x) || std::isnan(raw_y) || std::isinf(raw_x) ||
+            std::isinf(raw_y)) {
           continue;
         }
 
@@ -433,9 +436,10 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
         spdlog::debug("tof_ns: {}, tof_ns/1e9: {}", tof_ns, tof_s);
 
         if (const auto it = std::lower_bound(tof_bin_edges.cbegin(),
-                                            tof_bin_edges.cend(), tof_s);
+                                             tof_bin_edges.cend(), tof_s);
             it != tof_bin_edges.cbegin()) {
-          const size_t bin_index = std::distance(tof_bin_edges.cbegin(), it) - 1;
+          const size_t bin_index =
+              std::distance(tof_bin_edges.cbegin(), it) - 1;
 
           // Safety check for bin index
           if (bin_index >= tof_images.size()) {
@@ -448,8 +452,8 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
           double raw_y = entry->iGetY();
 
           // Skip invalid coordinates
-          if (std::isnan(raw_x) || std::isnan(raw_y) ||
-              std::isinf(raw_x) || std::isinf(raw_y)) {
+          if (std::isnan(raw_x) || std::isnan(raw_y) || std::isinf(raw_x) ||
+              std::isinf(raw_y)) {
             continue;
           }
 
