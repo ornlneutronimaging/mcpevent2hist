@@ -115,6 +115,9 @@ Hit::Hit(const char *packet, const unsigned long long TDC_timestamp,
   // Calculate spidertime (in 25ns units)
   // Timestamp25ns = 16384 + (*spider_time) + m_toa;
   Timestamp25ns = (*spider_time << 14) | m_toa;
+
+  // Ensure that Timestamp25ns is greater than or equal to TDC_timestamp
+  // by iteratively extending the bits if necessary.
   // TODO: Check if we need to handle rollover according to the Python logic.
   // We need to come back to see if we are missing an edge case here (i.e. after
   // the bit extension, we still face Timestamp25ns < TDC_timestamp.
