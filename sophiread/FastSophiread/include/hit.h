@@ -52,7 +52,8 @@ class Hit : public IPositionTOF {
       const unsigned long long gdc, const int chip_layout_type);
 
   // simplified constructor that only requires packet and TDC timestamp
-  Hit(const char* packet, const unsigned long long tdc, const int chip_layout_type);
+  Hit(const char* packet, const unsigned long long tdc,
+      const int chip_layout_type);
 
   Hit& operator=(const Hit& hit) {
     m_x = hit.m_x;
