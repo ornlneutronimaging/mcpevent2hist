@@ -226,6 +226,7 @@ void updateTimestamp(TPX3 &tpx3h, const std::vector<char> &raw_bytes,
  * @param[in, out] gdc_timestamp
  * @param[in, out] timer_lsb32
  */
+
 void updateTimestamp(TPX3 &tpx3h, char *raw_bytes, std::size_t size,
                      unsigned long &tdc_timestamp,
                      unsigned long long int &gdc_timestamp,
