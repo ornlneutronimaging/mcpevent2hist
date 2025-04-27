@@ -268,8 +268,6 @@ void updateTimestamp(TPX3 &tpx3h, const std::vector<char> &raw_bytes,
   updateTimestamp(tpx3h, raw_bytes.cbegin(), raw_bytes.cend(), tdc_timestamp);
 }
 
-
-
 /**
  * @brief Get the Hits object
  *
