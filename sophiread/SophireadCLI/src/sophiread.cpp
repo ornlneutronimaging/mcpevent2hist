@@ -71,7 +71,7 @@ void print_usage(const char* program_name) {
       "  -m <tof_mode>            TOF mode: 'hit' or 'neutron' (default: "
       "neutron)");
   spdlog::info(
-      "  -t <timing_mode>         Timing mode: 'gdc' or 'tdc' (default: gdc)");
+      "  -t <timing_mode>         Timing mode: 'gdc' or 'tdc' (default: tdc)");
   spdlog::info("  -s <spectra_filename>    Output filename for spectra");
   spdlog::info("  -c <chunk_size>          Chunk size in MB (default: 5120)");
   spdlog::info("  -d                       Enable debug logging");
