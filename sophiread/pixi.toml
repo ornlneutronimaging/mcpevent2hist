@@ -26,7 +26,7 @@ spdlog = ">=1.15.1,<2"
 nlohmann_json = ">=3.11.3,<4"
 doxygen = ">=1.13.2,<2"
 graphviz = ">=12.2.1,<13"
-pre-commit = ">=4.1.0,<5"
+pre-commit = ">=4.2.0,<5"
 
 [target.linux-64.dependencies]
 gxx_linux-64 = ">=14.2.0,<15"

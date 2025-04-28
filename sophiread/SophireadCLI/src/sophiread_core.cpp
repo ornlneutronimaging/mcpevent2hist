@@ -16,8 +16,10 @@
 #include <tiffio.h>
 
 #include <chrono>
+#include <cmath>  // For std::isnan, std::isinf
 #include <filesystem>
 #include <fstream>
+#include <numeric>  // For std::accumulate
 
 #include "disk_io.h"
 #include "tiff_types.h"
@@ -86,6 +88,30 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches,
 }
 
 /**
+ * @brief Timed locate timestamps without using GDC.
+ *
+ * This overloaded version processes timestamps using only TDC values,
+ * useful for data streams where GDC information is not available or not needed.
+ *
+ * @param[in, out] batches The TPX3 batches to process
+ * @param[in] chunk The raw data chunk
+ * @param[in, out] tdc_timestamp The TDC timestamp to update
+ */
+void timedLocateTimeStamp(std::vector<TPX3> &batches,
+                          const std::vector<char> &chunk,
+                          unsigned long &tdc_timestamp) {
+  auto start = std::chrono::high_resolution_clock::now();
+  for (auto &tpx3 : batches) {
+    updateTimestamp(tpx3, chunk, tdc_timestamp);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count();
+  spdlog::debug("Locate timestamps (TDC only) in chunk: {} s", elapsed / 1e6);
+}
+
+/**
  * @brief Timed hits extraction and clustering via multi-threading.
  *
  * @param[in, out] batches
@@ -93,27 +119,55 @@ void timedLocateTimeStamp(std::vector<TPX3> &batches,
  * @param[in] config
  */
 void timedProcessing(std::vector<TPX3> &batches, const std::vector<char> &chunk,
-                     const IConfig &config) {
+                     const IConfig &config, bool useGDC) {
   auto start = std::chrono::high_resolution_clock::now();
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [&](const tbb::blocked_range<size_t> &r) {
-                      // Define ABS algorithm with user-defined parameters for
-                      // each thread
-                      auto abs_alg_mt = std::make_unique<ABS>(
-                          config.getABSRadius(), config.getABSMinClusterSize(),
-                          config.getABSSpiderTimeRange());
+  // GDC route
+  if (useGDC) {
+    spdlog::info("Using GDC mode for processing");
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
+                      [&](const tbb::blocked_range<size_t> &r) {
+                        // Define ABS algorithm with user-defined parameters for
+                        // each thread
+                        auto abs_alg_mt = std::make_unique<ABS>(
+                            config.getABSRadius(),
+                            config.getABSMinClusterSize(),
+                            config.getABSSpiderTimeRange());
 
-                      for (size_t i = r.begin(); i != r.end(); ++i) {
-                        auto &tpx3 = batches[i];
-                        extractHits(tpx3, chunk);
+                        for (size_t i = r.begin(); i != r.end(); ++i) {
+                          auto &tpx3 = batches[i];
+                          extractHits(tpx3, chunk);
 
-                        abs_alg_mt->reset();
-                        abs_alg_mt->set_method("centroid");
-                        abs_alg_mt->fit(tpx3.hits);
+                          abs_alg_mt->reset();
+                          abs_alg_mt->set_method("centroid");
+                          abs_alg_mt->fit(tpx3.hits);
 
-                        tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
-                      }
-                    });
+                          tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+                        }
+                      });
+  } else {
+    spdlog::info("Using TDC mode for processing");
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
+                      [&](const tbb::blocked_range<size_t> &r) {
+                        // Define ABS algorithm with user-defined parameters for
+                        // each thread
+                        auto abs_alg_mt = std::make_unique<ABS>(
+                            config.getABSRadius(),
+                            config.getABSMinClusterSize(),
+                            config.getABSSpiderTimeRange());
+
+                        for (size_t i = r.begin(); i != r.end(); ++i) {
+                          auto &tpx3 = batches[i];
+                          extractHitsTDC(tpx3, chunk);
+
+                          abs_alg_mt->reset();
+                          abs_alg_mt->set_method("centroid");
+                          abs_alg_mt->fit(tpx3.hits);
+
+                          tpx3.neutrons = abs_alg_mt->get_events(tpx3.hits);
+                        }
+                      });
+  }
+
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
@@ -185,6 +239,12 @@ void updateTOFImages(
     std::vector<std::vector<std::vector<unsigned int>>> &tof_images,
     const TPX3 &batch, double super_resolution,
     const std::vector<double> &tof_bin_edges, const std::string &mode) {
+  // Safety check for empty or invalid inputs
+  if (tof_images.empty() || tof_bin_edges.size() < 2) {
+    spdlog::error("Invalid TOF images or bin edges");
+    return;
+  }
+
   int dim_x = static_cast<int>(517 * super_resolution);
   int dim_y = static_cast<int>(517 * super_resolution);
 
@@ -207,16 +267,58 @@ void updateTOFImages(
   }();
 
   for (const auto &entry : entries) {
-    double tof_s = entry->iGetTOF_ns() / 1e9;
-    auto it =
-        std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
-    if (it != tof_bin_edges.begin()) {
-      size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
-      int x = std::round(entry->iGetX() * super_resolution);
-      int y = std::round(entry->iGetY() * super_resolution);
-      if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
-        tof_images[bin_index][y][x]++;
+    try {
+      // Safety check for null entry
+      if (!entry) {
+        continue;
       }
+
+      double tof_ns = entry->iGetTOF_ns();
+
+      // Safety check for invalid TOF values
+      if (tof_ns < 0 || std::isnan(tof_ns) || std::isinf(tof_ns)) {
+        spdlog::debug("Skipping entry with invalid TOF: {}", tof_ns);
+        continue;
+      }
+
+      double tof_s = tof_ns / 1e9;
+
+      // Safety check to make sure tof_s is in range
+      if (tof_s < tof_bin_edges.front() || tof_s >= tof_bin_edges.back()) {
+        spdlog::debug("TOF out of bin range: {}", tof_s);
+        continue;
+      }
+
+      auto it =
+          std::lower_bound(tof_bin_edges.begin(), tof_bin_edges.end(), tof_s);
+      if (it != tof_bin_edges.begin()) {
+        size_t bin_index = std::distance(tof_bin_edges.begin(), it) - 1;
+
+        // Safety check for bin index
+        if (bin_index >= tof_images.size()) {
+          spdlog::debug("Bin index out of range: {}", bin_index);
+          continue;
+        }
+
+        // Check and clamp x,y values to valid ranges
+        double raw_x = entry->iGetX();
+        double raw_y = entry->iGetY();
+
+        // Skip invalid coordinates
+        if (std::isnan(raw_x) || std::isnan(raw_y) || std::isinf(raw_x) ||
+            std::isinf(raw_y)) {
+          continue;
+        }
+
+        int x = std::round(raw_x * super_resolution);
+        int y = std::round(raw_y * super_resolution);
+
+        if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
+          tof_images[bin_index][y][x]++;
+        }
+      }
+    } catch (const std::exception &e) {
+      spdlog::error("Exception in updateTOFImages: {}", e.what());
     }
   }
 }
@@ -306,29 +408,67 @@ std::vector<std::vector<std::vector<unsigned int>>> timedCreateTOFImages(
     }
 
     for (const auto &entry : entries) {
-      total_entries++;
-      const double tof_ns = entry->iGetTOF_ns();
-      const double tof_s = tof_ns / 1e9;
-
-      // Find the correct TOF bin
-      // NOTE: tof_bin_edges are in sec, and tof_ns are in nano secs
-      spdlog::debug("tof_ns: {}, tof_ns/1e9: {}", tof_ns, tof_s);
-
-      if (const auto it = std::lower_bound(tof_bin_edges.cbegin(),
-                                           tof_bin_edges.cend(), tof_s);
-          it != tof_bin_edges.cbegin()) {
-        const size_t bin_index = std::distance(tof_bin_edges.cbegin(), it) - 1;
-
-        // Calculate the x and y indices in the 2D histogram
-        const int x = std::round(entry->iGetX() * super_resolution);
-        const int y = std::round(entry->iGetY() * super_resolution);
-
-        // Ensure x and y are within bounds
-        if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
-          // Increment the count in the appropriate bin and position
-          tof_images[bin_index][y][x]++;
-          binned_entries++;
+      try {
+        // Safety check for null entry
+        if (!entry) {
+          continue;
         }
+
+        total_entries++;
+        const double tof_ns = entry->iGetTOF_ns();
+
+        // Safety check for invalid TOF values
+        if (tof_ns < 0 || std::isnan(tof_ns) || std::isinf(tof_ns)) {
+          spdlog::debug("Skipping entry with invalid TOF: {}", tof_ns);
+          continue;
+        }
+
+        const double tof_s = tof_ns / 1e9;
+
+        // Safety check to make sure tof_s is in range
+        if (tof_s < tof_bin_edges.front() || tof_s >= tof_bin_edges.back()) {
+          spdlog::debug("TOF out of bin range: {}", tof_s);
+          continue;
+        }
+
+        // Find the correct TOF bin
+        // NOTE: tof_bin_edges are in sec, and tof_ns are in nano secs
+        spdlog::debug("tof_ns: {}, tof_ns/1e9: {}", tof_ns, tof_s);
+
+        if (const auto it = std::lower_bound(tof_bin_edges.cbegin(),
+                                             tof_bin_edges.cend(), tof_s);
+            it != tof_bin_edges.cbegin()) {
+          const size_t bin_index =
+              std::distance(tof_bin_edges.cbegin(), it) - 1;
+
+          // Safety check for bin index
+          if (bin_index >= tof_images.size()) {
+            spdlog::debug("Bin index out of range: {}", bin_index);
+            continue;
+          }
+
+          // Calculate the x and y indices in the 2D histogram
+          double raw_x = entry->iGetX();
+          double raw_y = entry->iGetY();
+
+          // Skip invalid coordinates
+          if (std::isnan(raw_x) || std::isnan(raw_y) || std::isinf(raw_x) ||
+              std::isinf(raw_y)) {
+            continue;
+          }
+
+          const int x = std::round(raw_x * super_resolution);
+          const int y = std::round(raw_y * super_resolution);
+
+          // Ensure x and y are within bounds
+          if (x >= 0 && x < dim_x && y >= 0 && y < dim_y) {
+            // Increment the count in the appropriate bin and position
+            tof_images[bin_index][y][x]++;
+            binned_entries++;
+          }
+        }
+      } catch (const std::exception &e) {
+        spdlog::error("Exception in timedCreateTOFImages: {}", e.what());
       }
     }
   }
