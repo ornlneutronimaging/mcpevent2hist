@@ -19,7 +19,7 @@ jobs:
         working-directory: sophiread
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.4
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
           manifest-path: sophiread/pixi.toml
@@ -35,7 +35,7 @@ jobs:
         working-directory: sophiread
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.4
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
           manifest-path: sophiread/pixi.toml
