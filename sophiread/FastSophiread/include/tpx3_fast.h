@@ -37,13 +37,20 @@ struct TPX3 {
   TPX3(std::size_t index, int num_packets, int chip_layout_type)
       : index(index),
         num_packets(num_packets),
-        chip_layout_type(chip_layout_type) {
+        chip_layout_type(chip_layout_type),
+        tdc_timestamp(0),
+        gdc_timestamp(0),       // Not using GDC by default
+        timer_lsb32(0) {        // We don't need timer_lsb32 when not using GDC
     hits.reserve(num_packets);  // assuming 1 hit per data packet
   };
 
   void emplace_back(const char* packet, const unsigned long long tdc,
                     const unsigned long long gdc) {
     hits.emplace_back(packet, tdc, gdc, chip_layout_type);
+  };
+
+  void emplace_back(const char* packet, const unsigned long long tdc) {
+    hits.emplace_back(packet, tdc, chip_layout_type);
   };
 };
 
@@ -74,13 +81,24 @@ void updateTimestamp(TPX3& tpx3h, char* raw_bytes, std::size_t size,
                      unsigned long& timer_lsb32);
 
 template <typename ForwardIter>
+void updateTimestamp(TPX3& tpx3h, ForwardIter bytes_begin,
+                     ForwardIter bytes_end, unsigned long& tdc_timestamp);
+void updateTimestamp(TPX3& tpx3h, const std::vector<char>& raw_bytes,
+                     unsigned long& tdc_timestamp);
+void updateTimestamp(TPX3& tpx3h, char* raw_bytes, std::size_t size,
+                     unsigned long& tdc_timestamp);
+
+template <typename ForwardIter>
 void extractHits(TPX3& tpx3h, ForwardIter bytes_begin, ForwardIter bytes_end);
 void extractHits(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 void extractHits(TPX3& tpx3h, char* raw_bytes, std::size_t size);
+void extractHitsTDC(TPX3& tpx3h, const std::vector<char>& raw_bytes);
 
 void update_tdc_timestamp(const char* char_array,
                           const unsigned long long& gdc_timestamp,
                           unsigned long& tdc_timestamp);
+
+void update_tdc_timestamp(const char* char_array, unsigned long& tdc_timestamp);
 
 void update_gdc_timestamp_and_timer_lsb32(const char* char_array,
                                           unsigned long& timer_lsb32,
@@ -91,3 +109,8 @@ void process_tpx3_packets(TPX3& tpx3h, ForwardIter bytes_begin,
                           ForwardIter bytes_end, unsigned long& tdc_timestamp,
                           unsigned long long int& gdc_timestamp,
                           unsigned long& timer_lsb32, bool extract_hits = true);
+
+template <typename ForwardIter>
+void process_tpx3_packets(TPX3& tpx3h, ForwardIter bytes_begin,
+                          ForwardIter bytes_end, unsigned long& tdc_timestamp,
+                          bool extract_hits = true);

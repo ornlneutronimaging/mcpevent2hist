@@ -40,6 +40,13 @@ find_package(TIFF REQUIRED)
 find_package(spdlog 1.8.0 REQUIRED)
 find_package(fmt 7.0.0 REQUIRED)
 
+# Set SPDLOG level
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO)
+else()
+  add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
+endif()
+
 # Testing setup
 enable_testing()
 include(GoogleTest)

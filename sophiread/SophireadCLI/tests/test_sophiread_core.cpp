@@ -107,7 +107,7 @@ TEST_F(SophireadCoreTest, TimedProcessing) {
   std::vector<char> raw_data(8000, 'T');         // Simulating TPX3 data
   std::vector<TPX3> batches = {TPX3(0, 10, 0)};  // Create a dummy TPX3 batch
   JSONConfigParser config = JSONConfigParser::createDefault();
-  sophiread::timedProcessing(batches, raw_data, config);
+  sophiread::timedProcessing(batches, raw_data, config, true);
   // Add assertions based on expected behavior
   // No value to check as we are using dummy data
 }
