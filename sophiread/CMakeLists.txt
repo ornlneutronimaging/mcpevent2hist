@@ -64,9 +64,20 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-march=native -ffast-math -pthread -Wall -Wextra)
 endif()
 
-# Add FastSophiread library
-add_subdirectory(FastSophiread)
-add_subdirectory(SophireadCLI)
+# Build options
+option(BUILD_LEGACY "Build legacy FastSophiread implementation" OFF)
+
+# Add TDCSophiread library (default)
+add_subdirectory(TDCSophiread)
+
+# Add legacy implementation (optional)
+if(BUILD_LEGACY)
+    message(STATUS "Building legacy FastSophiread implementation")
+    add_subdirectory(FastSophiread)
+    add_subdirectory(SophireadCLI)
+else()
+    message(STATUS "Skipping legacy FastSophiread (use -DBUILD_LEGACY=ON to enable)")
+endif()
 
 # ----------------- PACKAGE CONFIGURATION ----------------- #
 
