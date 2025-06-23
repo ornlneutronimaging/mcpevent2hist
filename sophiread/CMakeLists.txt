@@ -72,11 +72,12 @@ add_subdirectory(TDCSophiread)
 
 # Add legacy implementation (optional)
 if(BUILD_LEGACY)
-    message(STATUS "Building legacy FastSophiread implementation")
-    add_subdirectory(FastSophiread)
-    add_subdirectory(SophireadCLI)
+  message(STATUS "Building legacy FastSophiread implementation")
+  add_subdirectory(FastSophiread)
+  add_subdirectory(SophireadCLI)
 else()
-    message(STATUS "Skipping legacy FastSophiread (use -DBUILD_LEGACY=ON to enable)")
+  message(
+    STATUS "Skipping legacy FastSophiread (use -DBUILD_LEGACY=ON to enable)")
 endif()
 
 # ----------------- PACKAGE CONFIGURATION ----------------- #
