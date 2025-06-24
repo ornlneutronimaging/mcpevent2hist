@@ -1,0 +1,100 @@
+// TDCSophiread Hit Structure and Conversion
+// TDC-only hit data structure and packet conversion functions
+// SPDX-License-Identifier: GPL-3.0+
+
+#pragma once
+
+#include <cstdint>
+
+#include "tdc_detector_config.h"
+#include "tdc_packet.h"
+
+namespace tdcsophiread {
+
+/**
+ * @brief TDC-only hit data structure
+ *
+ * Simplified hit representation containing only essential data for TDC-based
+ * processing. This structure is the output of TPX3 packet processing and
+ * input to higher-level analysis.
+ *
+ * All timing values are in 25ns units (LSB = 25 nanoseconds)
+ */
+struct TDCHit {
+  uint16_t x;       ///< Global X coordinate (after chip mapping)
+  uint16_t y;       ///< Global Y coordinate (after chip mapping)
+  uint32_t tof;     ///< Time-of-flight (25ns units, after TDC correction)
+  uint16_t tot;     ///< Time-over-threshold (10-bit raw value)
+  uint8_t chip_id;  ///< Chip identifier (0-3)
+  uint32_t
+      timestamp;  ///< Hit timestamp (25ns units, after rollover correction)
+
+  /**
+   * @brief Default constructor
+   */
+  TDCHit() = default;
+
+  /**
+   * @brief Constructor with all fields
+   */
+  TDCHit(uint16_t x, uint16_t y, uint32_t tof, uint16_t tot, uint8_t chip_id,
+         uint32_t timestamp)
+      : x(x),
+        y(y),
+        tof(tof),
+        tot(tot),
+        chip_id(chip_id),
+        timestamp(timestamp) {}
+};
+
+/**
+ * @brief Convert TPX3 hit packet to TDCHit with TDC correction
+ *
+ * Performs the complete packet-to-hit conversion including:
+ * 1. Extract pixel coordinates and timing from packet
+ * 2. Apply rollover detection and correction
+ * 3. Calculate time-of-flight with missing TDC correction
+ * 4. Map local chip coordinates to global detector coordinates
+ *
+ * Based on Python reference implementation from Vlad's notebook.
+ *
+ * @param packet TPX3 hit packet to convert
+ * @param chip_id Current chip ID (from TPX3 header)
+ * @param tdc_timestamp Current TDC timestamp for this chip (25ns units)
+ * @param config Detector configuration for coordinate mapping and TDC frequency
+ * @return TDCHit Converted hit with global coordinates and corrected TOF
+ *
+ * @throws std::invalid_argument if packet is not a hit packet
+ */
+TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
+                          uint32_t tdc_timestamp, const DetectorConfig& config);
+
+/**
+ * @brief Apply missing TDC correction to time-of-flight
+ *
+ * Implements the critical algorithm from Python reference:
+ * if TOF * 25ns > 1/TDC_frequency, subtract one TDC period
+ *
+ * This corrects for missing TDC pulses in the data stream.
+ *
+ * @param tof_uncorrected Raw time-of-flight in 25ns units
+ * @param tdc_frequency TDC frequency in Hz (e.g., 60.0 for VENUS)
+ * @return uint32_t Corrected time-of-flight in 25ns units
+ */
+uint32_t applyMissingTDCCorrection(uint32_t tof_uncorrected,
+                                   double tdc_frequency);
+
+/**
+ * @brief Detect and correct timestamp rollover
+ *
+ * Implements rollover detection from Python reference:
+ * if hit_timestamp + 0x400000 < tdc_timestamp, extend with 0x40000000
+ *
+ * @param hit_timestamp 30-bit hit timestamp from packet
+ * @param tdc_timestamp Current TDC timestamp
+ * @return uint32_t Extended timestamp if rollover detected, otherwise original
+ */
+uint32_t correctTimestampRollover(uint32_t hit_timestamp,
+                                  uint32_t tdc_timestamp);
+
+}  // namespace tdcsophiread

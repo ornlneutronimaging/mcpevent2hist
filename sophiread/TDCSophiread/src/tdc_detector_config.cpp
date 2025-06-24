@@ -131,13 +131,29 @@ std::pair<int, int> DetectorConfig::mapChipToGlobal(uint16_t chip_id,
         ", " + std::to_string(m_ChipSizeY - 1) + ")");
   }
 
-  // Calculate chip row and column from chip_id
-  uint16_t chip_row = chip_id / m_ChipsPerRow;
-  uint16_t chip_col = chip_id % m_ChipsPerRow;
+  // CRITICAL: Use exact notebook mapping for correctness
+  // This matches the hardcoded transformations in
+  // Vlad_method_Bragg_edge_TDC_correction.ipynb
+  int global_x = local_x;
+  int global_y = local_y;
 
-  // Calculate global coordinates
-  int global_x = chip_col * (m_ChipSizeX + m_ChipGapPixels) + local_x;
-  int global_y = chip_row * (m_ChipSizeY + m_ChipGapPixels) + local_y;
+  if (chip_id == 0) {
+    // Chip 0: m_x += 260
+    global_x = local_x + 260;
+    global_y = local_y;
+  } else if (chip_id == 1) {
+    // Chip 1: m_x = 255 - m_x + 260, m_y = 255 - m_y + 260
+    global_x = 255 - local_x + 260;
+    global_y = 255 - local_y + 260;
+  } else if (chip_id == 2) {
+    // Chip 2: m_x = 255 - m_x, m_y = 255 - m_y + 260
+    global_x = 255 - local_x;
+    global_y = 255 - local_y + 260;
+  } else if (chip_id == 3) {
+    // Chip 3: NO transformation in notebook - stays as local coordinates
+    global_x = local_x;
+    global_y = local_y;
+  }
 
   return {global_x, global_y};
 }

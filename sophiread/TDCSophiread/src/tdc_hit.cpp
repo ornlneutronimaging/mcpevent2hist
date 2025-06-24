@@ -1,0 +1,76 @@
+// TDCSophiread Hit Conversion Implementation
+// SPDX-License-Identifier: GPL-3.0+
+
+#include "tdc_hit.h"
+
+#include <stdexcept>
+
+namespace tdcsophiread {
+
+TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
+                          uint32_t tdc_timestamp,
+                          const DetectorConfig& config) {
+  // Validate input
+  if (!packet.isHit()) {
+    throw std::invalid_argument("Packet is not a hit packet");
+  }
+
+  // Extract pixel coordinates (local to chip)
+  auto [local_x, local_y] = packet.getPixelCoordinates();
+
+  // Extract timing information
+  uint32_t hit_timestamp = packet.getTimestamp25ns();
+  uint16_t tot = packet.getToT();
+
+  // Apply rollover correction to timestamp
+  uint32_t corrected_timestamp =
+      correctTimestampRollover(hit_timestamp, tdc_timestamp);
+
+  // Calculate time-of-flight (only if timestamp >= TDC timestamp)
+  uint32_t tof = 0;
+  if (corrected_timestamp >= tdc_timestamp) {
+    uint32_t raw_tof = corrected_timestamp - tdc_timestamp;
+
+    // Apply missing TDC correction
+    tof = applyMissingTDCCorrection(raw_tof, config.getTdcFrequency());
+  }
+
+  // Map local chip coordinates to global detector coordinates
+  auto [global_x, global_y] = config.mapChipToGlobal(chip_id, local_x, local_y);
+
+  // Create and return TDCHit
+  return TDCHit(global_x, global_y, tof, tot, chip_id, corrected_timestamp);
+}
+
+uint32_t applyMissingTDCCorrection(uint32_t tof_uncorrected,
+                                   double tdc_frequency) {
+  // Convert TOF to seconds: TOF * 25ns
+  double tof_seconds = tof_uncorrected * 25e-9;
+
+  // Calculate TDC period in seconds
+  double tdc_period_seconds = 1.0 / tdc_frequency;
+
+  // Check if correction is needed (Python: if TOF*25/1e9 > 1/TDC_frequency)
+  if (tof_seconds > tdc_period_seconds) {
+    // Subtract one TDC period (Python: TOF - (1/TDC_frequency)*1e9/25)
+    // Use proper rounding instead of truncation
+    uint32_t correction_25ns =
+        static_cast<uint32_t>(tdc_period_seconds * 1e9 / 25 + 0.5);
+    return tof_uncorrected - correction_25ns;
+  }
+
+  return tof_uncorrected;
+}
+
+uint32_t correctTimestampRollover(uint32_t hit_timestamp,
+                                  uint32_t tdc_timestamp) {
+  // Python rollover detection: if Timestamp25ns + 0x400000 < TDC_Timestamp25ns
+  if ((hit_timestamp + 0x400000) < tdc_timestamp) {
+    // Extend timestamp with rollover bit
+    return hit_timestamp | 0x40000000;
+  }
+
+  return hit_timestamp;
+}
+
+}  // namespace tdcsophiread

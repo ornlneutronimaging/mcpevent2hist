@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.20)
 message(STATUS "Configuring TDCSophiread (TDC-only implementation)")
 
 # Source files (TDD implementation in progress)
-set(TDC_SOURCES src/tdc_detector_config.cpp src/tdc_io.cpp)
+set(TDC_SOURCES src/tdc_detector_config.cpp src/tdc_io.cpp src/tdc_hit.cpp)
 
 # Create TDCSophiread library target
 add_library(TDCSophiread ${TDC_SOURCES})
@@ -62,6 +62,12 @@ add_tdc_test(detector_config)
 
 # TDD Test 2: Memory-mapped I/O (tests written FIRST)
 add_tdc_test(io)
+
+# TDD Test 3: TPX3 Packet parsing (tests written FIRST)
+add_tdc_test(packet)
+
+# TDD Test 4: Hit conversion and TDC correction (tests written FIRST)
+add_tdc_test(hit)
 
 # Note: Additional test targets will be added incrementally following TDD
 # approach Each test will be written BEFORE the corresponding implementation

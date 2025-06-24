@@ -144,25 +144,25 @@ TEST_F(TDCDetectorConfigTest, ProvidesCoordinateMapping) {
 
   auto config = DetectorConfig::venusDefaults();
 
-  // Test coordinate mapping for different chips
+  // Test coordinate mapping using exact transformations from Python reference
+  // These match the hardcoded mappings in
+  // Vlad_method_Bragg_edge_TDC_correction.ipynb
+
   auto [global_x0, global_y0] = config.mapChipToGlobal(0, 100, 150);
-  EXPECT_EQ(global_x0, 100);  // Chip 0: no offset
-  EXPECT_EQ(global_y0, 150);
+  EXPECT_EQ(global_x0, 100 + 260);  // Chip 0: x += 260
+  EXPECT_EQ(global_y0, 150);        // y unchanged
 
-  // Test chip 1 (offset by chip size + gap)
   auto [global_x1, global_y1] = config.mapChipToGlobal(1, 100, 150);
-  EXPECT_EQ(global_x1, 100 + 256 + 2);  // x + chip_size + gap
-  EXPECT_EQ(global_y1, 150);            // Same row
+  EXPECT_EQ(global_x1, 255 - 100 + 260);  // Chip 1: x = 255 - x + 260 = 415
+  EXPECT_EQ(global_y1, 255 - 150 + 260);  // y = 255 - y + 260 = 365
 
-  // Test chip 2 (next row)
   auto [global_x2, global_y2] = config.mapChipToGlobal(2, 100, 150);
-  EXPECT_EQ(global_x2, 100);            // Same column as chip 0
-  EXPECT_EQ(global_y2, 150 + 256 + 2);  // y + chip_size + gap
+  EXPECT_EQ(global_x2, 255 - 100);        // Chip 2: x = 255 - x = 155
+  EXPECT_EQ(global_y2, 255 - 150 + 260);  // y = 255 - y + 260 = 365
 
-  // Test chip 3
   auto [global_x3, global_y3] = config.mapChipToGlobal(3, 100, 150);
-  EXPECT_EQ(global_x3, 100 + 256 + 2);  // Same column as chip 1
-  EXPECT_EQ(global_y3, 150 + 256 + 2);  // Same row as chip 2
+  EXPECT_EQ(global_x3, 100);  // Chip 3: x unchanged (NO transformation)
+  EXPECT_EQ(global_y3, 150);  // y unchanged
 
   // Test invalid chip ID
   EXPECT_THROW(config.mapChipToGlobal(4, 100, 150), std::invalid_argument);
