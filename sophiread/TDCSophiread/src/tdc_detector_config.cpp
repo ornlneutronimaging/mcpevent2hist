@@ -17,14 +17,31 @@ DetectorConfig DetectorConfig::venusDefaults() {
   config.m_TdcFrequency = 60.0;  // Hz (SNS default)
   config.m_EnableMissingTdcCorrection = true;
 
-  config.m_ChipGapPixels = 2;  // VENUS TPX3 default
-  config.m_ChipsPerRow = 2;
-  config.m_ChipsPerCol = 2;
   config.m_ChipSizeX = 256;
   config.m_ChipSizeY = 256;
 
   config.m_SuperResolutionFactor =
       4;  // 4x4 sub-pixels per pixel (VENUS default)
+
+  // Initialize transformation matrices to match the exact Python reference
+  // These hardcoded values come from
+  // Vlad_method_Bragg_edge_TDC_correction.ipynb
+  config.m_ChipTransforms.resize(4);
+
+  // Chip 0: x += 260, y unchanged -> [[1, 0, 260], [0, 1, 0]]
+  config.m_ChipTransforms[0] = ChipTransform(1.0, 0.0, 260.0, 0.0, 1.0, 0.0);
+
+  // Chip 1: x = 255 - x + 260, y = 255 - y + 260 -> [[-1, 0, 515], [0, -1,
+  // 515]]
+  config.m_ChipTransforms[1] =
+      ChipTransform(-1.0, 0.0, 515.0, 0.0, -1.0, 515.0);
+
+  // Chip 2: x = 255 - x, y = 255 - y + 260 -> [[-1, 0, 255], [0, -1, 515]]
+  config.m_ChipTransforms[2] =
+      ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 515.0);
+
+  // Chip 3: x unchanged, y unchanged -> [[1, 0, 0], [0, 1, 0]]
+  config.m_ChipTransforms[3] = ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
   config.validateConfig();
   return config;
@@ -72,21 +89,9 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
     }
   }
 
-  // Load chip layout parameters
+  // Load chip parameters
   if (detector.contains("chip_layout")) {
     const auto& layout = detector["chip_layout"];
-
-    if (layout.contains("chip_gap_pixels")) {
-      detector_config.m_ChipGapPixels = layout["chip_gap_pixels"];
-    }
-
-    if (layout.contains("chips_per_row")) {
-      detector_config.m_ChipsPerRow = layout["chips_per_row"];
-    }
-
-    if (layout.contains("chips_per_col")) {
-      detector_config.m_ChipsPerCol = layout["chips_per_col"];
-    }
 
     if (layout.contains("chip_size_x")) {
       detector_config.m_ChipSizeX = layout["chip_size_x"];
@@ -106,6 +111,47 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
     }
   }
 
+  // Load chip transformation matrices
+  if (detector.contains("chip_transformations")) {
+    const auto& transformations = detector["chip_transformations"];
+
+    if (transformations.is_array()) {
+      for (const auto& transform_config : transformations) {
+        if (transform_config.contains("chip_id") &&
+            transform_config.contains("matrix")) {
+          uint16_t chip_id = transform_config["chip_id"];
+          const auto& matrix = transform_config["matrix"];
+
+          // Validate matrix format: [[a, b, tx], [c, d, ty]]
+          if (matrix.is_array() && matrix.size() == 2) {
+            const auto& row1 = matrix[0];
+            const auto& row2 = matrix[1];
+
+            if (row1.is_array() && row1.size() == 3 && row2.is_array() &&
+                row2.size() == 3) {
+              ChipTransform transform(row1[0], row1[1], row1[2],  // a, b, tx
+                                      row2[0], row2[1], row2[2]   // c, d, ty
+              );
+              detector_config.setChipTransform(chip_id, transform);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // If no transformations specified, use VENUS defaults
+    // This ensures backward compatibility with existing JSON files
+    detector_config.m_ChipTransforms.resize(4);
+    detector_config.m_ChipTransforms[0] =
+        ChipTransform(1.0, 0.0, 260.0, 0.0, 1.0, 0.0);
+    detector_config.m_ChipTransforms[1] =
+        ChipTransform(-1.0, 0.0, 515.0, 0.0, -1.0, 515.0);
+    detector_config.m_ChipTransforms[2] =
+        ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 515.0);
+    detector_config.m_ChipTransforms[3] =
+        ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  }
+
   detector_config.validateConfig();
   return detector_config;
 }
@@ -116,11 +162,10 @@ std::pair<int, int> DetectorConfig::mapChipToGlobal(uint16_t chip_id,
                                                     uint16_t local_x,
                                                     uint16_t local_y) const {
   // Validate chip_id
-  uint16_t total_chips = m_ChipsPerRow * m_ChipsPerCol;
-  if (chip_id >= total_chips) {
-    throw std::invalid_argument("Invalid chip_id: " + std::to_string(chip_id) +
-                                " (max: " + std::to_string(total_chips - 1) +
-                                ")");
+  if (chip_id >= m_ChipTransforms.size()) {
+    throw std::invalid_argument(
+        "Invalid chip_id: " + std::to_string(chip_id) +
+        " (max: " + std::to_string(m_ChipTransforms.size() - 1) + ")");
   }
 
   // Validate local coordinates
@@ -131,31 +176,26 @@ std::pair<int, int> DetectorConfig::mapChipToGlobal(uint16_t chip_id,
         ", " + std::to_string(m_ChipSizeY - 1) + ")");
   }
 
-  // CRITICAL: Use exact notebook mapping for correctness
-  // This matches the hardcoded transformations in
-  // Vlad_method_Bragg_edge_TDC_correction.ipynb
-  int global_x = local_x;
-  int global_y = local_y;
+  // Apply transformation matrix for the specified chip
+  return m_ChipTransforms[chip_id].apply(local_x, local_y);
+}
 
-  if (chip_id == 0) {
-    // Chip 0: m_x += 260
-    global_x = local_x + 260;
-    global_y = local_y;
-  } else if (chip_id == 1) {
-    // Chip 1: m_x = 255 - m_x + 260, m_y = 255 - m_y + 260
-    global_x = 255 - local_x + 260;
-    global_y = 255 - local_y + 260;
-  } else if (chip_id == 2) {
-    // Chip 2: m_x = 255 - m_x, m_y = 255 - m_y + 260
-    global_x = 255 - local_x;
-    global_y = 255 - local_y + 260;
-  } else if (chip_id == 3) {
-    // Chip 3: NO transformation in notebook - stays as local coordinates
-    global_x = local_x;
-    global_y = local_y;
+const ChipTransform& DetectorConfig::getChipTransform(uint16_t chip_id) const {
+  if (chip_id >= m_ChipTransforms.size()) {
+    throw std::invalid_argument(
+        "Invalid chip_id: " + std::to_string(chip_id) +
+        " (max: " + std::to_string(m_ChipTransforms.size() - 1) + ")");
   }
+  return m_ChipTransforms[chip_id];
+}
 
-  return {global_x, global_y};
+void DetectorConfig::setChipTransform(uint16_t chip_id,
+                                      const ChipTransform& transform) {
+  if (chip_id >= m_ChipTransforms.size()) {
+    // Resize if necessary
+    m_ChipTransforms.resize(chip_id + 1);
+  }
+  m_ChipTransforms[chip_id] = transform;
 }
 
 // ==================== PRIVATE METHODS ====================
@@ -167,17 +207,7 @@ void DetectorConfig::validateConfig() const {
                                 std::to_string(m_TdcFrequency));
   }
 
-  // Validate chip layout parameters
-  if (m_ChipsPerRow == 0) {
-    throw std::invalid_argument("Chips per row must be positive, got: " +
-                                std::to_string(m_ChipsPerRow));
-  }
-
-  if (m_ChipsPerCol == 0) {
-    throw std::invalid_argument("Chips per column must be positive, got: " +
-                                std::to_string(m_ChipsPerCol));
-  }
-
+  // Validate chip parameters
   if (m_ChipSizeX == 0) {
     throw std::invalid_argument("Chip size X must be positive, got: " +
                                 std::to_string(m_ChipSizeX));

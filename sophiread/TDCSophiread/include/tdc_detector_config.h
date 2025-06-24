@@ -7,8 +7,69 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace tdcsophiread {
+
+/**
+ * @brief 2D affine transformation matrix for chip coordinate mapping
+ *
+ * Represents a 2x3 affine transformation matrix:
+ * [a  b  tx]
+ * [c  d  ty]
+ *
+ * Transforms local chip coordinates to global detector coordinates:
+ * global_x = a * local_x + b * local_y + tx
+ * global_y = c * local_x + d * local_y + ty
+ *
+ * Common transformations:
+ * - Identity: [[1,0,0], [0,1,0]]
+ * - Translation: [[1,0,tx], [0,1,ty]]
+ * - X-flip: [[-1,0,255], [0,1,0]]
+ * - Y-flip: [[1,0,0], [0,-1,255]]
+ * - 180° rotation: [[-1,0,255], [0,-1,255]]
+ */
+struct ChipTransform {
+  double matrix[2][3];  // 2x3 affine transformation matrix
+
+  /**
+   * @brief Default constructor - creates identity transform
+   */
+  ChipTransform() {
+    matrix[0][0] = 1.0;
+    matrix[0][1] = 0.0;
+    matrix[0][2] = 0.0;  // [1, 0, 0]
+    matrix[1][0] = 0.0;
+    matrix[1][1] = 1.0;
+    matrix[1][2] = 0.0;  // [0, 1, 0]
+  }
+
+  /**
+   * @brief Construct transform from matrix elements
+   */
+  ChipTransform(double a, double b, double tx, double c, double d, double ty) {
+    matrix[0][0] = a;
+    matrix[0][1] = b;
+    matrix[0][2] = tx;
+    matrix[1][0] = c;
+    matrix[1][1] = d;
+    matrix[1][2] = ty;
+  }
+
+  /**
+   * @brief Apply transformation to local coordinates
+   * @param local_x Local X coordinate within chip
+   * @param local_y Local Y coordinate within chip
+   * @return Pair of (global_x, global_y) coordinates
+   */
+  std::pair<int, int> apply(uint16_t local_x, uint16_t local_y) const {
+    int global_x = static_cast<int>(matrix[0][0] * local_x +
+                                    matrix[0][1] * local_y + matrix[0][2]);
+    int global_y = static_cast<int>(matrix[1][0] * local_x +
+                                    matrix[1][1] * local_y + matrix[1][2]);
+    return {global_x, global_y};
+  }
+};
 
 /**
  * @brief Detector configuration class for TDC-only TPX3 processing
@@ -68,25 +129,7 @@ class DetectorConfig {
     return m_EnableMissingTdcCorrection;
   }
 
-  // ==================== CHIP LAYOUT PARAMETERS ====================
-
-  /**
-   * @brief Get gap between chips in pixels
-   * @return Chip gap in pixels (default: 2 for VENUS)
-   */
-  uint16_t getChipGapPixels() const { return m_ChipGapPixels; }
-
-  /**
-   * @brief Get number of chips per row
-   * @return Chips per row (default: 2 for 2x2 layout)
-   */
-  uint16_t getChipsPerRow() const { return m_ChipsPerRow; }
-
-  /**
-   * @brief Get number of chips per column
-   * @return Chips per column (default: 2 for 2x2 layout)
-   */
-  uint16_t getChipsPerCol() const { return m_ChipsPerCol; }
+  // ==================== CHIP PARAMETERS ====================
 
   /**
    * @brief Get chip size in X direction
@@ -121,6 +164,22 @@ class DetectorConfig {
   std::pair<int, int> mapChipToGlobal(uint16_t chip_id, uint16_t local_x,
                                       uint16_t local_y) const;
 
+  /**
+   * @brief Get transformation matrix for a specific chip
+   * @param chip_id Chip identifier
+   * @return ChipTransform for the specified chip
+   * @throws std::invalid_argument if chip_id is invalid
+   */
+  const ChipTransform& getChipTransform(uint16_t chip_id) const;
+
+  /**
+   * @brief Set transformation matrix for a specific chip
+   * @param chip_id Chip identifier
+   * @param transform ChipTransform to set
+   * @throws std::invalid_argument if chip_id is invalid
+   */
+  void setChipTransform(uint16_t chip_id, const ChipTransform& transform);
+
  private:
   // ==================== PRIVATE CONSTRUCTOR ====================
 
@@ -141,16 +200,17 @@ class DetectorConfig {
   double m_TdcFrequency = 60.0;  // Hz (SNS default)
   bool m_EnableMissingTdcCorrection = true;
 
-  // Chip layout parameters
-  uint16_t m_ChipGapPixels = 2;  // VENUS TPX3 default
-  uint16_t m_ChipsPerRow = 2;
-  uint16_t m_ChipsPerCol = 2;
+  // Chip parameters
   uint16_t m_ChipSizeX = 256;  // pixels per chip
   uint16_t m_ChipSizeY = 256;
 
   // Super-resolution parameters
   uint8_t m_SuperResolutionFactor =
       4;  // 4x4 sub-pixels per pixel (VENUS default)
+
+  // Coordinate transformation parameters
+  std::vector<ChipTransform>
+      m_ChipTransforms;  // Transformation matrix per chip
 };
 
 }  // namespace tdcsophiread

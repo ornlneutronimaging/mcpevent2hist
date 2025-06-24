@@ -46,9 +46,6 @@ TEST_F(TDCDetectorConfigTest, HasVenusDefaults) {
   // Test VENUS default values from analysis document
   EXPECT_EQ(config.getTdcFrequency(), 60.0);
   EXPECT_TRUE(config.isMissingTdcCorrectionEnabled());
-  EXPECT_EQ(config.getChipGapPixels(), 2);
-  EXPECT_EQ(config.getChipsPerRow(), 2);
-  EXPECT_EQ(config.getChipsPerCol(), 2);
   EXPECT_EQ(config.getChipSizeX(), 256);
   EXPECT_EQ(config.getChipSizeY(), 256);
   EXPECT_EQ(config.getSuperResolutionFactor(), 4);
@@ -66,12 +63,7 @@ TEST_F(TDCDetectorConfigTest, LoadsFromValidJsonFile) {
         {"timing",
          {{"tdc_frequency_hz", 50.0},
           {"enable_missing_tdc_correction", false}}},
-        {"chip_layout",
-         {{"chips_per_row", 2},
-          {"chips_per_col", 2},
-          {"chip_size_x", 256},
-          {"chip_size_y", 256},
-          {"chip_gap_pixels", 3}}},
+        {"chip_layout", {{"chip_size_x", 256}, {"chip_size_y", 256}}},
         {"super_resolution", {{"factor", 4}, {"enable", true}}}}}};
 
   std::string config_file = (test_dir / "test_config.json").string();
@@ -82,7 +74,6 @@ TEST_F(TDCDetectorConfigTest, LoadsFromValidJsonFile) {
 
   EXPECT_EQ(config.getTdcFrequency(), 50.0);
   EXPECT_FALSE(config.isMissingTdcCorrectionEnabled());
-  EXPECT_EQ(config.getChipGapPixels(), 3);
   EXPECT_EQ(config.getSuperResolutionFactor(), 4);
 }
 
@@ -90,19 +81,16 @@ TEST_F(TDCDetectorConfigTest, LoadsFromValidJsonFile) {
 TEST_F(TDCDetectorConfigTest, LoadsFromJsonObject) {
   // GREEN PHASE: Now testing actual implementation
 
-  nlohmann::json config_json = {{"detector",
-                                 {{"timing", {{"tdc_frequency_hz", 30.0}}},
-                                  {"chip_layout", {{"chip_gap_pixels", 1}}}}}};
+  nlohmann::json config_json = {
+      {"detector", {{"timing", {{"tdc_frequency_hz", 30.0}}}}}};
 
   // Test loading from JSON object
   auto config = DetectorConfig::fromJson(config_json);
 
   EXPECT_EQ(config.getTdcFrequency(), 30.0);
-  EXPECT_EQ(config.getChipGapPixels(), 1);
 
   // Verify other values remain as defaults
   EXPECT_TRUE(config.isMissingTdcCorrectionEnabled());
-  EXPECT_EQ(config.getChipsPerRow(), 2);
   EXPECT_EQ(config.getSuperResolutionFactor(), 4);
 }
 
@@ -129,10 +117,10 @@ TEST_F(TDCDetectorConfigTest, ValidatesConfigurationParameters) {
   EXPECT_THROW(DetectorConfig::fromJson(invalid_config1),
                std::invalid_argument);
 
-  // Test invalid configuration - zero chips
+  // Test invalid configuration - zero chip size
   nlohmann::json invalid_config2 = {
       {"detector",
-       {{"chip_layout", {{"chips_per_row", 0}}}}}};  // Invalid: zero chips
+       {{"chip_layout", {{"chip_size_x", 0}}}}}};  // Invalid: zero chip size
 
   EXPECT_THROW(DetectorConfig::fromJson(invalid_config2),
                std::invalid_argument);
@@ -166,10 +154,71 @@ TEST_F(TDCDetectorConfigTest, ProvidesCoordinateMapping) {
 
   // Test invalid chip ID
   EXPECT_THROW(config.mapChipToGlobal(4, 100, 150), std::invalid_argument);
+}
+
+// Test 7: Should support JSON-configurable transformation matrices
+TEST_F(TDCDetectorConfigTest, SupportsJsonTransformationMatrices) {
+  // GREEN PHASE: Testing new matrix configuration capability
+
+  // Create JSON configuration with custom transformation matrices
+  nlohmann::json config_json = {
+      {"detector",
+       {{"timing",
+         {{"tdc_frequency_hz", 40.0},
+          {"enable_missing_tdc_correction", false}}},
+        {"chip_layout", {{"chip_size_x", 512}, {"chip_size_y", 512}}},
+        {"chip_transformations",
+         {
+             {{"chip_id", 0},
+              {"matrix",
+               {{2.0, 0.0, 100.0}, {0.0, 2.0, 50.0}}}},  // Scale by 2x + offset
+             {{"chip_id", 1},
+              {"matrix",
+               {{1.0, 0.0, 512.0}, {0.0, 1.0, 0.0}}}},  // Translation only
+             {{"chip_id", 2},
+              {"matrix",
+               {{0.0, 1.0, 0.0}, {1.0, 0.0, 0.0}}}},  // 90° rotation (swap x,y)
+             {{"chip_id", 3},
+              {"matrix",
+               {{-1.0, 0.0, 511.0}, {0.0, -1.0, 511.0}}}}  // 180° rotation
+         }}}}};
+
+  auto config = DetectorConfig::fromJson(config_json);
+
+  // Verify timing parameters were loaded
+  EXPECT_EQ(config.getTdcFrequency(), 40.0);
+  EXPECT_FALSE(config.isMissingTdcCorrectionEnabled());
+
+  // Verify chip parameters were loaded
+  EXPECT_EQ(config.getChipSizeX(), 512);
+  EXPECT_EQ(config.getChipSizeY(), 512);
+
+  // Test transformation matrices work correctly
+  // Test coordinates (10, 20)
+
+  // Chip 0: Scale by 2x + offset -> (2*10+100, 2*20+50) = (120, 90)
+  auto [x0, y0] = config.mapChipToGlobal(0, 10, 20);
+  EXPECT_EQ(x0, 120);
+  EXPECT_EQ(y0, 90);
+
+  // Chip 1: Translation only -> (10+512, 20+0) = (522, 20)
+  auto [x1, y1] = config.mapChipToGlobal(1, 10, 20);
+  EXPECT_EQ(x1, 522);
+  EXPECT_EQ(y1, 20);
+
+  // Chip 2: 90° rotation (swap x,y) -> (0*10+1*20+0, 1*10+0*20+0) = (20, 10)
+  auto [x2, y2] = config.mapChipToGlobal(2, 10, 20);
+  EXPECT_EQ(x2, 20);
+  EXPECT_EQ(y2, 10);
+
+  // Chip 3: 180° rotation -> (-1*10+511, -1*20+511) = (501, 491)
+  auto [x3, y3] = config.mapChipToGlobal(3, 10, 20);
+  EXPECT_EQ(x3, 501);
+  EXPECT_EQ(y3, 491);
 
   // Test out of bounds coordinates
-  EXPECT_THROW(config.mapChipToGlobal(0, 256, 150), std::invalid_argument);
-  EXPECT_THROW(config.mapChipToGlobal(0, 100, 256), std::invalid_argument);
+  EXPECT_THROW(config.mapChipToGlobal(0, 512, 150), std::invalid_argument);
+  EXPECT_THROW(config.mapChipToGlobal(0, 100, 512), std::invalid_argument);
 }
 
 }  // namespace tdcsophiread
