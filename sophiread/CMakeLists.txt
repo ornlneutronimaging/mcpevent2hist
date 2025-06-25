@@ -62,6 +62,11 @@ add_custom_target(copy_resources ALL DEPENDS ${CMAKE_BINARY_DIR}/data)
 # Add compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-march=native -ffast-math -pthread -Wall -Wextra)
+
+  # Ensure maximum optimization for performance-critical code
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3 -DNDEBUG -flto)
+  endif()
 endif()
 
 # Build options
