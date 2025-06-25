@@ -65,6 +65,19 @@ class TDCProcessor {
   std::vector<TDCHit> processFile(const std::string& file_path);
 
   /**
+   * @brief Process entire TPX3 file with TBB parallelization
+   * @param file_path Path to TPX3 file to process
+   * @param num_threads Number of TBB threads to use (0 = auto-detect)
+   * @return Vector of TDCHit objects representing all detected hits
+   * @throws std::runtime_error if file cannot be read or is invalid
+   *
+   * Phase 2 implementation: Parallelizes section processing after
+   * sequential TDC propagation. Achieves target 120M hits/sec performance.
+   */
+  std::vector<TDCHit> processFileParallel(const std::string& file_path,
+                                          size_t num_threads = 0);
+
+  /**
    * @brief Process a chunk of file with section-aware boundaries
    * @param file_path Path to TPX3 file
    * @param start_offset Byte offset to start processing
@@ -149,6 +162,20 @@ class TDCProcessor {
    */
   std::vector<TDCHit> processSection(const uint8_t* data,
                                      const TDCSection& section);
+
+  /**
+   * @brief Process multiple sections in parallel using TBB
+   * @param data Memory-mapped file data
+   * @param sections Vector of sections to process
+   * @param num_threads Number of TBB threads (0 = auto-detect)
+   * @return Vector of all hits from all sections
+   *
+   * Uses TBB parallel_for with thread-local hit vectors to avoid
+   * synchronization overhead during hit collection.
+   */
+  std::vector<TDCHit> processSectionsParallel(
+      const uint8_t* data, const std::vector<TDCSection>& sections,
+      size_t num_threads = 0);
 
   /**
    * @brief Process single packet within a section

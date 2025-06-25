@@ -3,7 +3,14 @@
 
 #include "tdc_processor.h"
 
+#include <tbb/blocked_range.h>
+#include <tbb/combinable.h>
+#include <tbb/parallel_for.h>
+#include <tbb/task_arena.h>
+
+#include <algorithm>
 #include <cstring>
+#include <execution>
 #include <stdexcept>
 
 #include "tdc_io.h"
@@ -62,6 +69,59 @@ std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path) {
   auto end_time = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
       end_time - start_time);
+
+  updateMetrics(duration, all_hits.size(), total_packets);
+
+  return all_hits;
+}
+
+std::vector<TDCHit> TDCProcessor::processFileParallel(
+    const std::string& file_path, size_t num_threads) {
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  // Open file once
+  auto mapped_file = MappedFile::open(file_path);
+
+  // Phase 1: Discover sections (must be sequential)
+  auto sections = discoverSections(file_path);
+
+  if (sections.empty()) {
+    updateMetrics(std::chrono::microseconds(0), 0, 0);
+    return {};
+  }
+
+  // Phase 1: Propagate TDC state across sections (must be sequential)
+  std::array<uint32_t, 4> chip_tdc_state = {0, 0, 0, 0};
+  std::array<bool, 4> chip_has_tdc = {false, false, false, false};
+
+  for (auto& section : sections) {
+    // Inherit TDC from previous section of same chip
+    if (chip_has_tdc[section.chip_id]) {
+      section.initial_tdc_timestamp = chip_tdc_state[section.chip_id];
+      section.has_initial_tdc = true;
+    } else {
+      section.initial_tdc_timestamp = 0;
+      section.has_initial_tdc = false;
+    }
+
+    // Scan section for TDC updates
+    scanSectionForTdc(mapped_file->data(), section, chip_tdc_state,
+                      chip_has_tdc);
+  }
+
+  // Phase 2: Process sections in parallel
+  auto all_hits =
+      processSectionsParallel(mapped_file->data(), sections, num_threads);
+
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+      end_time - start_time);
+
+  // Calculate total packets for metrics
+  size_t total_packets = 0;
+  for (const auto& section : sections) {
+    total_packets += (section.end_offset - section.start_offset) / 8;
+  }
 
   updateMetrics(duration, all_hits.size(), total_packets);
 
@@ -226,6 +286,61 @@ std::vector<TDCSection> TDCProcessor::discoverSections(
   }
 
   return sections;
+}
+
+std::vector<TDCHit> TDCProcessor::processSectionsParallel(
+    const uint8_t* data, const std::vector<TDCSection>& sections,
+    size_t num_threads) {
+  if (sections.empty()) {
+    return {};
+  }
+
+  // Set up TBB task arena with specified number of threads
+  size_t actual_threads =
+      (num_threads == 0) ? tbb::task_arena::automatic : num_threads;
+  tbb::task_arena arena(actual_threads);
+
+  // Use TBB combinable for thread-local hit storage to avoid synchronization
+  tbb::combinable<std::vector<TDCHit>> thread_local_hits;
+
+  // Process sections in parallel within the task arena
+  arena.execute([&] {
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, sections.size()),
+                      [&](const tbb::blocked_range<size_t>& range) {
+                        // Get thread-local hit vector
+                        auto& local_hits = thread_local_hits.local();
+
+                        // Process sections assigned to this thread
+                        for (size_t i = range.begin(); i != range.end(); ++i) {
+                          auto section_hits = processSection(data, sections[i]);
+
+                          // Append to thread-local vector (no synchronization
+                          // needed)
+                          local_hits.insert(local_hits.end(),
+                                            section_hits.begin(),
+                                            section_hits.end());
+                        }
+                      });
+  });
+
+  // Combine all thread-local results into final vector
+  std::vector<TDCHit> all_hits;
+
+  // Pre-allocate space to avoid multiple reallocations
+  size_t total_estimated_hits = 0;
+  thread_local_hits.combine_each(
+      [&total_estimated_hits](const std::vector<TDCHit>& local_hits) {
+        total_estimated_hits += local_hits.size();
+      });
+  all_hits.reserve(total_estimated_hits);
+
+  // Combine all thread-local vectors
+  thread_local_hits.combine_each(
+      [&all_hits](const std::vector<TDCHit>& local_hits) {
+        all_hits.insert(all_hits.end(), local_hits.begin(), local_hits.end());
+      });
+
+  return all_hits;
 }
 
 void TDCProcessor::scanSectionForTdc(const uint8_t* data, TDCSection& section,

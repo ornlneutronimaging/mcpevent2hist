@@ -425,4 +425,119 @@ TEST_F(TDCProcessorTest, IgnoresHitsBeforeFirstTDC) {
   EXPECT_EQ(hits[0].tof, ((202 << 14) | 102) - 1000);
 }
 
+// Test 11: Parallel processing should produce identical results to sequential
+TEST_F(TDCProcessorTest, ParallelProcessingMatchesSequential) {
+  // Create a complex file with multiple sections and chips
+  std::vector<uint64_t> packets;
+
+  uint32_t base_tdc = 0x1000000;
+
+  // Create 20 sections across all 4 chips with varying TDC timestamps
+  for (int section = 0; section < 20; ++section) {
+    uint8_t chip_id = section % 4;
+    uint32_t tdc_timestamp = base_tdc + (section * 50000);
+
+    packets.push_back(createTPX3HeaderPacket(chip_id));
+    packets.push_back(createTDCPacket(tdc_timestamp));
+
+    // Add multiple hits per section
+    for (int hit = 0; hit < 100; ++hit) {
+      uint16_t pixel_addr = 0x0400 + hit;
+      uint16_t toa = 1000 + hit;
+      uint16_t spidr_time = 2000 + hit;
+      packets.push_back(createHitPacket(pixel_addr, toa, spidr_time));
+    }
+  }
+
+  createTestTPX3File("parallel_test.tpx3", packets);
+  std::string file_path = (test_dir / "parallel_test.tpx3").string();
+
+  TDCProcessor processor(*config);
+  processor.setMissingTdcCorrectionEnabled(false);  // For consistent comparison
+
+  // Process with single-threaded method
+  auto sequential_hits = processor.processFile(file_path);
+
+  // Process with parallel method (using 4 threads)
+  auto parallel_hits = processor.processFileParallel(file_path, 4);
+
+  // Results should be identical in content (order may differ due to
+  // parallelization)
+  EXPECT_EQ(sequential_hits.size(), parallel_hits.size());
+  EXPECT_EQ(sequential_hits.size(), 20 * 100);  // 20 sections * 100 hits each
+
+  // Sort both vectors by a composite key for comparison
+  auto hit_comparator = [](const TDCHit& a, const TDCHit& b) {
+    if (a.chip_id != b.chip_id) return a.chip_id < b.chip_id;
+    if (a.x != b.x) return a.x < b.x;
+    if (a.y != b.y) return a.y < b.y;
+    return a.tof < b.tof;
+  };
+
+  std::sort(sequential_hits.begin(), sequential_hits.end(), hit_comparator);
+  std::sort(parallel_hits.begin(), parallel_hits.end(), hit_comparator);
+
+  // Compare sorted results element by element
+  for (size_t i = 0; i < sequential_hits.size(); ++i) {
+    EXPECT_EQ(sequential_hits[i].x, parallel_hits[i].x);
+    EXPECT_EQ(sequential_hits[i].y, parallel_hits[i].y);
+    EXPECT_EQ(sequential_hits[i].tof, parallel_hits[i].tof);
+    EXPECT_EQ(sequential_hits[i].chip_id, parallel_hits[i].chip_id);
+    EXPECT_EQ(sequential_hits[i].tot, parallel_hits[i].tot);
+    EXPECT_EQ(sequential_hits[i].timestamp, parallel_hits[i].timestamp);
+  }
+}
+
+// Test 12: Parallel processing performance benchmark
+TEST_F(TDCProcessorTest, ParallelProcessingAchievesTargetPerformance) {
+  // Create large file with 1 million hits across multiple sections
+  std::vector<uint64_t> packets;
+
+  uint32_t base_tdc = 0x10000000;
+  const int hits_per_section = 10000;
+  const int num_sections = 100;  // Total: 1M hits
+
+  for (int section = 0; section < num_sections; ++section) {
+    uint8_t chip_id = section % 4;
+    uint32_t tdc_timestamp = base_tdc + (section * 100000);
+
+    packets.push_back(createTPX3HeaderPacket(chip_id));
+    packets.push_back(createTDCPacket(tdc_timestamp));
+
+    for (int hit = 0; hit < hits_per_section; ++hit) {
+      uint16_t pixel_addr = (hit % 65536);
+      uint16_t toa = 1000 + (hit % 16384);
+      uint16_t spidr_time = 2000 + (hit % 65536);
+      packets.push_back(createHitPacket(pixel_addr, toa, spidr_time));
+    }
+  }
+
+  createTestTPX3File("parallel_performance.tpx3", packets);
+  std::string file_path = (test_dir / "parallel_performance.tpx3").string();
+
+  TDCProcessor processor(*config);
+
+  // Benchmark parallel processing with multiple thread counts
+  auto start_time = std::chrono::high_resolution_clock::now();
+  auto hits =
+      processor.processFileParallel(file_path, 0);  // Auto-detect threads
+  auto end_time = std::chrono::high_resolution_clock::now();
+
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+                      end_time - start_time)
+                      .count();
+
+  EXPECT_EQ(hits.size(), num_sections * hits_per_section);
+
+  // Calculate hits per second
+  double hits_per_second = (hits.size() * 1e6) / duration;
+
+  // Should achieve target 120M hits/sec (relaxed to 100M for CI environments)
+  EXPECT_GT(hits_per_second, 100e6);
+
+  // Verify processor metrics show parallel performance
+  EXPECT_GT(processor.getLastHitsPerSecond(), 100e6);
+  EXPECT_EQ(processor.getLastHitCount(), num_sections * hits_per_section);
+}
+
 }  // namespace tdcsophiread
