@@ -65,7 +65,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 
   # Ensure maximum optimization for performance-critical code
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_compile_options(-O3 -DNDEBUG -flto)
+    add_compile_options(-O3 -DNDEBUG)
   endif()
 endif()
 
