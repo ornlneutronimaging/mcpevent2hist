@@ -9,13 +9,19 @@ version = "0.1.0"
 # Primary TDC-only build (default)
 configure = "cmake -G Ninja -S . -B build"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
-test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = ["build"] }
-test-tdc = { cmd = "cd build && ctest -R TDC -V --output-on-failure", depends-on = ["build"] }
+test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
+    "build",
+] }
+test-tdc = { cmd = "cd build && ctest -R TDC -V --output-on-failure", depends-on = [
+    "build",
+] }
 
 # Legacy build (optional)
 configure-legacy = "cmake -G Ninja -S . -B build -DBUILD_LEGACY=ON"
 build-legacy = { cmd = "ninja -C build", depends-on = ["configure-legacy"] }
-test-legacy = { cmd = "cd build && ctest -V --output-on-failure", depends-on = ["build-legacy"] }
+test-legacy = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
+    "build-legacy",
+] }
 
 # Other targets
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
@@ -23,7 +29,7 @@ docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
 clean = "rm -rf build"
 
 [dependencies]
-python = ">=3.13.2,<3.14"
+python = "3.12.*"
 cmake = ">=3.31.5,<4"
 ninja = ">=1.12.1,<2"
 clang-format = ">=19.1.7,<20"
@@ -36,6 +42,9 @@ nlohmann_json = ">=3.11.3,<4"
 doxygen = ">=1.13.2,<2"
 graphviz = ">=12.2.1,<13"
 pre-commit = ">=4.2.0,<5"
+pybind11 = ">=2.13.6,<3"
+numpy = ">=2.3.0,<3"
+libgfortran = ">=5.0.0,<16"
 
 [target.linux-64.dependencies]
 gxx_linux-64 = ">=14.2.0,<15"
