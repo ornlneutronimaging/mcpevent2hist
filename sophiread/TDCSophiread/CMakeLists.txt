@@ -75,3 +75,10 @@ add_tdc_test(processor)
 
 # Note: Additional test targets will be added incrementally following TDD
 # approach Each test will be written BEFORE the corresponding implementation
+
+# ----------------- PYTHON BINDINGS (Phase 3) -----------------
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
+
+if(BUILD_PYTHON_BINDINGS)
+  add_subdirectory(python)
+endif()
