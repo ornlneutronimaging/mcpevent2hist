@@ -70,6 +70,23 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
                           uint32_t tdc_timestamp, const DetectorConfig& config);
 
 /**
+ * @brief Convert TPX3 hit packet to TDCHit with optional TDC correction
+ *
+ * Same as above but allows control over TDC correction application.
+ *
+ * @param packet TPX3 hit packet to convert
+ * @param chip_id Current chip ID (from TPX3 header)
+ * @param tdc_timestamp Current TDC timestamp for this chip (25ns units)
+ * @param config Detector configuration for coordinate mapping and TDC frequency
+ * @param apply_tdc_correction Whether to apply missing TDC correction
+ * @return TDCHit Converted hit with global coordinates and optionally corrected
+ * TOF
+ */
+TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
+                          uint32_t tdc_timestamp, const DetectorConfig& config,
+                          bool apply_tdc_correction);
+
+/**
  * @brief Apply missing TDC correction to time-of-flight
  *
  * Implements the critical algorithm from Python reference:

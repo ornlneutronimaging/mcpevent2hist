@@ -10,6 +10,12 @@ namespace tdcsophiread {
 TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
                           uint32_t tdc_timestamp,
                           const DetectorConfig& config) {
+  return convertPacketToHit(packet, chip_id, tdc_timestamp, config, true);
+}
+
+TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
+                          uint32_t tdc_timestamp, const DetectorConfig& config,
+                          bool apply_tdc_correction) {
   // Validate input
   if (!packet.isHit()) {
     throw std::invalid_argument("Packet is not a hit packet");
@@ -31,8 +37,12 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
   if (corrected_timestamp >= tdc_timestamp) {
     uint32_t raw_tof = corrected_timestamp - tdc_timestamp;
 
-    // Apply missing TDC correction
-    tof = applyMissingTDCCorrection(raw_tof, config.getTdcFrequency());
+    // Apply missing TDC correction only if requested
+    if (apply_tdc_correction) {
+      tof = applyMissingTDCCorrection(raw_tof, config.getTdcFrequency());
+    } else {
+      tof = raw_tof;
+    }
   }
 
   // Map local chip coordinates to global detector coordinates
