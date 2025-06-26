@@ -188,7 +188,7 @@ Convert TOF to milliseconds: `tof_ms = hits['tof'] * 25 / 1e6`
 
 ## Legacy Components
 
-Previous components (FastSophiread, SophireadLib, CLI applications) are deprecated in favor of the streamlined TDCSophiread implementation. Legacy components can be built with `BUILD_LEGACY=ON` but are not actively maintained.
+Previous components (FastSophiread, CLI applications) are deprecated in favor of the streamlined TDCSophiread implementation. Legacy components can be built with `BUILD_LEGACY=ON` but are not actively maintained.
 
 ## Contributing
 
