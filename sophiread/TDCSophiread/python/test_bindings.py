@@ -27,7 +27,6 @@ def test_detector_config():
     print(f"TDC Frequency: {config.get_tdc_frequency()} Hz")
     print(f"Missing TDC correction enabled: {config.is_missing_tdc_correction_enabled()}")
     print(f"Chip size: {config.get_chip_size_x()}x{config.get_chip_size_y()}")
-    print(f"Super-resolution factor: {config.get_super_resolution_factor()}")
 
     # Test coordinate mapping
     global_coords = config.map_chip_to_global(0, 100, 100)

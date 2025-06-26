@@ -106,8 +106,10 @@ tof_filtered = tdcsophiread.analysis.filter_hits_by_tof(
 ```python
 # Create custom detector config
 config_dict = {
-    "timing": {"tdc_frequency": 60.0},
-    "detector_layout": {"gap_x": 2, "gap_y": 2}
+    "detector": {
+        "timing": {"tdc_frequency_hz": 60.0},
+        "chip_layout": {"chip_size_x": 256, "chip_size_y": 256}
+    }
 }
 config = tdcsophiread.DetectorConfig.from_json(config_dict)
 

@@ -7,8 +7,14 @@ cmake_minimum_required(VERSION 3.20)
 message(STATUS "Configuring TDCSophiread (TDC-only implementation)")
 
 # Source files (TDD implementation in progress)
-set(TDC_SOURCES src/tdc_detector_config.cpp src/tdc_io.cpp src/tdc_hit.cpp
-                src/tdc_processor.cpp)
+set(TDC_SOURCES
+    src/tdc_detector_config.cpp
+    src/tdc_io.cpp
+    src/tdc_hit.cpp
+    src/tdc_processor.cpp
+    src/tdc_clustering_config.cpp
+    src/tdc_neutron.cpp
+    src/tdc_abs_clustering.cpp)
 
 # Create TDCSophiread library target
 add_library(TDCSophiread ${TDC_SOURCES})
@@ -75,6 +81,18 @@ add_tdc_test(hit)
 
 # TDD Test 5: Basic single-threaded processor (tests written FIRST)
 add_tdc_test(processor)
+
+# TDD Test 6: Clustering configuration system (tests written FIRST)
+add_tdc_test(clustering_config)
+
+# TDD Test 7: Neutron data structure and utilities (tests written FIRST)
+add_tdc_test(neutron)
+
+# TDD Test 8: ABS clustering algorithm (tests written FIRST)
+add_tdc_test(abs_clustering)
+
+# DEBUG Test: ABS clustering debug with detailed logging
+add_tdc_test(abs_debug)
 
 # Note: Additional test targets will be added incrementally following TDD
 # approach Each test will be written BEFORE the corresponding implementation

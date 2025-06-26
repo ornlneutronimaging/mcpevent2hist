@@ -20,9 +20,6 @@ DetectorConfig DetectorConfig::venusDefaults() {
   config.m_ChipSizeX = 256;
   config.m_ChipSizeY = 256;
 
-  config.m_SuperResolutionFactor =
-      4;  // 4x4 sub-pixels per pixel (VENUS default)
-
   // Initialize transformation matrices for VENUS 2x2 layout with 2-pixel gaps
   // Updated from 5-pixel gaps to match current VENUS detector configuration
   config.m_ChipTransforms.resize(4);
@@ -98,15 +95,6 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
 
     if (layout.contains("chip_size_y")) {
       detector_config.m_ChipSizeY = layout["chip_size_y"];
-    }
-  }
-
-  // Load super-resolution parameters
-  if (detector.contains("super_resolution")) {
-    const auto& super_res = detector["super_resolution"];
-
-    if (super_res.contains("factor")) {
-      detector_config.m_SuperResolutionFactor = super_res["factor"];
     }
   }
 
@@ -215,12 +203,6 @@ void DetectorConfig::validateConfig() const {
   if (m_ChipSizeY == 0) {
     throw std::invalid_argument("Chip size Y must be positive, got: " +
                                 std::to_string(m_ChipSizeY));
-  }
-
-  if (m_SuperResolutionFactor == 0) {
-    throw std::invalid_argument(
-        "Super resolution factor must be positive, got: " +
-        std::to_string(m_SuperResolutionFactor));
   }
 }
 

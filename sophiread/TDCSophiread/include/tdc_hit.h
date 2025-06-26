@@ -32,14 +32,16 @@ struct TDCHit {
   uint16_t y;    ///< Global Y coordinate (after chip mapping) - HIGH ACCESS
   uint32_t timestamp;  ///< Hit timestamp (25ns units, after rollover
                        ///< correction) - LOW ACCESS
-  uint16_t tot;      ///< Time-over-threshold (10-bit raw value) - MEDIUM ACCESS
-  uint8_t chip_id;   ///< Chip identifier (0-3) - LOW ACCESS
-  uint8_t reserved;  ///< Reserved for future use (explicit padding) - UNUSED
+  uint16_t tot;     ///< Time-over-threshold (10-bit raw value) - MEDIUM ACCESS
+  uint8_t chip_id;  ///< Chip identifier (0-3) - LOW ACCESS
+  int8_t cluster_id;  ///< Cluster label assigned by clustering algorithm (-1 =
+                      ///< unclustered)
 
   /**
    * @brief Default constructor
    */
-  TDCHit() = default;
+  TDCHit()
+      : tof(0), x(0), y(0), timestamp(0), tot(0), chip_id(0), cluster_id(-1) {}
 
   /**
    * @brief Constructor with all fields (ordered by new layout)
@@ -52,7 +54,7 @@ struct TDCHit {
         timestamp(timestamp),
         tot(tot),
         chip_id(chip_id),
-        reserved(0) {}
+        cluster_id(-1) {}
 };
 
 /**

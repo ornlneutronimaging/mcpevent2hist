@@ -48,7 +48,6 @@ TEST_F(TDCDetectorConfigTest, HasVenusDefaults) {
   EXPECT_TRUE(config.isMissingTdcCorrectionEnabled());
   EXPECT_EQ(config.getChipSizeX(), 256);
   EXPECT_EQ(config.getChipSizeY(), 256);
-  EXPECT_EQ(config.getSuperResolutionFactor(), 4);
 }
 
 // Test 2: DetectorConfig should load from JSON file
@@ -63,8 +62,7 @@ TEST_F(TDCDetectorConfigTest, LoadsFromValidJsonFile) {
         {"timing",
          {{"tdc_frequency_hz", 50.0},
           {"enable_missing_tdc_correction", false}}},
-        {"chip_layout", {{"chip_size_x", 256}, {"chip_size_y", 256}}},
-        {"super_resolution", {{"factor", 4}, {"enable", true}}}}}};
+        {"chip_layout", {{"chip_size_x", 256}, {"chip_size_y", 256}}}}}};
 
   std::string config_file = (test_dir / "test_config.json").string();
   createTestConfigFile("test_config.json", test_config);
@@ -74,7 +72,6 @@ TEST_F(TDCDetectorConfigTest, LoadsFromValidJsonFile) {
 
   EXPECT_EQ(config.getTdcFrequency(), 50.0);
   EXPECT_FALSE(config.isMissingTdcCorrectionEnabled());
-  EXPECT_EQ(config.getSuperResolutionFactor(), 4);
 }
 
 // Test 3: DetectorConfig should load from JSON object
@@ -91,7 +88,6 @@ TEST_F(TDCDetectorConfigTest, LoadsFromJsonObject) {
 
   // Verify other values remain as defaults
   EXPECT_TRUE(config.isMissingTdcCorrectionEnabled());
-  EXPECT_EQ(config.getSuperResolutionFactor(), 4);
 }
 
 // Test 4: DetectorConfig should handle missing file gracefully

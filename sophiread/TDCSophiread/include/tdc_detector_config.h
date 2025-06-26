@@ -143,14 +143,6 @@ class DetectorConfig {
    */
   uint16_t getChipSizeY() const { return m_ChipSizeY; }
 
-  // ==================== SUPER-RESOLUTION PARAMETERS ====================
-
-  /**
-   * @brief Get super-resolution factor
-   * @return Super-resolution factor (default: 8 for 8x8 sub-pixels)
-   */
-  uint8_t getSuperResolutionFactor() const { return m_SuperResolutionFactor; }
-
   // ==================== COORDINATE MAPPING ====================
 
   /**
@@ -203,10 +195,6 @@ class DetectorConfig {
   // Chip parameters
   uint16_t m_ChipSizeX = 256;  // pixels per chip
   uint16_t m_ChipSizeY = 256;
-
-  // Super-resolution parameters
-  uint8_t m_SuperResolutionFactor =
-      4;  // 4x4 sub-pixels per pixel (VENUS default)
 
   // Coordinate transformation parameters
   std::vector<ChipTransform>

@@ -237,9 +237,6 @@ PYBIND11_MODULE(_core, m) {
            "Get chip size in X dimension")
       .def("get_chip_size_y", &DetectorConfig::getChipSizeY,
            "Get chip size in Y dimension")
-      .def("get_super_resolution_factor",
-           &DetectorConfig::getSuperResolutionFactor,
-           "Get super-resolution factor")
       .def("map_chip_to_global", &DetectorConfig::mapChipToGlobal,
            py::arg("chip_id"), py::arg("local_x"), py::arg("local_y"),
            "Map chip coordinates to global detector coordinates")
