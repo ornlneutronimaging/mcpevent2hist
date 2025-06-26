@@ -116,12 +116,21 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
 
-# For package config
+# Package config for TDCSophiread (default) and backward compatibility
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sophiread.pc.in
-               ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc @ONLY)
+               ${CMAKE_CURRENT_BINARY_DIR}/tdcsophiread.pc @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc
+# Install with both names for compatibility
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tdcsophiread.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+# Create backward-compatible symlink for existing DAQ systems
+install(
+  CODE "
+  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    tdcsophiread.pc
+    \${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig/sophiread.pc)
+")
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
