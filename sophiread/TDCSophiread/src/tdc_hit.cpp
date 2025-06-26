@@ -48,8 +48,8 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
   // Map local chip coordinates to global detector coordinates
   auto [global_x, global_y] = config.mapChipToGlobal(chip_id, local_x, local_y);
 
-  // Create and return TDCHit
-  return TDCHit(global_x, global_y, tof, tot, chip_id, corrected_timestamp);
+  // Create and return TDCHit (using new constructor field order)
+  return TDCHit(tof, global_x, global_y, corrected_timestamp, tot, chip_id);
 }
 
 uint32_t applyMissingTDCCorrection(uint32_t tof_uncorrected,

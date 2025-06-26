@@ -12,22 +12,29 @@
 namespace tdcsophiread {
 
 /**
- * @brief TDC-only hit data structure
+ * @brief TDC-only hit data structure (cache-optimized layout)
  *
  * Simplified hit representation containing only essential data for TDC-based
  * processing. This structure is the output of TPX3 packet processing and
  * input to higher-level analysis.
  *
+ * Fields are ordered by access frequency for optimal cache performance:
+ * - TOF (most accessed) first for cache efficiency
+ * - X,Y coordinates adjacent for spatial locality
+ * - Less frequently accessed fields at end
+ *
  * All timing values are in 25ns units (LSB = 25 nanoseconds)
  */
 struct TDCHit {
-  uint16_t x;       ///< Global X coordinate (after chip mapping)
-  uint16_t y;       ///< Global Y coordinate (after chip mapping)
-  uint32_t tof;     ///< Time-of-flight (25ns units, after TDC correction)
-  uint16_t tot;     ///< Time-over-threshold (10-bit raw value)
-  uint8_t chip_id;  ///< Chip identifier (0-3)
-  uint32_t
-      timestamp;  ///< Hit timestamp (25ns units, after rollover correction)
+  uint32_t tof;  ///< Time-of-flight (25ns units, after TDC correction) - MOST
+                 ///< ACCESSED
+  uint16_t x;    ///< Global X coordinate (after chip mapping) - HIGH ACCESS
+  uint16_t y;    ///< Global Y coordinate (after chip mapping) - HIGH ACCESS
+  uint32_t timestamp;  ///< Hit timestamp (25ns units, after rollover
+                       ///< correction) - LOW ACCESS
+  uint16_t tot;      ///< Time-over-threshold (10-bit raw value) - MEDIUM ACCESS
+  uint8_t chip_id;   ///< Chip identifier (0-3) - LOW ACCESS
+  uint8_t reserved;  ///< Reserved for future use (explicit padding) - UNUSED
 
   /**
    * @brief Default constructor
@@ -35,16 +42,17 @@ struct TDCHit {
   TDCHit() = default;
 
   /**
-   * @brief Constructor with all fields
+   * @brief Constructor with all fields (ordered by new layout)
    */
-  TDCHit(uint16_t x, uint16_t y, uint32_t tof, uint16_t tot, uint8_t chip_id,
-         uint32_t timestamp)
-      : x(x),
+  TDCHit(uint32_t tof, uint16_t x, uint16_t y, uint32_t timestamp, uint16_t tot,
+         uint8_t chip_id)
+      : tof(tof),
+        x(x),
         y(y),
-        tof(tof),
+        timestamp(timestamp),
         tot(tot),
         chip_id(chip_id),
-        timestamp(timestamp) {}
+        reserved(0) {}
 };
 
 /**

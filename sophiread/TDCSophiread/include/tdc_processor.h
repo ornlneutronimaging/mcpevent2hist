@@ -103,7 +103,7 @@ class TDCProcessor {
    * Scans the entire file for TPX3 headers (magic: 0x33585054) and
    * creates section boundaries. This is Phase 1 of processing.
    */
-  std::vector<TDCSection> discoverSections(const std::string& file_path);
+  std::vector<TDCSection> discoverSections(const uint8_t* data, size_t size);
 
   // ==================== PERFORMANCE METRICS ====================
 

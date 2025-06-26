@@ -11,6 +11,7 @@
 
 #include "tdc_detector_config.h"
 #include "tdc_hit.h"
+#include "tdc_io.h"
 #include "tdc_processor.h"
 
 namespace tdcsophiread {
@@ -105,8 +106,10 @@ TEST_F(TDCProcessorTest, DiscoversSectionsBasedOnTPX3Headers) {
 
   TDCProcessor processor(*config);
 
-  // Expected behavior: discoverSections should return 3 sections
-  auto sections = processor.discoverSections(file_path);
+  // Open file and use mapped data for section discovery
+  auto mapped_file = MappedFile::open(file_path);
+  auto sections =
+      processor.discoverSections(mapped_file->data(), mapped_file->size());
 
   EXPECT_EQ(sections.size(), 3);
 

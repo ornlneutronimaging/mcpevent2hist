@@ -167,8 +167,8 @@ Examples:
     # Input/Output arguments
     parser.add_argument('-i', '--input', required=True,
                        help='Input TPX3 file path')
-    parser.add_argument('-o', '--output', required=True,
-                       help='Output HDF5 file path')
+    parser.add_argument('-o', '--output',
+                       help='Output HDF5 file path (not required in benchmark mode)')
 
     # Configuration arguments
     parser.add_argument('-c', '--config',
@@ -197,6 +197,8 @@ Examples:
     # Utility arguments
     parser.add_argument('-v', '--verbose', action='store_true',
                        help='Verbose output')
+    parser.add_argument('--benchmark', action='store_true',
+                       help='Benchmark mode - skip file writing to focus on processing performance')
     parser.add_argument('--version', action='version',
                        version=f'TDCSophiread {tdcsophiread.__version__}')
 
@@ -207,12 +209,18 @@ Examples:
         print(f"❌ Input file not found: {args.input}")
         sys.exit(1)
 
-    # Create output directory if needed
-    output_dir = os.path.dirname(args.output)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        if args.verbose:
-            print(f"📁 Created output directory: {output_dir}")
+    # Validate output argument
+    if not args.benchmark and not args.output:
+        print(f"❌ Output file required unless using --benchmark mode")
+        sys.exit(1)
+
+    # Create output directory if needed (skip in benchmark mode)
+    if not args.benchmark:
+        output_dir = os.path.dirname(args.output)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            if args.verbose:
+                print(f"📁 Created output directory: {output_dir}")
 
     # Load configuration
     if args.config:
@@ -236,10 +244,13 @@ Examples:
 
     if args.verbose:
         print(f"📁 Input: {args.input}")
-        print(f"💾 Output: {args.output}")
+        if not args.benchmark:
+            print(f"💾 Output: {args.output}")
         print(f"⚡ Parallel processing: {args.parallel}")
         if args.parallel and args.threads > 0:
             print(f"🧵 Threads: {args.threads}")
+        if args.benchmark:
+            print(f"🏁 Benchmark mode: Skipping file I/O for pure processing performance")
 
     # Process file
     print("🚀 Processing TPX3 data...")
@@ -266,22 +277,25 @@ Examples:
         print(f"✅ Processed {len(hits['x']):,} hits in {processing_time:.3f}s "
               f"({len(hits['x']) / processing_time / 1e6:.1f} M hits/sec)")
 
-    # Save to HDF5
-    metadata = {
-        'input_file': args.input,
-        'processing_time_seconds': processing_time,
-        'parallel_processing': args.parallel,
-        'tdc_correction_enabled': not args.disable_tdc_correction,
-        'tdc_frequency_hz': config.get_tdc_frequency()
-    }
+    if not args.benchmark:
+        # Save to HDF5
+        metadata = {
+            'input_file': args.input,
+            'processing_time_seconds': processing_time,
+            'parallel_processing': args.parallel,
+            'tdc_correction_enabled': not args.disable_tdc_correction,
+            'tdc_frequency_hz': config.get_tdc_frequency()
+        }
 
-    if args.threads > 0:
-        metadata['num_threads'] = args.threads
+        if args.threads > 0:
+            metadata['num_threads'] = args.threads
 
-    save_hits_to_hdf5(hits, args.output, metadata)
+        save_hits_to_hdf5(hits, args.output, metadata)
+    else:
+        print(f"🏁 Benchmark complete - skipped file writing")
 
-    # Generate TOF spectrum if requested
-    if args.tof_spectrum and len(hits['x']) > 0:
+    # Generate TOF spectrum if requested (skip in benchmark mode)
+    if args.tof_spectrum and len(hits['x']) > 0 and not args.benchmark:
         print(f"📈 Generating TOF spectrum...")
         bin_centers, counts = create_tof_spectrum(hits,
                                                  tuple(args.tof_range),
@@ -294,7 +308,10 @@ Examples:
                   fmt='%.6f %d')
         print(f"✅ TOF spectrum saved to {args.tof_spectrum}")
 
-    print("🎉 Processing completed successfully!")
+    if args.benchmark:
+        print("🎉 Benchmark completed successfully!")
+    else:
+        print("🎉 Processing completed successfully!")
 
 
 if __name__ == '__main__':

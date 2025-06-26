@@ -62,8 +62,8 @@ TEST_F(TDCHitTest, StoresBasicHitInformation) {
   EXPECT_EQ(hit.chip_id, 2);
   EXPECT_EQ(hit.timestamp, 0x12345678);
 
-  // Test constructor
-  TDCHit hit2(200, 250, 2000000, 75, 3, 0x87654321);
+  // Test constructor (new parameter order: tof, x, y, timestamp, tot, chip_id)
+  TDCHit hit2(2000000, 200, 250, 0x87654321, 75, 3);
   EXPECT_EQ(hit2.x, 200);
   EXPECT_EQ(hit2.y, 250);
   EXPECT_EQ(hit2.tof, 2000000);

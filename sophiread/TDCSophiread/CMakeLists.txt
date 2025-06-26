@@ -21,6 +21,9 @@ target_include_directories(
 # Set C++20 standard
 target_compile_features(TDCSophiread PUBLIC cxx_std_20)
 
+# Add debug timing for performance analysis (disabled)
+# target_compile_definitions(TDCSophiread PRIVATE DEBUG_TIMING)
+
 # Required dependencies (same as FastSophiread for now)
 target_link_libraries(TDCSophiread PUBLIC TBB::tbb nlohmann_json::nlohmann_json
                                           Eigen3::Eigen)
