@@ -62,11 +62,12 @@ std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path) {
   size_t total_packets = 0;
 
   // Pre-allocate based on estimated hit count (assume ~70% of packets are hits)
+  constexpr double HIT_ESTIMATE_FACTOR = 0.7;
   size_t estimated_total_packets = 0;
   for (const auto& section : sections) {
     estimated_total_packets += (section.end_offset - section.start_offset) / 8;
   }
-  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * 0.7);
+  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * HIT_ESTIMATE_FACTOR);
   all_hits.reserve(estimated_hits);
 
   for (const auto& section : sections) {
