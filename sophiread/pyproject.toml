@@ -52,13 +52,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cli = [
-    "rich>=12.0.0",
-    "typer>=0.9.0",
-]
 imaging = [
-    "pillow>=9.0.0",
-    "matplotlib>=3.10.3",
+    "pillow>=9.0.0",  # Used by auto_reducer for TIFF output
+    "matplotlib>=3.10.3",  # For scientific plotting
 ]
 dev = [
     "pytest>=7.0.0",
@@ -73,7 +69,7 @@ dev = [
     "myst-parser",
 ]
 all = [
-    "tdcsophiread[cli,imaging,dev]",
+    "tdcsophiread[imaging,dev]",
 ]
 
 [project.urls]
