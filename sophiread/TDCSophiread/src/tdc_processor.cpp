@@ -333,7 +333,7 @@ std::vector<TDCHit> TDCProcessor::processSectionsParallel(
   arena.execute([&] {
     tbb::parallel_for(
         tbb::blocked_range<size_t>(0, actual_threads),
-        [&](const tbb::blocked_range<size_t>& thread_range) {
+        [&](const tbb::blocked_range<size_t>& /* thread_range */) {
           // Get thread-local hit vector
           auto& local_hits = thread_local_hits.local();
 
