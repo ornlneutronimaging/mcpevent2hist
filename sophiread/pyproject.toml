@@ -1,0 +1,193 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.8.0",
+    "pybind11>=2.13.6",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "tdcsophiread"
+dynamic = ["version"]
+description = "High-performance TDC-only TPX3 neutron imaging data processor"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Chen Zhang", email = "zhangc@ornl.gov"},
+    {name = "ORNL Neutron Imaging Team", email = "neutronimaging@ornl.gov"},
+]
+maintainers = [
+    {name = "Chen Zhang", email = "zhangc@ornl.gov"},
+]
+keywords = [
+    "neutron imaging",
+    "timepix3",
+    "tpx3",
+    "tdc",
+    "time-of-flight",
+    "detector",
+    "high-performance",
+    "scientific computing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=2.3.0",
+    "h5py>=3.12.0",
+    "pydantic>=2.11.7",
+]
+
+[project.optional-dependencies]
+cli = [
+    "rich>=12.0.0",
+    "typer>=0.9.0",
+]
+imaging = [
+    "pillow>=9.0.0",
+    "matplotlib>=3.10.3",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "pytest-benchmark",
+    "black",
+    "isort",
+    "mypy",
+    "pre-commit>=4.2.0",
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
+all = [
+    "tdcsophiread[cli,imaging,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/ornlneutronimaging/mcpevent2hist"
+Documentation = "https://github.com/ornlneutronimaging/mcpevent2hist/blob/main/README.md"
+Repository = "https://github.com/ornlneutronimaging/mcpevent2hist.git"
+Issues = "https://github.com/ornlneutronimaging/mcpevent2hist/issues"
+Changelog = "https://github.com/ornlneutronimaging/mcpevent2hist/blob/main/CHANGELOG.md"
+
+[project.scripts]
+tdcsophiread = "tdcsophiread.cli.main:main"
+venus-auto-reducer = "tdcsophiread.cli.auto_reducer:main"
+tdc-config-validator = "tdcsophiread.cli.config_validator:main"
+
+# scikit-build-core configuration
+[tool.scikit-build]
+# Use our existing CMake configuration
+cmake.source-dir = "."
+build-dir = "build"
+cmake.args = [
+    "-DBUILD_PYTHON_BINDINGS=ON",
+    "-DBUILD_LEGACY=OFF",  # Only build TDC implementation
+    "-DCMAKE_BUILD_TYPE=Release",
+]
+build.verbose = true
+wheel.expand-macos-universal-tags = true
+
+# Specify which files to include in the wheel
+wheel.packages = ["src/tdcsophiread"]
+wheel.py-api = "cp312"
+
+# CMake install targets to include
+install.components = ["python_bindings"]
+
+# Development tools configuration
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=tdcsophiread",
+    "--cov-report=term-missing",
+    "--benchmark-skip",  # Skip benchmarks by default
+]
+
+[tool.coverage.run]
+source = ["tdcsophiread"]
+omit = ["*/tests/*", "*/test_*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+# Configuration for building wheels with cibuildwheel
+[tool.cibuildwheel]
+# Build wheels for these Python versions
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+
+# Skip 32-bit builds and unsupported platforms
+skip = [
+    "*-win32",
+    "*-manylinux_i686",
+    "*-musllinux*",  # Skip musl for now due to complexity
+    "pp*",  # Skip PyPy
+]
+
+# Use our pixi environment for dependencies
+before-all = [
+    "curl -fsSL https://pixi.sh/install.sh | bash",
+    "export PATH=$HOME/.pixi/bin:$PATH",
+    "pixi install",
+]
+
+[tool.cibuildwheel.linux]
+before-all = [
+    "curl -fsSL https://pixi.sh/install.sh | bash",
+    "export PATH=$HOME/.pixi/bin:$PATH",
+    "pixi install",
+]
+environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+
+[tool.cibuildwheel.macos]
+before-all = [
+    "curl -fsSL https://pixi.sh/install.sh | bash",
+    "export PATH=$HOME/.pixi/bin:$PATH",
+    "pixi install",
+]
+environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+
+[tool.cibuildwheel.windows]
+# Windows is more complex due to MSVC requirements
+before-all = [
+    "powershell -Command \"Invoke-WebRequest -Uri https://pixi.sh/install.ps1 -OutFile install.ps1; .\\install.ps1\"",
+    "pixi install",
+]

@@ -14,9 +14,14 @@ endif()
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 # This is to avoid accidentally using Homebrew header/lib instead of the one
-# from micromamba
+# from micromamba or pixi
 if(DEFINED ENV{CONDA_PREFIX})
   set(CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX} ${CMAKE_PREFIX_PATH})
+endif()
+
+# For scikit-build-core: respect Python installation prefix
+if(DEFINED ENV{PYTHONPATH})
+  list(PREPEND CMAKE_PREFIX_PATH $ENV{Python_ROOT_DIR})
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)

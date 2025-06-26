@@ -19,9 +19,14 @@ from pydantic.json_schema import GenerateJsonSchema
 try:
     import tdcsophiread
 except ImportError:
-    build_dir = Path(__file__).parent.parent / 'build' / 'TDCSophiread' / 'python'
-    sys.path.insert(0, str(build_dir))
-    import tdcsophiread
+    # For development, try relative import
+    try:
+        from .. import tdcsophiread
+    except ImportError:
+        # Add build directory to path for development
+        build_dir = Path(__file__).parent.parent.parent.parent / 'build' / 'TDCSophiread' / 'python'
+        sys.path.insert(0, str(build_dir))
+        import tdcsophiread
 
 
 class ChipTransform(BaseModel):

@@ -17,14 +17,18 @@ from typing import Optional, Dict, Any
 import numpy as np
 import h5py
 
-# Import TDCSophiread (assume it's installed or in path)
+# Import TDCSophiread
 try:
     import tdcsophiread
 except ImportError:
-    # Add build directory to path for development
-    build_dir = Path(__file__).parent.parent / 'build' / 'TDCSophiread' / 'python'
-    sys.path.insert(0, str(build_dir))
-    import tdcsophiread
+    # For development, try relative import
+    try:
+        from .. import tdcsophiread
+    except ImportError:
+        # Add build directory to path for development
+        build_dir = Path(__file__).parent.parent.parent.parent / 'build' / 'TDCSophiread' / 'python'
+        sys.path.insert(0, str(build_dir))
+        import tdcsophiread
 
 
 def validate_config_file(config_path: str) -> Dict[str, Any]:

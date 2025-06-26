@@ -64,7 +64,7 @@ py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
   return result;
 }
 
-PYBIND11_MODULE(tdcsophiread, m) {
+PYBIND11_MODULE(_core, m) {
   m.doc() = "High-performance TDC-only TPX3 data processor";
 
   // Version information
