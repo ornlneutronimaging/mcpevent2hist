@@ -7,6 +7,9 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
+#include <fstream>
+#include <stdexcept>
+
 #include "tdc_detector_config.h"
 #include "tdc_hit.h"
 #include "tdc_processor.h"
@@ -17,6 +20,41 @@ namespace py = pybind11;
 PYBIND11_MAKE_OPAQUE(std::vector<tdcsophiread::TDCHit>);
 
 namespace tdcsophiread {
+
+// Custom exception types for better error handling
+class TDCProcessingError : public std::runtime_error {
+ public:
+  explicit TDCProcessingError(const std::string& msg)
+      : std::runtime_error(msg) {}
+};
+
+class TDCFileError : public std::runtime_error {
+ public:
+  explicit TDCFileError(const std::string& msg) : std::runtime_error(msg) {}
+};
+
+class TDCConfigError : public std::runtime_error {
+ public:
+  explicit TDCConfigError(const std::string& msg) : std::runtime_error(msg) {}
+};
+
+// Progress callback wrapper for Python functions
+class ProgressCallback {
+ public:
+  ProgressCallback() = default;
+  explicit ProgressCallback(py::function callback) : callback_(callback) {}
+
+  void operator()(double progress, const std::string& message = "") const {
+    if (callback_) {
+      callback_(progress, message);
+    }
+  }
+
+  bool is_valid() const { return callback_.is_none() == false; }
+
+ private:
+  py::function callback_;
+};
 
 // Helper function to convert hits to numpy arrays
 py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
@@ -64,11 +102,90 @@ py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
   return result;
 }
 
+// Streaming processor with progress callbacks and memory management
+class TDCStreamProcessor {
+ public:
+  explicit TDCStreamProcessor(const DetectorConfig& config)
+      : processor_(config) {}
+
+  // Process file in chunks with progress callback (returns list of chunk
+  // results)
+  py::list process_file_stream(const std::string& file_path,
+                               size_t chunk_size_mb = 512,
+                               py::object progress_callback = py::none()) {
+    ProgressCallback callback;
+    if (!progress_callback.is_none()) {
+      callback = ProgressCallback(progress_callback.cast<py::function>());
+    }
+
+    // Get file size for progress tracking
+    std::ifstream file(file_path, std::ios::ate | std::ios::binary);
+    if (!file.good()) {
+      throw TDCFileError("Cannot open file: " + file_path);
+    }
+    size_t file_size = file.tellg();
+    file.close();
+
+    size_t chunk_size_bytes = chunk_size_mb * 1024 * 1024;
+    size_t processed_bytes = 0;
+    py::list results;
+
+    if (callback.is_valid()) {
+      callback(0.0, "Starting file processing...");
+    }
+
+    while (processed_bytes < file_size) {
+      size_t remaining = file_size - processed_bytes;
+      size_t chunk_size = std::min(chunk_size_bytes, remaining);
+
+      size_t actual_processed = 0;
+      auto hits = processor_.processChunk(file_path, processed_bytes,
+                                          chunk_size, actual_processed);
+
+      if (actual_processed == 0) {
+        break;  // No more data to process
+      }
+
+      processed_bytes += actual_processed;
+      double progress = static_cast<double>(processed_bytes) / file_size;
+
+      if (callback.is_valid()) {
+        std::string msg = "Processed " + std::to_string(hits.size()) + " hits";
+        callback(progress, msg);
+      }
+
+      // Add chunk results to list
+      results.append(hits_to_numpy(hits));
+    }
+
+    if (callback.is_valid()) {
+      callback(1.0, "Processing complete");
+    }
+
+    return results;
+  }
+
+  // Context manager support
+  TDCStreamProcessor& __enter__() { return *this; }
+  void __exit__(py::object /* exc_type */, py::object /* exc_value */,
+                py::object /* traceback */) {
+    // Cleanup if needed
+  }
+
+ private:
+  TDCProcessor processor_;
+};
+
 PYBIND11_MODULE(_core, m) {
   m.doc() = "High-performance TDC-only TPX3 data processor";
 
   // Version information
   m.attr("__version__") = PROJECT_VERSION;
+
+  // Register custom exception types
+  py::register_exception<TDCProcessingError>(m, "TDCProcessingError");
+  py::register_exception<TDCFileError>(m, "TDCFileError");
+  py::register_exception<TDCConfigError>(m, "TDCConfigError");
 
   // ChipTransform class
   py::class_<ChipTransform>(m, "ChipTransform")
@@ -147,6 +264,19 @@ PYBIND11_MODULE(_core, m) {
   // Bind vector of TDCHit for efficient operations
   py::bind_vector<std::vector<TDCHit>>(m, "TDCHitVector");
 
+  // TDCStreamProcessor class - enhanced streaming interface with progress
+  // callbacks
+  py::class_<TDCStreamProcessor>(m, "TDCStreamProcessor")
+      .def(py::init<const DetectorConfig&>(), py::arg("config"),
+           "Create streaming processor with detector configuration")
+      .def("process_file_stream", &TDCStreamProcessor::process_file_stream,
+           py::arg("file_path"), py::arg("chunk_size_mb") = 512,
+           py::arg("progress_callback") = py::none(),
+           "Process file in chunks with optional progress callback")
+      .def("__enter__", &TDCStreamProcessor::__enter__,
+           py::return_value_policy::reference_internal)
+      .def("__exit__", &TDCStreamProcessor::__exit__);
+
   // TDCProcessor class - main interface
   py::class_<TDCProcessor>(m, "TDCProcessor")
       .def(py::init<const DetectorConfig&>(), py::arg("config"),
@@ -196,26 +326,64 @@ PYBIND11_MODULE(_core, m) {
         "Convert vector of hits to dictionary of numpy arrays",
         py::return_value_policy::move);
 
-  // High-level convenience function for simple usage
+  // High-level convenience function for simple usage with enhanced error
+  // handling
   m.def(
       "process_tpx3",
       [](const std::string& file_path, bool parallel = true,
-         size_t num_threads = 0) {
-        auto config = DetectorConfig::venusDefaults();
-        TDCProcessor processor(config);
+         size_t num_threads = 0, py::object progress_callback = py::none()) {
+        try {
+          auto config = DetectorConfig::venusDefaults();
+          TDCProcessor processor(config);
 
-        std::vector<TDCHit> hits;
-        if (parallel) {
-          hits = processor.processFileParallel(file_path, num_threads);
-        } else {
-          hits = processor.processFile(file_path);
+          ProgressCallback callback;
+          if (!progress_callback.is_none()) {
+            callback = ProgressCallback(progress_callback.cast<py::function>());
+          }
+          if (callback.is_valid()) {
+            callback(0.0, "Starting TPX3 processing...");
+          }
+
+          std::vector<TDCHit> hits;
+          if (parallel) {
+            hits = processor.processFileParallel(file_path, num_threads);
+          } else {
+            hits = processor.processFile(file_path);
+          }
+
+          if (callback.is_valid()) {
+            callback(1.0, "Processing complete");
+          }
+
+          return hits_to_numpy(hits);
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to process TPX3 file: " +
+                                   std::string(e.what()));
         }
-
-        return hits_to_numpy(hits);
       },
       py::arg("file_path"), py::arg("parallel") = true,
-      py::arg("num_threads") = 0,
-      "Process TPX3 file and return numpy arrays (convenience function)");
+      py::arg("num_threads") = 0, py::arg("progress_callback") = py::none(),
+      "Process TPX3 file and return numpy arrays (convenience function with "
+      "progress support)");
+
+  // Enhanced streaming function for large files
+  m.def(
+      "process_tpx3_stream",
+      [](const std::string& file_path, size_t chunk_size_mb = 512,
+         py::object progress_callback = py::none()) {
+        try {
+          auto config = DetectorConfig::venusDefaults();
+          TDCStreamProcessor processor(config);
+          return processor.process_file_stream(file_path, chunk_size_mb,
+                                               progress_callback);
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to stream TPX3 file: " +
+                                   std::string(e.what()));
+        }
+      },
+      py::arg("file_path"), py::arg("chunk_size_mb") = 512,
+      py::arg("progress_callback") = py::none(),
+      "Process large TPX3 files in chunks with progress tracking");
 }
 
 }  // namespace tdcsophiread

@@ -96,11 +96,12 @@ class TDCProcessor {
                                    size_t& actual_processed);
 
   /**
-   * @brief Discover all sections in a TPX3 file
-   * @param file_path Path to TPX3 file
+   * @brief Discover all sections in TPX3 data
+   * @param data Pointer to TPX3 data in memory
+   * @param size Size of data in bytes
    * @return Vector of TDCSection structures describing all sections
    *
-   * Scans the entire file for TPX3 headers (magic: 0x33585054) and
+   * Scans the data for TPX3 headers (magic: 0x33585054) and
    * creates section boundaries. This is Phase 1 of processing.
    */
   std::vector<TDCSection> discoverSections(const uint8_t* data, size_t size);

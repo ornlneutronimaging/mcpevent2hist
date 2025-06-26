@@ -24,6 +24,7 @@ except ImportError as e:
 # Import Python modules
 from . import config
 from . import cli
+from . import analysis
 
 __all__ = [
     # Version info
@@ -33,12 +34,19 @@ __all__ = [
     # Core classes (from C++ extension)
     "DetectorConfig",
     "TDCProcessor",
+    "TDCStreamProcessor",
     "TDCHit",
     "ChipTransform",
+    # Exception classes
+    "TDCProcessingError",
+    "TDCFileError",
+    "TDCConfigError",
     # Utility functions
     "process_tpx3",
+    "process_tpx3_stream",
     "hits_to_numpy",
     # Python modules
     "config",
     "cli",
+    "analysis",
 ]

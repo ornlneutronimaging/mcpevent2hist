@@ -135,8 +135,18 @@ install(
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
-       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  # Configure Doxyfile with correct paths for build directory
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile DOXYFILE_CONTENTS)
+  string(REPLACE "README.md" "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  string(REPLACE "TDCSophiread/include"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/TDCSophiread/include"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  string(REPLACE "TDCSophiread/src"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/TDCSophiread/src"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile "${DOXYFILE_CONTENTS}")
+
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
   add_custom_target(
     docs
