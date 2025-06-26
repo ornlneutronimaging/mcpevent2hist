@@ -132,21 +132,20 @@ TEST_F(TDCDetectorConfigTest, ProvidesCoordinateMapping) {
 
   auto config = DetectorConfig::venusDefaults();
 
-  // Test coordinate mapping using exact transformations from Python reference
-  // These match the hardcoded mappings in
-  // Vlad_method_Bragg_edge_TDC_correction.ipynb
+  // Test coordinate mapping using VENUS 2x2 layout with 2-pixel gaps
+  // Updated from 5-pixel gaps to match current VENUS detector configuration
 
   auto [global_x0, global_y0] = config.mapChipToGlobal(0, 100, 150);
-  EXPECT_EQ(global_x0, 100 + 260);  // Chip 0: x += 260
+  EXPECT_EQ(global_x0, 100 + 258);  // Chip 0: x += 258
   EXPECT_EQ(global_y0, 150);        // y unchanged
 
   auto [global_x1, global_y1] = config.mapChipToGlobal(1, 100, 150);
-  EXPECT_EQ(global_x1, 255 - 100 + 260);  // Chip 1: x = 255 - x + 260 = 415
-  EXPECT_EQ(global_y1, 255 - 150 + 260);  // y = 255 - y + 260 = 365
+  EXPECT_EQ(global_x1, 255 - 100 + 258);  // Chip 1: x = 255 - x + 258 = 413
+  EXPECT_EQ(global_y1, 255 - 150 + 258);  // y = 255 - y + 258 = 363
 
   auto [global_x2, global_y2] = config.mapChipToGlobal(2, 100, 150);
   EXPECT_EQ(global_x2, 255 - 100);        // Chip 2: x = 255 - x = 155
-  EXPECT_EQ(global_y2, 255 - 150 + 260);  // y = 255 - y + 260 = 365
+  EXPECT_EQ(global_y2, 255 - 150 + 258);  // y = 255 - y + 258 = 363
 
   auto [global_x3, global_y3] = config.mapChipToGlobal(3, 100, 150);
   EXPECT_EQ(global_x3, 100);  // Chip 3: x unchanged (NO transformation)

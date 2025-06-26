@@ -263,9 +263,9 @@ def create_example_config(output_path: str) -> None:
             chip_size_y=256,
             super_resolution_factor=4,
             chips=[
-                ChipTransform(chip_id=0, transform=[[1.0, 0.0, 260.0], [0.0, 1.0, 0.0]]),
-                ChipTransform(chip_id=1, transform=[[-1.0, 0.0, 515.0], [0.0, -1.0, 515.0]]),
-                ChipTransform(chip_id=2, transform=[[-1.0, 0.0, 255.0], [0.0, -1.0, 515.0]]),
+                ChipTransform(chip_id=0, transform=[[1.0, 0.0, 258.0], [0.0, 1.0, 0.0]]),
+                ChipTransform(chip_id=1, transform=[[-1.0, 0.0, 513.0], [0.0, -1.0, 513.0]]),
+                ChipTransform(chip_id=2, transform=[[-1.0, 0.0, 255.0], [0.0, -1.0, 513.0]]),
                 ChipTransform(chip_id=3, transform=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
             ]
         ),

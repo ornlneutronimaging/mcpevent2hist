@@ -267,17 +267,17 @@ TEST_F(TDCProcessorTest, MapsCoordinatesAccordingToPythonReference) {
   // From Python: m_x = dcol + (pix >> 2) = 4 + 0 = 4
   //              m_y = spix + (pix & 0x3) = 4 + 0 = 4
 
-  // Chip 0: m_x += 260
-  EXPECT_EQ(hits[0].x, 4 + 260);
+  // Chip 0: m_x += 258
+  EXPECT_EQ(hits[0].x, 4 + 258);
   EXPECT_EQ(hits[0].y, 4);
 
-  // Chip 1: m_x = 255 - m_x + 260, m_y = 255 - m_y + 260
-  EXPECT_EQ(hits[1].x, 255 - 4 + 260);
-  EXPECT_EQ(hits[1].y, 255 - 4 + 260);
+  // Chip 1: m_x = 255 - m_x + 258, m_y = 255 - m_y + 258
+  EXPECT_EQ(hits[1].x, 255 - 4 + 258);
+  EXPECT_EQ(hits[1].y, 255 - 4 + 258);
 
-  // Chip 2: m_x = 255 - m_x, m_y = 255 - m_y + 260
+  // Chip 2: m_x = 255 - m_x, m_y = 255 - m_y + 258
   EXPECT_EQ(hits[2].x, 255 - 4);
-  EXPECT_EQ(hits[2].y, 255 - 4 + 260);
+  EXPECT_EQ(hits[2].y, 255 - 4 + 258);
 
   // Chip 3: m_x unchanged, m_y unchanged (per Python reference)
   EXPECT_EQ(hits[3].x, 4);

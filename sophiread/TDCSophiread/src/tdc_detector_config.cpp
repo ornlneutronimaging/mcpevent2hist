@@ -23,22 +23,21 @@ DetectorConfig DetectorConfig::venusDefaults() {
   config.m_SuperResolutionFactor =
       4;  // 4x4 sub-pixels per pixel (VENUS default)
 
-  // Initialize transformation matrices to match the exact Python reference
-  // These hardcoded values come from
-  // Vlad_method_Bragg_edge_TDC_correction.ipynb
+  // Initialize transformation matrices for VENUS 2x2 layout with 2-pixel gaps
+  // Updated from 5-pixel gaps to match current VENUS detector configuration
   config.m_ChipTransforms.resize(4);
 
-  // Chip 0: x += 260, y unchanged -> [[1, 0, 260], [0, 1, 0]]
-  config.m_ChipTransforms[0] = ChipTransform(1.0, 0.0, 260.0, 0.0, 1.0, 0.0);
+  // Chip 0: x += 258, y unchanged -> [[1, 0, 258], [0, 1, 0]]
+  config.m_ChipTransforms[0] = ChipTransform(1.0, 0.0, 258.0, 0.0, 1.0, 0.0);
 
-  // Chip 1: x = 255 - x + 260, y = 255 - y + 260 -> [[-1, 0, 515], [0, -1,
-  // 515]]
+  // Chip 1: x = 255 - x + 258, y = 255 - y + 258 -> [[-1, 0, 513], [0, -1,
+  // 513]]
   config.m_ChipTransforms[1] =
-      ChipTransform(-1.0, 0.0, 515.0, 0.0, -1.0, 515.0);
+      ChipTransform(-1.0, 0.0, 513.0, 0.0, -1.0, 513.0);
 
-  // Chip 2: x = 255 - x, y = 255 - y + 260 -> [[-1, 0, 255], [0, -1, 515]]
+  // Chip 2: x = 255 - x, y = 255 - y + 258 -> [[-1, 0, 255], [0, -1, 513]]
   config.m_ChipTransforms[2] =
-      ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 515.0);
+      ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 513.0);
 
   // Chip 3: x unchanged, y unchanged -> [[1, 0, 0], [0, 1, 0]]
   config.m_ChipTransforms[3] = ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
@@ -139,15 +138,15 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
       }
     }
   } else {
-    // If no transformations specified, use VENUS defaults
+    // If no transformations specified, use VENUS defaults (2-pixel gaps)
     // This ensures backward compatibility with existing JSON files
     detector_config.m_ChipTransforms.resize(4);
     detector_config.m_ChipTransforms[0] =
-        ChipTransform(1.0, 0.0, 260.0, 0.0, 1.0, 0.0);
+        ChipTransform(1.0, 0.0, 258.0, 0.0, 1.0, 0.0);
     detector_config.m_ChipTransforms[1] =
-        ChipTransform(-1.0, 0.0, 515.0, 0.0, -1.0, 515.0);
+        ChipTransform(-1.0, 0.0, 513.0, 0.0, -1.0, 513.0);
     detector_config.m_ChipTransforms[2] =
-        ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 515.0);
+        ChipTransform(-1.0, 0.0, 255.0, 0.0, -1.0, 513.0);
     detector_config.m_ChipTransforms[3] =
         ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }

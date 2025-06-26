@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [tasks]
 # Primary TDC-only build (default)
-configure = "cmake -G Ninja -S . -B build"
+configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
 test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
     "build",
@@ -22,6 +22,20 @@ build-legacy = { cmd = "ninja -C build", depends-on = ["configure-legacy"] }
 test-legacy = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
     "build-legacy",
 ] }
+
+# Python development tasks
+install-dev = { cmd = "pip install -e . --no-build-isolation --config-settings=cmake.verbose=false", depends-on = ["build"] }
+reinstall-dev = { cmd = "pip install -e . --no-build-isolation --force-reinstall --config-settings=cmake.verbose=false", depends-on = ["build"] }
+python-test = { cmd = "python -c 'import tdcsophiread; print(f\"TDCSophiread {tdcsophiread.__version__} imported successfully\")'" }
+
+# Fast development workflow (incremental builds)
+dev-build = { cmd = "echo '✅ Development build complete - Python bindings ready'", depends-on = ["build", "install-dev"] }
+dev-rebuild = { cmd = "echo '♻️ Development rebuild complete - Python bindings updated'", depends-on = ["clean", "build", "reinstall-dev"] }
+dev-quick = { cmd = "ninja -C build && pip install -e . --no-build-isolation --config-settings=cmake.verbose=false && echo '⚡ Quick rebuild complete'" }
+
+# Python testing and examples
+run-examples = { cmd = "python examples/basic_usage.py", depends-on = ["python-test"] }
+run-notebook = { cmd = "jupyter lab examples/tdcsophiread_tutorial.ipynb", depends-on = ["python-test"] }
 
 # Other targets
 package = { cmd = "ninja -C build package", depends-on = ["build"] }

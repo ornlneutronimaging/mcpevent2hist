@@ -96,9 +96,9 @@ TEST_F(TDCHitTest, ConvertsHitPacketWithCoordinateMapping) {
   auto [local_x, local_y] = packet.getPixelCoordinates();
 
   // Check global coordinate mapping for chip 1 (from Python reference)
-  // chip 1: x = 255 - local_x + 260, y = 255 - local_y + 260
-  uint16_t expected_global_x = 255 - 4 + 260;  // = 511
-  uint16_t expected_global_y = 255 - 4 + 260;  // = 511
+  // chip 1: x = 255 - local_x + 258, y = 255 - local_y + 258
+  uint16_t expected_global_x = 255 - 4 + 258;  // = 509
+  uint16_t expected_global_y = 255 - 4 + 258;  // = 509
 
   EXPECT_EQ(local_x, 4);  // dcol=4 + (pix>>2)=0 = 4
   EXPECT_EQ(local_y, 4);  // spix=4 + (pix&3)=0 = 4
@@ -213,9 +213,9 @@ TEST_F(TDCHitTest, UsesDetectorConfigForChipMapping) {
       config->mapChipToGlobal(chip_id, local_x, local_y);
 
   // Verify this matches Python reference for chip 1
-  // Python: x = 255 - local_x + 260, y = 255 - local_y + 260
-  uint16_t python_x = 255 - local_x + 260;  // 255 - 50 + 260 = 465
-  uint16_t python_y = 255 - local_y + 260;  // 255 - 72 + 260 = 443
+  // Python: x = 255 - local_x + 258, y = 255 - local_y + 258
+  uint16_t python_x = 255 - local_x + 258;  // 255 - 50 + 258 = 463
+  uint16_t python_y = 255 - local_y + 258;  // 255 - 72 + 258 = 441
 
   EXPECT_EQ(expected_global_x, python_x);
   EXPECT_EQ(expected_global_y, python_y);

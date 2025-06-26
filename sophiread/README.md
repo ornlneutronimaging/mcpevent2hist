@@ -70,21 +70,25 @@ std::cout << "Rate: " << processor.getLastHitsPerSecond() / 1e6 << " M hits/sec\
 ### With Pixi (Recommended)
 
 ```bash
-# Configure and build
-pixi run configure
-pixi run build
+# Development workflow (includes Python bindings)
+pixi run dev-build      # Initial build with editable Python install
+pixi run dev-quick      # Fast incremental rebuild after code changes
+pixi run python-test    # Test Python import
 
-# Run tests
-pixi run test
+# Individual tasks
+pixi run configure      # Configure with CMake
+pixi run build         # Build C++ library
+pixi run test          # Run C++ tests
 
-# Build documentation
-pixi run docs
+# Python development
+pixi run install-dev    # Install Python bindings in editable mode
+pixi run run-examples   # Run Python examples
+pixi run run-notebook   # Launch Jupyter notebook tutorial
 
-# Create release package
-pixi run package
-
-# Clean build
-pixi run clean
+# Other targets
+pixi run docs          # Build documentation
+pixi run package       # Create release package
+pixi run clean         # Clean build directory
 ```
 
 ### Build Targets
@@ -181,7 +185,7 @@ Convert TOF to milliseconds: `tof_ms = hits['tof'] * 25 / 1e6`
 ## Important Notes
 
 - **Binary Files**: TPX3 files are binary - never open with text editors
-- **Default Layout**: 2x2 chip layout with 5-pixel gaps (VENUS configuration)
+- **Default Layout**: 2x2 chip layout with 2-pixel gaps (VENUS configuration)
 - **Chip Size**: 256x256 pixels per chip (native resolution)
 - **Super-resolution**: 4x4 sub-pixels via peak fitting (configurable)
 - **TDC Timing**: Recommended for reliable timing (60Hz default frequency)
