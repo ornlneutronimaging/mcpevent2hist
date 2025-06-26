@@ -67,7 +67,8 @@ std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path) {
   for (const auto& section : sections) {
     estimated_total_packets += (section.end_offset - section.start_offset) / 8;
   }
-  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * HIT_ESTIMATE_FACTOR);
+  size_t estimated_hits =
+      static_cast<size_t>(estimated_total_packets * HIT_ESTIMATE_FACTOR);
   all_hits.reserve(estimated_hits);
 
   for (const auto& section : sections) {
