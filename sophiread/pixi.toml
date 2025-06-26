@@ -40,7 +40,7 @@ run-notebook = { cmd = "jupyter lab examples/tdcsophiread_tutorial.ipynb", depen
 # Other targets
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
-clean = "rm -rf build"
+clean = { cmd = "bash -c 'rm -rf build docs/html dist .eggs; find . -name \"__pycache__\" -type d -exec rm -rf {} + 2>/dev/null || true; find . -name \"*.pyc\" -delete 2>/dev/null || true; find . -name \"*.egg-info\" -type d -exec rm -rf {} + 2>/dev/null || true; echo \"🧹 Cleaned build, docs, package artifacts, and Python cache files\"'" }
 
 [dependencies]
 python = "3.12.*"
