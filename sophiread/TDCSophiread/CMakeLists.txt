@@ -16,7 +16,10 @@ set(TDC_SOURCES
     src/tdc_neutron.cpp
     src/tdc_abs_clustering.cpp
     src/tdc_centroid_fitting.cpp
-    src/tdc_cluster_processor.cpp)
+    src/tdc_cluster_processor.cpp
+    # Streaming components (TDD approach)
+    src/tdc_temporal_window.cpp
+    src/tdc_streaming_config.cpp)
 
 # Create TDCSophiread library target
 add_library(TDCSophiread ${TDC_SOURCES})
@@ -24,7 +27,7 @@ add_library(TDCSophiread ${TDC_SOURCES})
 # Set up include directories
 target_include_directories(
   TDCSophiread PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                      $<INSTALL_INTERFACE:include>)
+                      $<INSTALL_INTERFACE:include> ${HDF5_INCLUDE_DIRS})
 
 # Set C++20 standard
 target_compile_features(TDCSophiread PUBLIC cxx_std_20)
@@ -32,9 +35,9 @@ target_compile_features(TDCSophiread PUBLIC cxx_std_20)
 # Add debug timing for performance analysis (disabled)
 # target_compile_definitions(TDCSophiread PRIVATE DEBUG_TIMING)
 
-# Required dependencies (same as FastSophiread for now)
+# Required dependencies (same as FastSophiread + HDF5 for streaming)
 target_link_libraries(TDCSophiread PUBLIC TBB::tbb nlohmann_json::nlohmann_json
-                                          Eigen3::Eigen)
+                                          Eigen3::Eigen ${HDF5_LIBRARIES})
 
 # Installation configuration
 install(
@@ -114,6 +117,13 @@ endif()
 
 # Integration Test: End-to-end clustering workflow validation
 add_tdc_test(clustering_integration)
+
+# Streaming Tests: Memory-efficient streaming components (to be implemented with
+# TDD)
+add_tdc_test(streaming_config) # TDD Step 1: Tests written first
+# add_tdc_test(memory_monitor)
+add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
+# add_tdc_test(async_hdf5_writer) add_tdc_test(streaming_processor)
 
 # Note: Additional test targets will be added incrementally following TDD
 # approach Each test will be written BEFORE the corresponding implementation
