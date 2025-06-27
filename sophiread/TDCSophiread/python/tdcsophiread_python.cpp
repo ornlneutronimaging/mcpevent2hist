@@ -10,14 +10,18 @@
 #include <fstream>
 #include <stdexcept>
 
+#include "tdc_cluster_processor.h"
+#include "tdc_clustering_config.h"
 #include "tdc_detector_config.h"
 #include "tdc_hit.h"
+#include "tdc_neutron.h"
 #include "tdc_processor.h"
 
 namespace py = pybind11;
 
 // Make vector of TDCHit opaque for efficient transfer
 PYBIND11_MAKE_OPAQUE(std::vector<tdcsophiread::TDCHit>);
+PYBIND11_MAKE_OPAQUE(std::vector<tdcsophiread::TDCNeutron>);
 
 namespace tdcsophiread {
 
@@ -98,6 +102,52 @@ py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
   result["tot"] = tot;
   result["chip_id"] = chip_id;
   result["timestamp"] = timestamp;
+
+  return result;
+}
+
+// Helper function to convert neutrons to numpy arrays
+py::dict neutrons_to_numpy(const std::vector<TDCNeutron>& neutrons) {
+  size_t n = neutrons.size();
+
+  // Create numpy arrays for each field
+  auto x = py::array_t<double>(n);
+  auto y = py::array_t<double>(n);
+  auto tof = py::array_t<uint32_t>(n);
+  auto tot = py::array_t<uint16_t>(n);
+  auto n_hits = py::array_t<uint16_t>(n);
+  auto chip_id = py::array_t<uint8_t>(n);
+
+  // Get raw pointers for fast access
+  auto x_ptr = static_cast<double*>(x.mutable_unchecked<1>().mutable_data(0));
+  auto y_ptr = static_cast<double*>(y.mutable_unchecked<1>().mutable_data(0));
+  auto tof_ptr =
+      static_cast<uint32_t*>(tof.mutable_unchecked<1>().mutable_data(0));
+  auto tot_ptr =
+      static_cast<uint16_t*>(tot.mutable_unchecked<1>().mutable_data(0));
+  auto n_hits_ptr =
+      static_cast<uint16_t*>(n_hits.mutable_unchecked<1>().mutable_data(0));
+  auto chip_id_ptr =
+      static_cast<uint8_t*>(chip_id.mutable_unchecked<1>().mutable_data(0));
+
+  // Copy data
+  for (size_t i = 0; i < n; ++i) {
+    x_ptr[i] = neutrons[i].x;
+    y_ptr[i] = neutrons[i].y;
+    tof_ptr[i] = neutrons[i].tof;
+    tot_ptr[i] = neutrons[i].tot;
+    n_hits_ptr[i] = neutrons[i].n_hits;
+    chip_id_ptr[i] = neutrons[i].chip_id;
+  }
+
+  // Return as dictionary
+  py::dict result;
+  result["x"] = x;
+  result["y"] = y;
+  result["tof"] = tof;
+  result["tot"] = tot;
+  result["n_hits"] = n_hits;
+  result["chip_id"] = chip_id;
 
   return result;
 }
@@ -261,6 +311,122 @@ PYBIND11_MODULE(_core, m) {
   // Bind vector of TDCHit for efficient operations
   py::bind_vector<std::vector<TDCHit>>(m, "TDCHitVector");
 
+  // TDCNeutron structure for neutron events
+  py::class_<TDCNeutron>(m, "TDCNeutron")
+      .def(py::init<>())
+      .def_readwrite("x", &TDCNeutron::x, "Sub-pixel X coordinate")
+      .def_readwrite("y", &TDCNeutron::y, "Sub-pixel Y coordinate")
+      .def_readwrite("tof", &TDCNeutron::tof, "Time-of-flight (25ns units)")
+      .def_readwrite("tot", &TDCNeutron::tot, "Combined time-over-threshold")
+      .def_readwrite("n_hits", &TDCNeutron::n_hits, "Number of hits in cluster")
+      .def_readwrite("chip_id", &TDCNeutron::chip_id, "Chip ID (0-3)")
+      .def("getTOFNanoseconds", &TDCNeutron::getTOFNanoseconds,
+           "Get TOF in nanoseconds")
+      .def("getTOFMilliseconds", &TDCNeutron::getTOFMilliseconds,
+           "Get TOF in milliseconds");
+
+  // Bind vector of TDCNeutron for efficient operations
+  py::bind_vector<std::vector<TDCNeutron>>(m, "TDCNeutronVector");
+
+  // ABSConfig for ABS clustering algorithm
+  py::class_<ABSConfig>(m, "ABSConfig")
+      .def(py::init<>())
+      .def_readwrite("radius", &ABSConfig::radius,
+                     "Spatial clustering radius in pixels")
+      .def_readwrite("min_cluster_size", &ABSConfig::min_cluster_size,
+                     "Minimum hits for valid cluster")
+      .def_readwrite("time_range_ns", &ABSConfig::time_range_ns,
+                     "Temporal clustering window in nanoseconds")
+      .def_readwrite("max_clusters", &ABSConfig::max_clusters,
+                     "Maximum simultaneous clusters");
+
+  // CentroidConfig for centroid peak fitting
+  py::class_<CentroidConfig>(m, "CentroidConfig")
+      .def(py::init<>())
+      .def_readwrite("super_resolution_factor",
+                     &CentroidConfig::super_resolution_factor,
+                     "Coordinate scaling factor for sub-pixel precision")
+      .def_readwrite("weighted_by_tot", &CentroidConfig::weighted_by_tot,
+                     "Use TOT weighting for centroid calculation")
+      .def_readwrite("min_tot_threshold", &CentroidConfig::min_tot_threshold,
+                     "Minimum TOT for hit inclusion");
+
+  // ClusteringConfig - main configuration class
+  py::class_<ClusteringConfig>(m, "ClusteringConfig")
+      .def_static("venus_defaults", &ClusteringConfig::venusDefaults,
+                  "Create VENUS detector default clustering configuration")
+      .def_static("from_file", &ClusteringConfig::fromFile,
+                  py::arg("config_path"),
+                  "Load clustering configuration from JSON file")
+      .def_static(
+          "from_json",
+          [](const py::object& config_obj) {
+            py::module json_module = py::module::import("json");
+            py::str json_str = json_module.attr("dumps")(config_obj);
+            nlohmann::json json_config =
+                nlohmann::json::parse(json_str.cast<std::string>());
+            return ClusteringConfig::fromJson(json_config);
+          },
+          py::arg("config"),
+          "Load clustering configuration from dictionary or JSON-compatible "
+          "object")
+      .def_readwrite("clustering_algorithm",
+                     &ClusteringConfig::clustering_algorithm,
+                     "Clustering algorithm name (e.g., 'abs')")
+      .def_readwrite("peak_fitting_algorithm",
+                     &ClusteringConfig::peak_fitting_algorithm,
+                     "Peak fitting algorithm name (e.g., 'centroid')")
+      .def_readwrite("enable_clustering", &ClusteringConfig::enable_clustering,
+                     "Enable/disable clustering")
+      .def_readwrite("abs", &ClusteringConfig::abs,
+                     "ABS algorithm configuration")
+      .def_readwrite("centroid", &ClusteringConfig::centroid,
+                     "Centroid fitting configuration")
+      .def("summary", &ClusteringConfig::summary, "Get configuration summary");
+
+  // TDCClusterProcessor - main clustering interface
+  py::class_<TDCClusterProcessor>(m, "TDCClusterProcessor")
+      .def(py::init<>(), "Create cluster processor with VENUS defaults")
+      .def(py::init<const ClusteringConfig&>(), py::arg("config"),
+           "Create cluster processor with custom configuration")
+
+      // Main processing method
+      .def("process_hits", &TDCClusterProcessor::processHits, py::arg("hits"),
+           "Process hits through clustering pipeline to extract neutrons")
+
+      // Configuration
+      .def("configure", &TDCClusterProcessor::configure, py::arg("config"),
+           "Update clustering configuration")
+      .def("get_configuration", &TDCClusterProcessor::getConfiguration,
+           "Get current clustering configuration",
+           py::return_value_policy::reference_internal)
+
+      // Performance metrics
+      .def("get_last_processing_time_ms",
+           &TDCClusterProcessor::getLastProcessingTimeMs,
+           "Get processing time for last operation in milliseconds")
+      .def("get_last_hits_per_second",
+           &TDCClusterProcessor::getLastHitsPerSecond,
+           "Get processing rate for last operation")
+      .def("get_last_neutron_efficiency",
+           &TDCClusterProcessor::getLastNeutronEfficiency,
+           "Get neutron efficiency (neutrons/hits ratio)")
+      .def("get_last_neutron_count", &TDCClusterProcessor::getLastNeutronCount,
+           "Get number of neutrons from last operation")
+
+      // Algorithm info
+      .def("get_clustering_algorithm",
+           &TDCClusterProcessor::getClusteringAlgorithm,
+           "Get current clustering algorithm name")
+      .def("get_peak_fitting_algorithm",
+           &TDCClusterProcessor::getPeakFittingAlgorithm,
+           "Get current peak fitting algorithm name")
+
+      // Utilities
+      .def("reset", &TDCClusterProcessor::reset, "Reset processor state")
+      .def("get_processing_summary", &TDCClusterProcessor::getProcessingSummary,
+           "Get human-readable processing summary");
+
   // TDCStreamProcessor class - enhanced streaming interface with progress
   // callbacks
   py::class_<TDCStreamProcessor>(m, "TDCStreamProcessor")
@@ -323,6 +489,11 @@ PYBIND11_MODULE(_core, m) {
         "Convert vector of hits to dictionary of numpy arrays",
         py::return_value_policy::move);
 
+  // Convenience function to convert neutrons to numpy arrays
+  m.def("neutrons_to_numpy", &neutrons_to_numpy, py::arg("neutrons"),
+        "Convert vector of neutrons to dictionary of numpy arrays",
+        py::return_value_policy::move);
+
   // High-level convenience function for simple usage with enhanced error
   // handling
   m.def(
@@ -381,6 +552,121 @@ PYBIND11_MODULE(_core, m) {
       py::arg("file_path"), py::arg("chunk_size_mb") = 512,
       py::arg("progress_callback") = py::none(),
       "Process large TPX3 files in chunks with progress tracking");
+
+  // Clustering convenience function - process TPX3 file directly to neutrons
+  m.def(
+      "process_tpx3_to_neutrons",
+      [](const std::string& file_path, bool parallel = true,
+         size_t num_threads = 0, py::object clustering_config = py::none()) {
+        try {
+          // Get detector configuration
+          auto detector_config = DetectorConfig::venusDefaults();
+
+          // Get clustering configuration
+          ClusteringConfig cluster_config;
+          if (clustering_config.is_none()) {
+            cluster_config = ClusteringConfig::venusDefaults();
+          } else if (py::isinstance<ClusteringConfig>(clustering_config)) {
+            cluster_config = clustering_config.cast<ClusteringConfig>();
+          } else {
+            throw TDCConfigError("Invalid clustering configuration type");
+          }
+
+          // Process TPX3 file to hits
+          TDCProcessor processor(detector_config);
+          std::vector<TDCHit> hits;
+          if (parallel) {
+            hits = processor.processFileParallel(file_path, num_threads);
+          } else {
+            hits = processor.processFile(file_path);
+          }
+
+          // Cluster hits into neutrons
+          TDCClusterProcessor cluster_processor(cluster_config);
+          auto neutrons = cluster_processor.processHits(hits);
+
+          return neutrons_to_numpy(neutrons);
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to process TPX3 to neutrons: " +
+                                   std::string(e.what()));
+        }
+      },
+      py::arg("file_path"), py::arg("parallel") = true,
+      py::arg("num_threads") = 0, py::arg("clustering_config") = py::none(),
+      "Process TPX3 file directly to neutron events with clustering");
+
+  // Hits-to-neutrons convenience function
+  m.def(
+      "cluster_hits_to_neutrons",
+      [](const py::object& hits_data,
+         py::object clustering_config = py::none()) {
+        try {
+          // Get clustering configuration
+          ClusteringConfig cluster_config;
+          if (clustering_config.is_none()) {
+            cluster_config = ClusteringConfig::venusDefaults();
+          } else if (py::isinstance<ClusteringConfig>(clustering_config)) {
+            cluster_config = clustering_config.cast<ClusteringConfig>();
+          } else {
+            throw TDCConfigError("Invalid clustering configuration type");
+          }
+
+          // Convert input hits data
+          std::vector<TDCHit> hits;
+          if (py::isinstance<std::vector<TDCHit>>(hits_data)) {
+            hits = hits_data.cast<std::vector<TDCHit>>();
+          } else if (py::isinstance<py::dict>(hits_data)) {
+            // Convert from numpy arrays
+            auto hits_dict = hits_data.cast<py::dict>();
+            if (!hits_dict.contains("x") || !hits_dict.contains("y") ||
+                !hits_dict.contains("tof")) {
+              throw TDCProcessingError(
+                  "Hits dictionary must contain x, y, and tof arrays");
+            }
+
+            auto x = hits_dict["x"].cast<py::array_t<uint16_t>>();
+            auto y = hits_dict["y"].cast<py::array_t<uint16_t>>();
+            auto tof = hits_dict["tof"].cast<py::array_t<uint32_t>>();
+            auto tot = hits_dict.contains("tot")
+                           ? hits_dict["tot"].cast<py::array_t<uint16_t>>()
+                           : py::array_t<uint16_t>();
+            auto chip_id =
+                hits_dict.contains("chip_id")
+                    ? hits_dict["chip_id"].cast<py::array_t<uint8_t>>()
+                    : py::array_t<uint8_t>();
+
+            size_t n = x.size();
+            hits.reserve(n);
+
+            for (size_t i = 0; i < n; ++i) {
+              TDCHit hit;
+              hit.x = x.at(i);
+              hit.y = y.at(i);
+              hit.tof = tof.at(i);
+              hit.tot = tot.size() > static_cast<ssize_t>(i) ? tot.at(i) : 100;
+              hit.chip_id =
+                  chip_id.size() > static_cast<ssize_t>(i) ? chip_id.at(i) : 0;
+              hit.timestamp =
+                  tof.at(i);  // Use TOF as timestamp if not provided
+              hits.push_back(hit);
+            }
+          } else {
+            throw TDCProcessingError(
+                "Hits must be vector<TDCHit> or dictionary of arrays");
+          }
+
+          // Cluster hits into neutrons
+          TDCClusterProcessor cluster_processor(cluster_config);
+          auto neutrons = cluster_processor.processHits(hits);
+
+          return neutrons_to_numpy(neutrons);
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to cluster hits: " +
+                                   std::string(e.what()));
+        }
+      },
+      py::arg("hits"), py::arg("clustering_config") = py::none(),
+      "Cluster hits into neutron events");
 }
 
 }  // namespace tdcsophiread
