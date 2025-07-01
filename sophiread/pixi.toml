@@ -63,6 +63,7 @@ scikit-build-core = ">=0.11.4,<0.12"
 pip = ">=25.1.1,<26"
 python-build = ">=1.2.2.post1,<2"
 jupyterlab = ">=4.4.3,<5"
+scipy = ">=1.16.0,<2"
 
 [target.linux-64.dependencies]
 gxx_linux-64 = ">=14.2.0,<15"
