@@ -94,6 +94,14 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHits(
   std::vector<TDCNeutron> neutrons =
       peak_fitting_algorithm_->extractNeutrons(clustered_hits);
 
+  // Phase 3: Apply super-resolution scaling to final coordinates (only for
+  // clustered data)
+  double super_res_factor = config_.centroid.super_resolution_factor;
+  for (auto& neutron : neutrons) {
+    neutron.x *= super_res_factor;
+    neutron.y *= super_res_factor;
+  }
+
   updatePerformanceMetrics(hits.size(), neutrons.size());
 
   return neutrons;
@@ -108,13 +116,16 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
 
   if (!config_.enable_clustering) {
     // If clustering is disabled, convert each hit directly to a neutron
+    // NO super-resolution applied - that only makes sense with clustering
     std::vector<TDCNeutron> neutrons;
     neutrons.reserve(hits.size());
 
     for (const auto& hit : hits) {
       TDCNeutron neutron;
-      neutron.x = hit.x * config_.centroid.super_resolution_factor;
-      neutron.y = hit.y * config_.centroid.super_resolution_factor;
+      neutron.x = hit.x;  // Keep native pixel coordinates (no super-resolution
+                          // without clustering)
+      neutron.y = hit.y;  // Keep native pixel coordinates (no super-resolution
+                          // without clustering)
       neutron.tof = hit.tof;
       neutron.tot = hit.tot;
       neutron.n_hits = 1;
@@ -413,8 +424,8 @@ std::map<int, size_t> ClusterProcessingUtils::calculateClusterSizes(
 bool ClusterProcessingUtils::validateClusterLabels(
     const std::vector<TDCHit>& hits) {
   // Check that cluster IDs are reasonable
-  int8_t max_cluster_id = -1;
-  int8_t min_cluster_id = INT8_MAX;
+  int32_t max_cluster_id = -1;
+  int32_t min_cluster_id = INT32_MAX;
 
   for (const auto& hit : hits) {
     if (hit.cluster_id >= 0) {
@@ -429,11 +440,11 @@ bool ClusterProcessingUtils::validateClusterLabels(
   }
 
   // Check that cluster IDs are reasonably dense (no huge gaps)
-  int cluster_range = max_cluster_id - min_cluster_id + 1;
+  int32_t cluster_range = max_cluster_id - min_cluster_id + 1;
   size_t valid_hits = filterValidClusteredHits(hits).size();
 
   // If there are more cluster IDs than hits, something is wrong
-  return cluster_range <= static_cast<int>(valid_hits);
+  return cluster_range <= static_cast<int32_t>(valid_hits);
 }
 
 std::vector<TDCHit> ClusterProcessingUtils::createHitSubset(

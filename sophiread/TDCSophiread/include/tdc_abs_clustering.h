@@ -23,12 +23,11 @@ namespace tdcsophiread {
  * Maintains spatial bounding box and temporal information.
  */
 struct ABSCluster {
-  int x_min, x_max;     ///< Spatial bounding box (X range)
-  int y_min, y_max;     ///< Spatial bounding box (Y range)
-  uint32_t timestamp;   ///< Cluster timestamp (25ns units)
-  uint16_t size;        ///< Number of hits in cluster
-  int16_t label;        ///< Cluster label (-1 = inactive)
-  uint8_t reserved[2];  ///< Padding for alignment
+  int x_min, x_max;    ///< Spatial bounding box (X range)
+  int y_min, y_max;    ///< Spatial bounding box (Y range)
+  uint32_t timestamp;  ///< Cluster timestamp (25ns units)
+  uint16_t size;       ///< Number of hits in cluster
+  int32_t label;       ///< Cluster label (-1 = inactive)
 
   /**
    * @brief Default constructor - creates inactive cluster
@@ -47,7 +46,7 @@ struct ABSCluster {
    * @param hit Initial hit for the cluster
    * @param cluster_label Unique cluster identifier
    */
-  void initialize(const TDCHit& hit, int16_t cluster_label) {
+  void initialize(const TDCHit& hit, int32_t cluster_label) {
     x_min = x_max = hit.x;
     y_min = y_max = hit.y;
     timestamp = hit.tof;
@@ -119,6 +118,8 @@ struct ABSCluster {
  * - Fixed memory footprint independent of dataset size
  * - Cache-optimized cluster pool for maximum performance
  * - LRU replacement strategy for cluster slot management
+ * - Supports up to 2.1 billion clusters (int32_t cluster labels)
+ * - Built-in overflow protection and bounds checking
  */
 class ABSClustering : public IClusteringAlgorithm {
  public:
@@ -201,7 +202,7 @@ class ABSClustering : public IClusteringAlgorithm {
   std::array<ABSCluster, MAX_CLUSTERS> clusters_;
 
   // Cluster management
-  int16_t next_cluster_label_;  ///< Next available cluster label
+  int32_t next_cluster_label_;  ///< Next available cluster label
   size_t active_clusters_;      ///< Number of currently active clusters
 
   // Output data
@@ -231,7 +232,7 @@ class ABSClustering : public IClusteringAlgorithm {
    * @param hit Hit that starts the new cluster
    * @return Cluster label assigned
    */
-  int16_t createOrReplaceCluster(const TDCHit& hit);
+  int32_t createOrReplaceCluster(const TDCHit& hit);
 
   /**
    * @brief Update clustering statistics

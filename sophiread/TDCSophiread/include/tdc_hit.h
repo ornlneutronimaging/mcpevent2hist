@@ -34,8 +34,8 @@ struct TDCHit {
                        ///< correction) - LOW ACCESS
   uint16_t tot;     ///< Time-over-threshold (10-bit raw value) - MEDIUM ACCESS
   uint8_t chip_id;  ///< Chip identifier (0-3) - LOW ACCESS
-  int8_t cluster_id;  ///< Cluster label assigned by clustering algorithm (-1 =
-                      ///< unclustered)
+  int32_t cluster_id;  ///< Cluster label assigned by clustering algorithm (-1 =
+                       ///< unclustered)
 
   /**
    * @brief Default constructor

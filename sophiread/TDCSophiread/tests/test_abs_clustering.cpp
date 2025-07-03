@@ -315,4 +315,80 @@ TEST_F(TDCABSClusteringTest, ProvidesPerformanceStatistics) {
   EXPECT_GT(stats.processing_time_ms, 0.0);  // Should measure some time
 }
 
+// Test 13: ABSClustering should handle large datasets without overflow
+TEST_F(TDCABSClusteringTest, HandlesLargeDatasetWithoutOverflow) {
+  std::vector<TDCHit> hits;
+  hits.reserve(100000);  // Reserve space for 100K hits
+
+  // Create 100K well-separated hits (should create 100K clusters)
+  std::random_device rd;
+  std::mt19937 gen(42);  // Fixed seed for reproducible tests
+  std::uniform_int_distribution<uint16_t> spatial_dist(0, 65535);
+  std::uniform_int_distribution<uint32_t> temporal_dist(0, 1000000);
+
+  for (size_t i = 0; i < 100000; ++i) {
+    // Create spatially and temporally separated hits
+    uint16_t x = spatial_dist(gen);
+    uint16_t y = spatial_dist(gen);
+    uint32_t tof = temporal_dist(gen);
+
+    hits.push_back(createHit(x, y, tof));
+  }
+
+  // This should not crash or overflow
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  auto stats = abs_clustering->getStatistics();
+
+  EXPECT_EQ(stats.total_hits, 100000);
+  EXPECT_GT(num_clusters, 0);
+  EXPECT_LE(num_clusters, 100000);  // Can't have more clusters than hits
+
+  // Verify no invalid cluster labels
+  const auto& labels = abs_clustering->getClusterLabels();
+  for (int label : labels) {
+    EXPECT_GE(label, 0);  // All labels should be non-negative
+    EXPECT_LT(label, static_cast<int>(num_clusters));  // Within valid range
+  }
+}
+
+// Test 14: ABSClustering should handle overflow scenario gracefully
+TEST_F(TDCABSClusteringTest, HandlesClusterOverflowGracefully) {
+  // Create configuration that forces many small clusters
+  ABSConfig stress_config = config;
+  stress_config.radius = 0.1;         // Very small radius
+  stress_config.time_range_ns = 0.1;  // Very small time window
+  stress_config.max_clusters = 8;     // Limited active clusters
+
+  auto stress_clustering = std::make_unique<ABSClustering>(stress_config);
+
+  std::vector<TDCHit> hits;
+  hits.reserve(50000);
+
+  // Create hits that will each form their own cluster
+  for (size_t i = 0; i < 50000; ++i) {
+    // Space hits far apart to ensure separate clusters
+    uint16_t x = static_cast<uint16_t>((i % 500) * 10);
+    uint16_t y = static_cast<uint16_t>((i / 500) * 10);
+    uint32_t tof = static_cast<uint32_t>(i * 100);  // 2.5μs apart
+
+    hits.push_back(createHit(x, y, tof));
+  }
+
+  // This should create ~50K clusters without integer overflow
+  size_t num_clusters = stress_clustering->fit(hits);
+
+  auto stats = stress_clustering->getStatistics();
+
+  EXPECT_EQ(stats.total_hits, 50000);
+  EXPECT_GT(num_clusters, 32767);            // Should exceed old int16_t limit
+  EXPECT_GT(stats.cluster_replacements, 0);  // Should have many replacements
+
+  // Verify cluster labels are valid
+  const auto& labels = stress_clustering->getClusterLabels();
+  for (int label : labels) {
+    EXPECT_GE(label, 0);
+  }
+}
+
 }  // namespace tdcsophiread

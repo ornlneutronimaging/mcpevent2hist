@@ -32,7 +32,7 @@ size_t ABSClustering::fit(std::vector<TDCHit>& hits) {
     // Find compatible existing cluster
     int cluster_index = findCompatibleCluster(hit);
 
-    int16_t assigned_label;
+    int32_t assigned_label;
     if (cluster_index >= 0) {
       // Add to existing cluster
       clusters_[cluster_index].addHit(hit);
@@ -95,7 +95,7 @@ int ABSClustering::findOldestCluster() const {
   return oldest_index;
 }
 
-int16_t ABSClustering::createOrReplaceCluster(const TDCHit& hit) {
+int32_t ABSClustering::createOrReplaceCluster(const TDCHit& hit) {
   int cluster_index = 0;  // Initialize to silence warning
 
   if (active_clusters_ < MAX_CLUSTERS) {
@@ -114,7 +114,7 @@ int16_t ABSClustering::createOrReplaceCluster(const TDCHit& hit) {
   }
 
   // Initialize cluster with the hit
-  int16_t new_label = next_cluster_label_++;
+  int32_t new_label = next_cluster_label_++;
   clusters_[cluster_index].initialize(hit, new_label);
 
   return new_label;
@@ -129,10 +129,22 @@ void ABSClustering::updateStatistics() {
   stats_.total_clusters = next_cluster_label_;
   stats_.processing_time_ms = duration.count() / 1000.0;
 
-  // Count cluster sizes
-  std::vector<size_t> cluster_sizes(next_cluster_label_, 0);
+  // Count cluster sizes with bounds checking
+  // Prevent excessive memory allocation from corrupted cluster count
+  const size_t max_reasonable_clusters =
+      stats_.total_hits;  // Can't have more clusters than hits
+  const size_t safe_cluster_count = std::min(
+      static_cast<size_t>(next_cluster_label_), max_reasonable_clusters);
+
+  if (safe_cluster_count != static_cast<size_t>(next_cluster_label_)) {
+    std::cerr << "Warning: Cluster count (" << next_cluster_label_
+              << ") exceeds hit count (" << stats_.total_hits
+              << "). Using safe count: " << safe_cluster_count << std::endl;
+  }
+
+  std::vector<size_t> cluster_sizes(safe_cluster_count, 0);
   for (int label : cluster_labels_) {
-    if (label >= 0) {
+    if (label >= 0 && static_cast<size_t>(label) < cluster_sizes.size()) {
       cluster_sizes[label]++;
     }
   }
