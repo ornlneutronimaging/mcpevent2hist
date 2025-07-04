@@ -581,7 +581,7 @@ PYBIND11_MODULE(_core, m) {
             hits = processor.processFile(file_path);
           }
 
-          // Cluster hits into neutrons
+          // Cluster hits into neutrons - now memory-optimized internally
           TDCClusterProcessor cluster_processor(cluster_config);
           auto neutrons = cluster_processor.processHits(hits);
 

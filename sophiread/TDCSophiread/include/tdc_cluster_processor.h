@@ -74,7 +74,7 @@ class TDCClusterProcessor : public IClusterProcessor {
 
   // IClusterProcessor interface implementation
   void configure(const ClusteringConfig& config) override;
-  std::vector<TDCNeutron> processHits(const std::vector<TDCHit>& hits) override;
+  std::vector<TDCNeutron> processHits(std::vector<TDCHit>& hits) override;
   std::string getClusteringAlgorithm() const override;
   std::string getPeakFittingAlgorithm() const override;
   double getLastProcessingTimeMs() const override;
@@ -97,7 +97,7 @@ class TDCClusterProcessor : public IClusterProcessor {
    * @param chunk_size Maximum hits per chunk (0 = process all at once)
    * @return Vector of neutron events from all chunks
    */
-  std::vector<TDCNeutron> processHitsInChunks(const std::vector<TDCHit>& hits,
+  std::vector<TDCNeutron> processHitsInChunks(std::vector<TDCHit>& hits,
                                               size_t chunk_size = 1000000);
 
   /**
@@ -155,7 +155,7 @@ class TDCClusterProcessor : public IClusterProcessor {
    * @return Map of chip_id to neutron events for that chip
    */
   std::map<uint8_t, std::vector<TDCNeutron>> processHitsByChip(
-      const std::vector<TDCHit>& hits);
+      std::vector<TDCHit>& hits);
 
   /**
    * @brief Create processing summary string

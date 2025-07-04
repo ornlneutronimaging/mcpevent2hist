@@ -51,21 +51,18 @@ void TDCClusterProcessor::configure(const ClusteringConfig& config) {
 }
 
 std::vector<TDCNeutron> TDCClusterProcessor::processHits(
-    const std::vector<TDCHit>& hits) {
+    std::vector<TDCHit>& hits) {
   start_time_ = std::chrono::high_resolution_clock::now();
 
   if (!config_.enable_clustering) {
     // If clustering is disabled, convert each hit directly to a neutron
-    // NO super-resolution applied - that only makes sense with clustering
     std::vector<TDCNeutron> neutrons;
     neutrons.reserve(hits.size());
 
     for (const auto& hit : hits) {
       TDCNeutron neutron;
-      neutron.x = hit.x;  // Keep native pixel coordinates (no super-resolution
-                          // without clustering)
-      neutron.y = hit.y;  // Keep native pixel coordinates (no super-resolution
-                          // without clustering)
+      neutron.x = hit.x;
+      neutron.y = hit.y;
       neutron.tof = hit.tof;
       neutron.tot = hit.tot;
       neutron.n_hits = 1;
@@ -87,18 +84,15 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHits(
     throw std::invalid_argument("Invalid input hits detected");
   }
 
-  // Make a copy of hits for clustering (clustering modifies cluster_id)
-  std::vector<TDCHit> clustered_hits = hits;
-
-  // Phase 1: Clustering - assign cluster labels to hits
-  clustering_algorithm_->fit(clustered_hits);
+  // MEMORY OPTIMIZATION: Process hits in-place - NO COPY (saves ~145MB)
+  // Phase 1: Clustering - assign cluster labels to hits IN-PLACE
+  clustering_algorithm_->fit(hits);
 
   // Phase 2: Peak fitting - extract neutrons from clusters
   std::vector<TDCNeutron> neutrons =
-      peak_fitting_algorithm_->extractNeutrons(clustered_hits);
+      peak_fitting_algorithm_->extractNeutrons(hits);
 
-  // Phase 3: Apply super-resolution scaling to final coordinates (only for
-  // clustered data)
+  // Phase 3: Apply super-resolution scaling to final coordinates
   double super_res_factor = config_.centroid.super_resolution_factor;
   for (auto& neutron : neutrons) {
     neutron.x *= super_res_factor;
@@ -193,7 +187,7 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
 }
 
 std::vector<TDCNeutron> TDCClusterProcessor::processHitsInChunks(
-    const std::vector<TDCHit>& hits, size_t chunk_size) {
+    std::vector<TDCHit>& hits, size_t chunk_size) {
   if (chunk_size == 0 || hits.size() <= chunk_size) {
     // Process all at once
     return processHits(hits);
@@ -324,7 +318,7 @@ bool TDCClusterProcessor::isClusteringEnabled() const {
 }
 
 std::map<uint8_t, std::vector<TDCNeutron>>
-TDCClusterProcessor::processHitsByChip(const std::vector<TDCHit>& hits) {
+TDCClusterProcessor::processHitsByChip(std::vector<TDCHit>& hits) {
   std::map<uint8_t, std::vector<TDCNeutron>> chip_neutrons;
 
   // Group hits by chip

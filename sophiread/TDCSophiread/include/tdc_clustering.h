@@ -141,8 +141,7 @@ class IClusterProcessor {
    * @param hits Input TDC hits
    * @return Vector of neutron events with sub-pixel coordinates
    */
-  virtual std::vector<TDCNeutron> processHits(
-      const std::vector<TDCHit>& hits) = 0;
+  virtual std::vector<TDCNeutron> processHits(std::vector<TDCHit>& hits) = 0;
 
   /**
    * @brief Get clustering algorithm name
