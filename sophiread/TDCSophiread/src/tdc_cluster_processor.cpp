@@ -56,13 +56,16 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHits(
 
   if (!config_.enable_clustering) {
     // If clustering is disabled, convert each hit directly to a neutron
+    // NO super-resolution applied - that only makes sense with clustering
     std::vector<TDCNeutron> neutrons;
     neutrons.reserve(hits.size());
 
     for (const auto& hit : hits) {
       TDCNeutron neutron;
-      neutron.x = hit.x * config_.centroid.super_resolution_factor;
-      neutron.y = hit.y * config_.centroid.super_resolution_factor;
+      neutron.x = hit.x;  // Keep native pixel coordinates (no super-resolution
+                          // without clustering)
+      neutron.y = hit.y;  // Keep native pixel coordinates (no super-resolution
+                          // without clustering)
       neutron.tof = hit.tof;
       neutron.tot = hit.tot;
       neutron.n_hits = 1;
@@ -171,6 +174,14 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
   // Phase 2: Peak fitting
   std::vector<TDCNeutron> neutrons =
       peak_fitting_algorithm_->extractNeutrons(clustered_hits);
+
+  // Phase 3: Apply super-resolution scaling to final coordinates (only for
+  // clustered data)
+  double super_res_factor = config_.centroid.super_resolution_factor;
+  for (auto& neutron : neutrons) {
+    neutron.x *= super_res_factor;
+    neutron.y *= super_res_factor;
+  }
 
   if (progress_callback) {
     progress_callback(1.0);  // Complete

@@ -101,9 +101,9 @@ TEST_F(TDCCentroidFittingTest, HandlesSingleHitCluster) {
 
   ASSERT_EQ(neutrons.size(), 1);
 
-  // Check coordinates (should be scaled by super-resolution factor)
-  EXPECT_DOUBLE_EQ(neutrons[0].x, 100.0 * config_.super_resolution_factor);
-  EXPECT_DOUBLE_EQ(neutrons[0].y, 200.0 * config_.super_resolution_factor);
+  // Check coordinates (should be in native pixel space - no super-resolution)
+  EXPECT_DOUBLE_EQ(neutrons[0].x, 100.0);
+  EXPECT_DOUBLE_EQ(neutrons[0].y, 200.0);
   EXPECT_EQ(neutrons[0].tof, 1500);
   EXPECT_EQ(neutrons[0].tot, 120);
   EXPECT_EQ(neutrons[0].n_hits, 1);
@@ -133,10 +133,8 @@ TEST_F(TDCCentroidFittingTest, CalculatesTOTWeightedCentroidCorrectly) {
   double expected_x = 9.614035087719298;  // Precise calculation
   double expected_y = 19.561403508771930;
 
-  EXPECT_NEAR(neutrons[0].x, expected_x * config_.super_resolution_factor,
-              1e-6);
-  EXPECT_NEAR(neutrons[0].y, expected_y * config_.super_resolution_factor,
-              1e-6);
+  EXPECT_NEAR(neutrons[0].x, expected_x, 1e-6);
+  EXPECT_NEAR(neutrons[0].y, expected_y, 1e-6);
   EXPECT_EQ(neutrons[0].n_hits, 4);
   EXPECT_EQ(neutrons[0].tot, 100 + 150 + 120 + 200);  // Combined TOT
   EXPECT_EQ(neutrons[0].tof, 1003);  // TOF from hit with highest TOT (200)
@@ -155,8 +153,8 @@ TEST_F(TDCCentroidFittingTest, HandlesUnweightedCentroidCalculation) {
   // X = (9 + 10 + 9 + 10) / 4 = 38/4 = 9.5
   // Y = (19 + 19 + 20 + 20) / 4 = 78/4 = 19.5
 
-  EXPECT_DOUBLE_EQ(neutrons[0].x, 9.5 * config_.super_resolution_factor);
-  EXPECT_DOUBLE_EQ(neutrons[0].y, 19.5 * config_.super_resolution_factor);
+  EXPECT_DOUBLE_EQ(neutrons[0].x, 9.5);
+  EXPECT_DOUBLE_EQ(neutrons[0].y, 19.5);
   EXPECT_EQ(neutrons[0].n_hits, 4);
 }
 
@@ -176,8 +174,8 @@ TEST_F(TDCCentroidFittingTest, ProcessesMultipleClustersCorrectly) {
 
   // Check single hit neutron (cluster 0)
   EXPECT_EQ(neutrons[0].n_hits, 1);
-  EXPECT_DOUBLE_EQ(neutrons[0].x, 50.0 * config_.super_resolution_factor);
-  EXPECT_DOUBLE_EQ(neutrons[0].y, 60.0 * config_.super_resolution_factor);
+  EXPECT_DOUBLE_EQ(neutrons[0].x, 50.0);
+  EXPECT_DOUBLE_EQ(neutrons[0].y, 60.0);
 
   // Check 3-hit linear cluster (cluster 1)
   EXPECT_EQ(neutrons[1].n_hits, 3);
@@ -207,9 +205,8 @@ TEST_F(TDCCentroidFittingTest, AppliesToTThresholdFiltering) {
   // 6850/350 = 19.571
 
   ASSERT_EQ(neutrons.size(), 1);
-  EXPECT_DOUBLE_EQ(neutrons[0].x, 10.0 * config_.super_resolution_factor);
-  EXPECT_NEAR(neutrons[0].y,
-              19.571428571428573 * config_.super_resolution_factor, 1e-6);
+  EXPECT_DOUBLE_EQ(neutrons[0].x, 10.0);
+  EXPECT_NEAR(neutrons[0].y, 19.571428571428573, 1e-6);
   EXPECT_EQ(neutrons[0].n_hits, 2);       // Only 2 hits after filtering
   EXPECT_EQ(neutrons[0].tot, 150 + 200);  // Combined TOT of filtered hits
 
@@ -283,8 +280,9 @@ TEST_F(TDCCentroidFittingTest, UpdatesConfigurationCorrectly) {
   auto neutrons = fitting.extractNeutrons(single_hit);
 
   ASSERT_EQ(neutrons.size(), 1);
-  EXPECT_DOUBLE_EQ(neutrons[0].x, 10.0 * 16.0);  // New super-resolution factor
-  EXPECT_DOUBLE_EQ(neutrons[0].y, 20.0 * 16.0);
+  EXPECT_DOUBLE_EQ(neutrons[0].x,
+                   10.0);  // No super-resolution in centroid fitting
+  EXPECT_DOUBLE_EQ(neutrons[0].y, 20.0);
 }
 
 // Test 11: CentroidPeakFitting should configure from ClusteringConfig
@@ -304,8 +302,8 @@ TEST_F(TDCCentroidFittingTest, ConfiguresFromClusteringConfig) {
 
   ASSERT_EQ(neutrons.size(), 1);
   EXPECT_DOUBLE_EQ(neutrons[0].x,
-                   5.0 * 12.0);  // Updated super-resolution factor
-  EXPECT_DOUBLE_EQ(neutrons[0].y, 10.0 * 12.0);
+                   5.0);  // No super-resolution in centroid fitting
+  EXPECT_DOUBLE_EQ(neutrons[0].y, 10.0);
 }
 
 // Test 12: CentroidPeakFitting should reset statistics correctly
@@ -391,8 +389,9 @@ TEST_F(TDCCentroidFittingTest, HandlesSupeResolutionScalingCorrectly) {
     auto neutrons = fitting.extractNeutrons(single_hit);
 
     ASSERT_EQ(neutrons.size(), 1);
-    EXPECT_DOUBLE_EQ(neutrons[0].x, 10.0 * factor);
-    EXPECT_DOUBLE_EQ(neutrons[0].y, 20.0 * factor);
+    EXPECT_DOUBLE_EQ(neutrons[0].x,
+                     10.0);  // No super-resolution in centroid fitting
+    EXPECT_DOUBLE_EQ(neutrons[0].y, 20.0);
   }
 }
 
