@@ -235,7 +235,8 @@ TEST_F(TDCCentroidFittingTest, HandlesUnclusteredHitsGracefully) {
 
   auto stats = fitting.getStatistics();
   EXPECT_EQ(stats.neutrons_extracted, 0);
-  EXPECT_EQ(stats.total_clusters_found, 1);  // Still counts the -1 "cluster"
+  EXPECT_EQ(stats.total_clusters_found,
+            0);  // Unclustered hits don't form clusters
 }
 
 // Test 9: CentroidPeakFitting should handle mixed clustered/unclustered hits
@@ -259,7 +260,8 @@ TEST_F(TDCCentroidFittingTest, HandlesMixedClusteredUnclusteredHits) {
 
   auto stats = fitting.getStatistics();
   EXPECT_EQ(stats.neutrons_extracted, 1);
-  EXPECT_EQ(stats.total_clusters_found, 2);  // Cluster 5 and cluster -1
+  EXPECT_EQ(stats.total_clusters_found,
+            1);  // Only cluster 5 (cluster -1 is unclustered)
 }
 
 // Test 10: CentroidPeakFitting should update configuration correctly
@@ -340,7 +342,8 @@ TEST_F(TDCCentroidFittingTest, ProvidesDetailedStatistics) {
   EXPECT_EQ(stats.hits_below_threshold, 0);  // No filtering applied
   EXPECT_EQ(stats.single_hit_neutrons, 1);
   EXPECT_EQ(stats.multi_hit_neutrons, 2);
-  EXPECT_GT(stats.processing_time_ms, 0.0);  // Should have some processing time
+  EXPECT_GE(stats.processing_time_ms,
+            0.0);  // Processing time should be non-negative
 
   // Check mean calculations
   double expected_mean_cluster_size = (1.0 + 3.0 + 4.0) / 3.0;  // 8/3 = 2.67

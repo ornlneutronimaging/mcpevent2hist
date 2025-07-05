@@ -14,10 +14,10 @@ namespace tdcsophiread {
  */
 struct ABSConfig {
   double radius;  ///< Spatial clustering radius in pixels (default: 5.0)
-  uint16_t min_cluster_size;  ///< Minimum hits per cluster (default: 1)
-  double time_range_ns;       ///< Temporal clustering window in nanoseconds
-                              ///< (default: 75.0)
-  uint8_t max_clusters;       ///< Maximum concurrent clusters (default: 8)
+  uint16_t min_cluster_size;          ///< Minimum hits per cluster (default: 1)
+  double neutron_correlation_window;  ///< Neutron temporal correlation window
+                                      ///< in nanoseconds (default: 75.0)
+  size_t scan_interval;  ///< Scan for aged buckets every N hits (default: 100)
 
   /**
    * @brief Default constructor with VENUS detector defaults
@@ -25,8 +25,8 @@ struct ABSConfig {
   ABSConfig()
       : radius(5.0),
         min_cluster_size(1),
-        time_range_ns(75.0),
-        max_clusters(8) {}
+        neutron_correlation_window(75.0),
+        scan_interval(100) {}
 
   /**
    * @brief Validate configuration parameters
@@ -312,8 +312,8 @@ class ClusteringConfigMigration {
  *     "abs": {
  *       "radius": 5.0,
  *       "min_cluster_size": 1,
- *       "time_range_ns": 75.0,
- *       "max_clusters": 8
+ *       "neutron_correlation_window": 75.0,
+ *       "scan_interval": 100
  *     },
  *     "centroid": {
  *       "super_resolution_factor": 8.0,

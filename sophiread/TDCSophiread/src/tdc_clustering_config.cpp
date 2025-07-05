@@ -23,17 +23,19 @@ void ABSConfig::validate() const {
     throw std::invalid_argument("ABS min_cluster_size must be positive, got: " +
                                 std::to_string(min_cluster_size));
   }
-  if (time_range_ns <= 0.0) {
-    throw std::invalid_argument("ABS time_range_ns must be positive, got: " +
-                                std::to_string(time_range_ns));
+  if (neutron_correlation_window <= 0.0) {
+    throw std::invalid_argument(
+        "ABS neutron_correlation_window must be positive, got: " +
+        std::to_string(neutron_correlation_window));
   }
-  if (time_range_ns > 10000.0) {
-    throw std::invalid_argument("ABS time_range_ns too large (>10μs), got: " +
-                                std::to_string(time_range_ns));
+  if (neutron_correlation_window > 10000.0) {
+    throw std::invalid_argument(
+        "ABS neutron_correlation_window too large (>10μs), got: " +
+        std::to_string(neutron_correlation_window));
   }
-  if (max_clusters == 0 || max_clusters > 255) {
-    throw std::invalid_argument("ABS max_clusters must be 1-255, got: " +
-                                std::to_string(max_clusters));
+  if (scan_interval == 0) {
+    throw std::invalid_argument("ABS scan_interval must be positive, got: " +
+                                std::to_string(scan_interval));
   }
 }
 
@@ -44,20 +46,27 @@ void ABSConfig::fromJson(const nlohmann::json& json) {
   if (json.contains("min_cluster_size")) {
     min_cluster_size = json["min_cluster_size"];
   }
-  if (json.contains("time_range_ns")) {
-    time_range_ns = json["time_range_ns"];
+  // Support both old and new parameter names for backward compatibility
+  if (json.contains("neutron_correlation_window")) {
+    neutron_correlation_window = json["neutron_correlation_window"];
+  } else if (json.contains("time_range_ns")) {
+    // Backward compatibility
+    neutron_correlation_window = json["time_range_ns"];
   }
-  if (json.contains("max_clusters")) {
-    max_clusters = json["max_clusters"];
+  if (json.contains("scan_interval")) {
+    scan_interval = json["scan_interval"];
   }
+  // Note: max_clusters is deprecated in new implementation
+  // Silently ignore if present for backward compatibility
   validate();
 }
 
 nlohmann::json ABSConfig::toJson() const {
-  return nlohmann::json{{"radius", radius},
-                        {"min_cluster_size", min_cluster_size},
-                        {"time_range_ns", time_range_ns},
-                        {"max_clusters", max_clusters}};
+  return nlohmann::json{
+      {"radius", radius},
+      {"min_cluster_size", min_cluster_size},
+      {"neutron_correlation_window", neutron_correlation_window},
+      {"scan_interval", scan_interval}};
 }
 
 // ==================== CentroidConfig ====================
@@ -168,8 +177,8 @@ ClusteringConfig ClusteringConfig::venusDefaults() {
   // ABS parameters optimized for VENUS neutron imaging
   config.abs.radius = 5.0;          // 5-pixel spatial clustering radius
   config.abs.min_cluster_size = 1;  // Include single-hit neutrons
-  config.abs.time_range_ns = 75.0;  // 75ns temporal window
-  config.abs.max_clusters = 8;      // Fixed memory allocation
+  config.abs.neutron_correlation_window = 75.0;  // 75ns temporal window
+  config.abs.scan_interval = 100;                // Scan every 100 hits
 
   // Centroid parameters for 8x super-resolution
   config.centroid.super_resolution_factor = 8.0;
@@ -331,8 +340,9 @@ std::string ClusteringConfig::summary() const {
     ss << "  ABS Parameters:\n";
     ss << "    Radius: " << abs.radius << " pixels\n";
     ss << "    Min Cluster Size: " << abs.min_cluster_size << " hits\n";
-    ss << "    Time Range: " << abs.time_range_ns << " ns\n";
-    ss << "    Max Clusters: " << abs.max_clusters << "\n";
+    ss << "    Correlation Window: " << abs.neutron_correlation_window
+       << " ns\n";
+    ss << "    Scan Interval: " << abs.scan_interval << " hits\n";
   }
 
   if (peak_fitting_algorithm == "centroid") {

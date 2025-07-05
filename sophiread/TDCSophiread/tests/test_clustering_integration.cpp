@@ -245,7 +245,7 @@ TEST_F(TDCClusteringIntegrationTest, TimeWindowClustering) {
   hits.emplace_back(1011, x, y, 1011, 145, chip);  // 275ns later
 
   auto config = ClusteringConfig::venusDefaults();
-  config.abs.time_range_ns = 75.0;  // 3 TDC units
+  config.abs.neutron_correlation_window = 75.0;  // 3 TDC units
 
   TDCClusterProcessor processor(config);
   auto neutrons = processor.processHits(hits);

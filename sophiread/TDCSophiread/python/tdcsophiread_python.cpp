@@ -335,10 +335,11 @@ PYBIND11_MODULE(_core, m) {
                      "Spatial clustering radius in pixels")
       .def_readwrite("min_cluster_size", &ABSConfig::min_cluster_size,
                      "Minimum hits for valid cluster")
-      .def_readwrite("time_range_ns", &ABSConfig::time_range_ns,
-                     "Temporal clustering window in nanoseconds")
-      .def_readwrite("max_clusters", &ABSConfig::max_clusters,
-                     "Maximum simultaneous clusters");
+      .def_readwrite("neutron_correlation_window",
+                     &ABSConfig::neutron_correlation_window,
+                     "Neutron temporal correlation window in nanoseconds")
+      .def_readwrite("scan_interval", &ABSConfig::scan_interval,
+                     "Scan for aged buckets every N hits");
 
   // CentroidConfig for centroid peak fitting
   py::class_<CentroidConfig>(m, "CentroidConfig")

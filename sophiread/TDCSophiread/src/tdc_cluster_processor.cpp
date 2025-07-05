@@ -362,7 +362,8 @@ std::string TDCClusterProcessor::getProcessingSummary() const {
   summary << "    Super-Resolution Factor: "
           << config_.centroid.super_resolution_factor << "x\n";
   summary << "    ABS Radius: " << config_.abs.radius << " pixels\n";
-  summary << "    ABS Time Range: " << config_.abs.time_range_ns << " ns\n";
+  summary << "    ABS Correlation Window: "
+          << config_.abs.neutron_correlation_window << " ns\n";
   return summary.str();
 }
 
@@ -494,8 +495,10 @@ size_t ClusterProcessingUtils::estimateMemoryUsage(
   // Algorithm-specific overhead
   size_t algorithm_overhead = 0;
   if (config.clustering_algorithm == "abs") {
-    // ABS uses fixed-size cluster pool
-    algorithm_overhead = config.abs.max_clusters * 1024;  // Rough estimate
+    // ABS uses initial bucket pool of 1000 buckets
+    // Each bucket: ~100 bytes (vector + spatial bounds + metadata)
+    algorithm_overhead =
+        1000 * 100;  // Conservative estimate for initial bucket pool
   }
 
   return base_memory + algorithm_overhead;

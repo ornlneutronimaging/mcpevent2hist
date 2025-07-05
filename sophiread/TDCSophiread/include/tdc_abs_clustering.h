@@ -17,53 +17,65 @@
 namespace tdcsophiread {
 
 /**
- * @brief Internal cluster representation for ABS algorithm
+ * @brief Bucket for dynamic ABS clustering algorithm
  *
- * Fixed-size structure optimized for cache performance.
+ * Dynamic structure using hit indices instead of copying hit data.
  * Maintains spatial bounding box and temporal information.
  */
-struct ABSCluster {
-  int x_min, x_max;    ///< Spatial bounding box (X range)
-  int y_min, y_max;    ///< Spatial bounding box (Y range)
-  uint32_t timestamp;  ///< Cluster timestamp (25ns units)
-  uint16_t size;       ///< Number of hits in cluster
-  int32_t label;       ///< Cluster label (-1 = inactive)
+struct ABSBucket {
+  std::vector<size_t> hit_indices;  ///< Indices of hits in this bucket
+  int x_min, x_max;                 ///< Spatial bounding box (X range)
+  int y_min, y_max;                 ///< Spatial bounding box (Y range)
+  uint32_t start_timestamp;         ///< Bucket creation time (TOF)
+  int32_t cluster_label;            ///< Assigned cluster ID (-1 = unassigned)
+  bool is_active;  ///< Whether bucket is actively collecting hits
+
+  // IMPORTANT: This is a REUSABLE container. After closing:
+  // 1. Hits get their cluster_id assigned (or left as -1)
+  // 2. Bucket is reset() and returned to free pool
+  // 3. Same bucket object is reused for future hits
+  // This prevents creating millions of bucket objects
 
   /**
-   * @brief Default constructor - creates inactive cluster
+   * @brief Default constructor - creates inactive bucket
    */
-  ABSCluster()
+  ABSBucket()
       : x_min(0),
         x_max(0),
         y_min(0),
         y_max(0),
-        timestamp(0),
-        size(0),
-        label(-1) {}
-
-  /**
-   * @brief Initialize cluster with first hit
-   * @param hit Initial hit for the cluster
-   * @param cluster_label Unique cluster identifier
-   */
-  void initialize(const TDCHit& hit, int32_t cluster_label) {
-    x_min = x_max = hit.x;
-    y_min = y_max = hit.y;
-    timestamp = hit.tof;
-    size = 1;
-    label = cluster_label;
+        start_timestamp(0),
+        cluster_label(-1),
+        is_active(false) {
+    hit_indices.reserve(16);  // Reserve space for typical neutron cluster
   }
 
   /**
-   * @brief Add hit to existing cluster
-   * @param hit Hit to add
+   * @brief Initialize bucket with first hit
+   * @param hit_index Index of initial hit
+   * @param hit Initial hit for spatial bounds
    */
-  void addHit(const TDCHit& hit) {
+  void initialize(size_t hit_index, const TDCHit& hit) {
+    hit_indices.clear();
+    hit_indices.push_back(hit_index);
+    x_min = x_max = hit.x;
+    y_min = y_max = hit.y;
+    start_timestamp = hit.tof;
+    cluster_label = -1;  // Unassigned until bucket is closed
+    is_active = true;
+  }
+
+  /**
+   * @brief Add hit to existing bucket
+   * @param hit_index Index of hit to add
+   * @param hit Hit data for spatial bounds update
+   */
+  void addHit(size_t hit_index, const TDCHit& hit) {
+    hit_indices.push_back(hit_index);
     x_min = std::min(x_min, static_cast<int>(hit.x));
     x_max = std::max(x_max, static_cast<int>(hit.x));
     y_min = std::min(y_min, static_cast<int>(hit.y));
     y_max = std::max(y_max, static_cast<int>(hit.y));
-    size++;
   }
 
   /**
@@ -79,47 +91,96 @@ struct ABSCluster {
   }
 
   /**
-   * @brief Check if hit fits temporally within cluster
+   * @brief Check if hit fits temporally within bucket
    * @param hit Hit to test
-   * @param time_range_ns Maximum time difference in nanoseconds
+   * @param correlation_window Maximum time difference in nanoseconds
    * @return True if hit is within temporal constraints
    */
-  bool fitsTemporally(const TDCHit& hit, double time_range_ns) const {
-    const uint32_t time_range_tdc = static_cast<uint32_t>(time_range_ns / 25.0);
-    const uint32_t time_diff =
-        (hit.tof > timestamp) ? (hit.tof - timestamp) : (timestamp - hit.tof);
-    return time_diff <= time_range_tdc;
+  bool fitsTemporally(const TDCHit& hit, double correlation_window) const {
+    const uint32_t window_tdc =
+        static_cast<uint32_t>(correlation_window / 25.0);
+    const uint32_t time_diff = (hit.tof > start_timestamp)
+                                   ? (hit.tof - start_timestamp)
+                                   : (start_timestamp - hit.tof);
+    return time_diff <= window_tdc;
   }
 
   /**
-   * @brief Check if cluster is active (has assigned label)
-   * @return True if cluster is active
+   * @brief Check if bucket is aged based on reference time
+   * @param reference_tof Current reference time (TOF)
+   * @param correlation_window Aging threshold in nanoseconds
+   * @return True if bucket should be closed due to aging
    */
-  bool isActive() const { return label >= 0; }
+  bool isAged(uint32_t reference_tof, double correlation_window) const {
+    const uint32_t window_tdc =
+        static_cast<uint32_t>(correlation_window / 25.0);
+    const uint32_t age = (reference_tof > start_timestamp)
+                             ? (reference_tof - start_timestamp)
+                             : (start_timestamp - reference_tof);
+    return age > window_tdc;
+  }
 
   /**
-   * @brief Reset cluster to inactive state
+   * @brief Close bucket and assign cluster ID if sufficient hits
+   * @param min_cluster_size Minimum hits required for valid cluster
+   * @param next_cluster_id Next available cluster ID
+   * @return True if cluster was formed, false if hits remain unclustered
+   */
+  bool closeBucket(uint16_t min_cluster_size, int32_t next_cluster_id) {
+    is_active = false;
+    if (hit_indices.size() >= min_cluster_size) {
+      cluster_label = next_cluster_id;
+      return true;  // Valid cluster formed
+    }
+    cluster_label = -1;  // Insufficient hits - remain unclustered
+    return false;        // No cluster formed
+  }
+
+  /**
+   * @brief Get number of hits in bucket
+   * @return Hit count
+   */
+  size_t getHitCount() const { return hit_indices.size(); }
+
+  /**
+   * @brief Reset bucket to initial state
    */
   void reset() {
-    label = -1;
-    size = 0;
+    hit_indices.clear();
+    cluster_label = -1;
+    is_active = false;
   }
 };
 
 /**
  * @brief ABS (Adaptive Box Search) clustering algorithm implementation
  *
- * High-performance spatial-temporal clustering using a fixed pool of 8
- * clusters. Designed for streaming processing of large TPX3 datasets with
- * minimal memory overhead.
+ * Physics-correct spatial-temporal clustering using dynamic bucket system.
+ * Designed for neutron detection with proper gamma noise filtering.
  *
- * Algorithm characteristics:
- * - O(n) time complexity (8 clusters max per hit)
- * - Fixed memory footprint independent of dataset size
- * - Cache-optimized cluster pool for maximum performance
- * - LRU replacement strategy for cluster slot management
- * - Supports up to 2.1 billion clusters (int32_t cluster labels)
- * - Built-in overflow protection and bounds checking
+ * CRITICAL DESIGN UNDERSTANDING:
+ * - Buckets are TEMPORARY workspaces for collecting correlated hits
+ * - Active bucket count is determined by physics (no artificial limits)
+ * - After aging: bucket assigns cluster_id to hits, then is FREED for reuse
+ * - Bucket pool grows as needed, freed buckets are reused
+ *
+ * Algorithm flow:
+ * 1. New hit arrives → find compatible active bucket or get/create one
+ * 2. Every scan_interval hits → scan all ACTIVE buckets for aging
+ * 3. Aged bucket → if hits >= min_cluster_size: assign cluster_id
+ *                  else: leave hits as cluster_id = -1 (gamma noise)
+ * 4. Close bucket → mark as free for reuse (bucket object recycled)
+ *
+ * Memory management:
+ * - Initial pool capacity (e.g., 1000) for efficiency
+ * - Pool grows dynamically if all buckets are active
+ * - Freed buckets reused before growing pool
+ * - No maximum limit - physics determines active bucket count
+ *
+ * Performance characteristics:
+ * - O(active_buckets) scan complexity, NOT O(total_clusters_ever)
+ * - Active buckets typically ~100-1000 (depends on beam intensity)
+ * - Bucket reuse minimizes memory allocations
  */
 class ABSClustering : public IClusteringAlgorithm {
  public:
@@ -128,6 +189,9 @@ class ABSClustering : public IClusteringAlgorithm {
    * @param config ABS algorithm parameters
    */
   explicit ABSClustering(const ABSConfig& config);
+
+  // Initial bucket pool size (will grow as needed)
+  static constexpr size_t INITIAL_BUCKET_POOL_SIZE = 1000;
 
   /**
    * @brief Apply clustering to hit data
@@ -147,13 +211,13 @@ class ABSClustering : public IClusteringAlgorithm {
    * @return Performance and quality metrics
    */
   struct ClusteringStats {
-    size_t total_hits;            ///< Number of hits processed
-    size_t total_clusters;        ///< Number of clusters created
-    size_t single_hit_clusters;   ///< Clusters with only 1 hit
-    size_t multi_hit_clusters;    ///< Clusters with multiple hits
-    size_t cluster_replacements;  ///< Number of LRU replacements
-    double mean_cluster_size;     ///< Average hits per cluster
-    double processing_time_ms;    ///< Wall-clock processing time
+    size_t total_hits;          ///< Number of hits processed
+    size_t total_clusters;      ///< Number of valid clusters created
+    size_t total_buckets;       ///< Number of buckets created
+    size_t gamma_hits;          ///< Hits rejected as gamma noise
+    size_t aged_bucket_scans;   ///< Number of aging scans performed
+    double mean_cluster_size;   ///< Average hits per valid cluster
+    double processing_time_ms;  ///< Wall-clock processing time
   };
 
   /**
@@ -197,13 +261,19 @@ class ABSClustering : public IClusteringAlgorithm {
   // Configuration parameters
   ABSConfig config_;
 
-  // Fixed cluster pool (cache-optimized)
-  static constexpr size_t MAX_CLUSTERS = 8;
-  std::array<ABSCluster, MAX_CLUSTERS> clusters_;
+  // Bucket pool management
+  std::vector<ABSBucket> bucket_pool_;  ///< Pool of reusable buckets
+  std::vector<size_t>
+      active_bucket_indices_;  ///< Indices of currently active buckets
+  std::vector<size_t>
+      free_bucket_indices_;  ///< Indices of free buckets for reuse
+
+  // Hit data reference
+  std::vector<TDCHit>* hits_ptr_;  ///< Pointer to current hit data
 
   // Cluster management
   int32_t next_cluster_label_;  ///< Next available cluster label
-  size_t active_clusters_;      ///< Number of currently active clusters
+  size_t hits_processed_;       ///< Number of hits processed (for scan timing)
 
   // Output data
   std::vector<int> cluster_labels_;  ///< Cluster assignment for each hit
@@ -215,24 +285,42 @@ class ABSClustering : public IClusteringAlgorithm {
   mutable std::chrono::high_resolution_clock::time_point start_time_;
 
   /**
-   * @brief Find cluster that can accommodate the hit
+   * @brief Find bucket that can accommodate the hit
    * @param hit Hit to test
-   * @return Index of compatible cluster, or -1 if none found
+   * @return Index of compatible bucket, or -1 if none found
    */
-  int findCompatibleCluster(const TDCHit& hit) const;
+  int findCompatibleBucket(const TDCHit& hit) const;
 
   /**
-   * @brief Find least recently used cluster for replacement
-   * @return Index of oldest cluster
+   * @brief Get or create bucket for hit
+   * @param hit_index Index of hit in hits vector
+   * @param hit Hit data for bucket initialization
+   * @return Index of bucket (from pool)
+   *
+   * Logic:
+   * 1. If free buckets available → reuse one
+   * 2. If no free buckets → grow pool and use new bucket
+   * Never fails - pool grows as needed by physics
    */
-  int findOldestCluster() const;
+  size_t getOrCreateBucket(size_t hit_index, const TDCHit& hit);
 
   /**
-   * @brief Create new cluster or replace oldest cluster
-   * @param hit Hit that starts the new cluster
-   * @return Cluster label assigned
+   * @brief Free bucket back to pool for reuse
+   * @param bucket_index Index of bucket to free
    */
-  int32_t createOrReplaceCluster(const TDCHit& hit);
+  void freeBucket(size_t bucket_index);
+
+  /**
+   * @brief Scan for aged buckets and close them
+   * @param reference_tof Current reference time for aging check
+   */
+  void scanAndCloseAgedBuckets(uint32_t reference_tof);
+
+  /**
+   * @brief Close bucket and assign cluster IDs to hits
+   * @param bucket_index Index of bucket to close
+   */
+  void closeBucket(size_t bucket_index);
 
   /**
    * @brief Update clustering statistics

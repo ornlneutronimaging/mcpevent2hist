@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -130,12 +131,13 @@ class CentroidPeakFitting : public IPeakFitting {
   std::vector<TDCHit> applyTOTFilter(const std::vector<TDCHit>& hits) const;
 
   /**
-   * @brief Group hits by cluster ID
-   * @param hits Input hits with cluster assignments
-   * @return Map from cluster_id to vector of hits
+   * @brief Calculate TOT-weighted centroid for a cluster using iterators
+   * @param begin Iterator to first hit in cluster
+   * @param end Iterator past last hit in cluster
+   * @return Neutron event with sub-pixel coordinates
    */
-  std::map<int, std::vector<TDCHit>> groupHitsByCluster(
-      const std::vector<TDCHit>& hits) const;
+  template <typename Iterator>
+  TDCNeutron calculateCentroidFromRange(Iterator begin, Iterator end) const;
 
   /**
    * @brief Update peak fitting statistics
@@ -145,5 +147,71 @@ class CentroidPeakFitting : public IPeakFitting {
   void updateStatistics(size_t total_hits,
                         const std::vector<TDCNeutron>& neutrons);
 };
+
+// Template implementation must be in header
+template <typename Iterator>
+TDCNeutron CentroidPeakFitting::calculateCentroidFromRange(Iterator begin,
+                                                           Iterator end) const {
+  size_t cluster_size = std::distance(begin, end);
+
+  if (cluster_size == 0) {
+    return TDCNeutron();  // Return default neutron
+  }
+
+  // Single hit case - no centroid calculation needed
+  if (cluster_size == 1) {
+    const auto& hit = *begin;
+    return TDCNeutron(static_cast<double>(hit.x),  // Native pixel coordinates
+                      static_cast<double>(hit.y),  // Native pixel coordinates
+                      hit.tof, hit.tot, 1, hit.chip_id);
+  }
+
+  // Multi-hit case - calculate TOT-weighted centroid
+  double weighted_x = 0.0;
+  double weighted_y = 0.0;
+  double total_weight = 0.0;
+  uint32_t combined_tot = 0;
+  uint32_t representative_tof = 0;
+  uint8_t chip_id = begin->chip_id;
+
+  if (config_.weighted_by_tot) {
+    // TOT-weighted centroid calculation
+    for (auto it = begin; it != end; ++it) {
+      double weight = static_cast<double>(it->tot);
+      weighted_x += static_cast<double>(it->x) * weight;
+      weighted_y += static_cast<double>(it->y) * weight;
+      total_weight += weight;
+      combined_tot += it->tot;
+    }
+
+    if (total_weight > 0.0) {
+      weighted_x /= total_weight;
+      weighted_y /= total_weight;
+    }
+  } else {
+    // Simple arithmetic mean (unweighted)
+    for (auto it = begin; it != end; ++it) {
+      weighted_x += static_cast<double>(it->x);
+      weighted_y += static_cast<double>(it->y);
+      combined_tot += it->tot;
+    }
+
+    weighted_x /= static_cast<double>(cluster_size);
+    weighted_y /= static_cast<double>(cluster_size);
+  }
+
+  // Use the TOF from the hit with highest TOT as representative
+  auto max_tot_hit = std::max_element(
+      begin, end,
+      [](const TDCHit& a, const TDCHit& b) { return a.tot < b.tot; });
+  representative_tof = max_tot_hit->tof;
+
+  // Return coordinates in native pixel space with sub-pixel precision
+  return TDCNeutron(
+      weighted_x, weighted_y, representative_tof,
+      static_cast<uint16_t>(std::min(
+          combined_tot, static_cast<uint32_t>(65535))),  // Clamp to uint16_t
+      static_cast<uint16_t>(cluster_size), chip_id);
+}
 
 }  // namespace tdcsophiread

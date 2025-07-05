@@ -1,10 +1,10 @@
 // TDCSophiread ABS Clustering Algorithm Tests
-// TDD approach: Tests for ABS clustering implementation
+// Physics-correct implementation with time-based aging and min_cluster_size
+// filtering
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <random>
 #include <vector>
 
 #include "tdc_abs_clustering.h"
@@ -13,16 +13,17 @@
 
 namespace tdcsophiread {
 
-// Test class for ABS clustering
+// Test class for physics-correct ABS clustering
 class TDCABSClusteringTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Create test configuration with VENUS defaults
     config = ABSConfig{};
     config.radius = 5.0;
-    config.min_cluster_size = 1;
-    config.time_range_ns = 75.0;
-    config.max_clusters = 8;
+    config.min_cluster_size = 1;  // Default: any cluster is valid
+    config.neutron_correlation_window =
+        75.0;                    // 75ns temporal correlation window
+    config.scan_interval = 100;  // Scan every 100 hits
 
     // Create ABS clustering instance
     abs_clustering = std::make_unique<ABSClustering>(config);
@@ -46,7 +47,7 @@ class TDCABSClusteringTest : public ::testing::Test {
   }
 };
 
-// Test 1: ABSClustering should handle empty input gracefully
+// Test 1: Empty input handling
 TEST_F(TDCABSClusteringTest, HandlesEmptyInputGracefully) {
   std::vector<TDCHit> empty_hits;
 
@@ -54,341 +55,268 @@ TEST_F(TDCABSClusteringTest, HandlesEmptyInputGracefully) {
 
   EXPECT_EQ(num_clusters, 0);
   EXPECT_TRUE(abs_clustering->getClusterLabels().empty());
-
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 0);
-  EXPECT_EQ(stats.total_clusters, 0);
 }
 
-// Test 2: ABSClustering should create single cluster for isolated hit
-TEST_F(TDCABSClusteringTest, CreatesSingleClusterForIsolatedHit) {
+// Test 2: Single hit forms cluster with min_cluster_size=1
+TEST_F(TDCABSClusteringTest, SingleHitFormsCluster) {
   std::vector<TDCHit> hits = {createHit(100, 100, 1000)};
 
   size_t num_clusters = abs_clustering->fit(hits);
 
+  // With min_cluster_size=1, single hit forms valid cluster
   EXPECT_EQ(num_clusters, 1);
   EXPECT_EQ(hits[0].cluster_id, 0);
-
-  const auto& labels = abs_clustering->getClusterLabels();
-  EXPECT_EQ(labels.size(), 1);
-  EXPECT_EQ(labels[0], 0);
-
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 1);
-  EXPECT_EQ(stats.total_clusters, 1);
-  EXPECT_EQ(stats.single_hit_clusters, 1);
-  EXPECT_EQ(stats.multi_hit_clusters, 0);
 }
 
-// Test 3: ABSClustering should merge spatially close hits
-TEST_F(TDCABSClusteringTest, MergesSpatiallyCloseHits) {
+// Test 3: Test with higher min_cluster_size threshold
+TEST_F(TDCABSClusteringTest, MinClusterSizeFiltering) {
+  // Update config to require 3 hits
+  config.min_cluster_size = 3;
+  abs_clustering->updateConfig(config);
+
   std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),  // Cluster center
-      createHit(102, 101, 1001),  // Within 5-pixel radius, 25ns later
-      createHit(98, 99, 1002),    // Within 5-pixel radius, 50ns later
-      createHit(103, 104, 1003)   // Within 5-pixel radius, 75ns later
+      createHit(100, 100, 1000),  // Hit 1
+      createHit(101, 101, 1001),  // Hit 2 - close in space and time
   };
 
   size_t num_clusters = abs_clustering->fit(hits);
 
-  EXPECT_EQ(num_clusters, 1);
+  // With min_cluster_size=3, 2-hit cluster should remain unclustered
+  EXPECT_EQ(num_clusters, 0);
+  EXPECT_EQ(hits[0].cluster_id, -1);
+  EXPECT_EQ(hits[1].cluster_id, -1);
+}
 
-  // All hits should have same cluster label
+// Test 4: Multiple hits form cluster with default min_cluster_size=1
+TEST_F(TDCABSClusteringTest, MultipleHitsFormCluster) {
+  std::vector<TDCHit> hits = {
+      createHit(100, 100, 1000),  // Hit 1
+      createHit(101, 101, 1001),  // Hit 2
+      createHit(102, 99, 1002),   // Hit 3
+  };
+
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  // With min_cluster_size=1, all correlated hits form one cluster
+  EXPECT_EQ(num_clusters, 1);
+  EXPECT_EQ(hits[0].cluster_id, 0);
+  EXPECT_EQ(hits[1].cluster_id, 0);
+  EXPECT_EQ(hits[2].cluster_id, 0);
+}
+
+// Test 5: Time-based aging - hits outside spider_time_range form separate
+// buckets
+TEST_F(TDCABSClusteringTest, TimeBasedAging) {
+  std::vector<TDCHit> hits = {
+      createHit(100, 100, 1000),  // Bucket 1: t=25μs
+      createHit(101, 101, 1001),  // Bucket 1: t=25.025μs
+      createHit(102, 99, 1004),   // Bucket 2: t=25.1μs (>75ns gap)
+      createHit(103, 98, 1005),   // Bucket 2: t=25.125μs
+      createHit(104, 97, 1006),   // Bucket 2: t=25.15μs
+  };
+
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  // With min_cluster_size=1, both buckets form clusters
+  EXPECT_EQ(num_clusters, 2);
+  EXPECT_EQ(hits[0].cluster_id, 0);  // First bucket
+  EXPECT_EQ(hits[1].cluster_id, 0);  // First bucket
+  EXPECT_EQ(hits[2].cluster_id, 1);  // Second bucket
+  EXPECT_EQ(hits[3].cluster_id, 1);  // Second bucket
+  EXPECT_EQ(hits[4].cluster_id, 1);  // Second bucket
+}
+
+// Test 6: Spatial separation - hits outside radius form separate buckets
+TEST_F(TDCABSClusteringTest, SpatialSeparation) {
+  std::vector<TDCHit> hits = {
+      createHit(100, 100, 1000),  // Bucket 1
+      createHit(101, 101, 1001),  // Bucket 1
+      createHit(102, 102, 1002),  // Bucket 1
+      createHit(120, 120, 1003),  // Bucket 2 (spatially distant)
+      createHit(121, 121, 1004),  // Bucket 2
+      createHit(122, 119, 1005),  // Bucket 2
+  };
+
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  // Both buckets have 3 hits each, should form 2 valid clusters
+  EXPECT_EQ(num_clusters, 2);
+
+  // First 3 hits form one cluster
+  EXPECT_EQ(hits[0].cluster_id, hits[1].cluster_id);
+  EXPECT_EQ(hits[1].cluster_id, hits[2].cluster_id);
+
+  // Last 3 hits form another cluster
+  EXPECT_EQ(hits[3].cluster_id, hits[4].cluster_id);
+  EXPECT_EQ(hits[4].cluster_id, hits[5].cluster_id);
+
+  // Two clusters should have different IDs
+  EXPECT_NE(hits[0].cluster_id, hits[3].cluster_id);
+}
+
+// Test 7: Gamma noise filtering with min_cluster_size > 1
+TEST_F(TDCABSClusteringTest, GammaNoiseFiltering) {
+  // Set min_cluster_size=3 for realistic neutron filtering
+  config.min_cluster_size = 3;
+  abs_clustering->updateConfig(config);
+
+  std::vector<TDCHit> hits = {
+      // Valid neutron cluster (3 hits)
+      createHit(100, 100, 1000),
+      createHit(101, 101, 1001),
+      createHit(102, 99, 1002),
+
+      // Gamma noise (2 hits - below threshold)
+      createHit(200, 200, 2000),
+      createHit(201, 201, 2001),
+
+      // Another valid neutron cluster (4 hits)
+      createHit(300, 300, 3000),
+      createHit(301, 301, 3001),
+      createHit(302, 299, 3002),
+      createHit(303, 298, 3003),
+
+      // Single gamma hit
+      createHit(400, 400, 4000),
+  };
+
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  // Should form 2 valid neutron clusters, gamma noise remains unclustered
+  EXPECT_EQ(num_clusters, 2);
+
+  // First valid cluster
+  EXPECT_NE(hits[0].cluster_id, -1);
+  EXPECT_EQ(hits[0].cluster_id, hits[1].cluster_id);
+  EXPECT_EQ(hits[1].cluster_id, hits[2].cluster_id);
+
+  // Gamma noise remains unclustered
+  EXPECT_EQ(hits[3].cluster_id, -1);
+  EXPECT_EQ(hits[4].cluster_id, -1);
+
+  // Second valid cluster
+  EXPECT_NE(hits[5].cluster_id, -1);
+  EXPECT_EQ(hits[5].cluster_id, hits[6].cluster_id);
+  EXPECT_EQ(hits[6].cluster_id, hits[7].cluster_id);
+  EXPECT_EQ(hits[7].cluster_id, hits[8].cluster_id);
+
+  // Single gamma hit remains unclustered
+  EXPECT_EQ(hits[9].cluster_id, -1);
+
+  // Valid clusters should have different IDs
+  EXPECT_NE(hits[0].cluster_id, hits[5].cluster_id);
+}
+
+// Test 8: TPX3 temporal disorder handling
+TEST_F(TDCABSClusteringTest, HandlesTemporalDisorder) {
+  std::vector<TDCHit> hits = {
+      createHit(100, 100, 1002),  // Hit arrives out of order
+      createHit(101, 101, 1000),  // Earlier hit arrives later
+      createHit(102, 99, 1001),   // Another out-of-order hit
+      createHit(103, 98, 1003),   // Final hit in sequence
+  };
+
+  size_t num_clusters = abs_clustering->fit(hits);
+
+  // All hits should be within spider_time_range and form one cluster
+  EXPECT_EQ(num_clusters, 1);
   for (const auto& hit : hits) {
     EXPECT_EQ(hit.cluster_id, 0);
   }
-
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 4);
-  EXPECT_EQ(stats.total_clusters, 1);
-  EXPECT_EQ(stats.single_hit_clusters, 0);
-  EXPECT_EQ(stats.multi_hit_clusters, 1);
-  EXPECT_DOUBLE_EQ(stats.mean_cluster_size, 4.0);
 }
 
-// Test 4: ABSClustering should separate spatially distant hits
-TEST_F(TDCABSClusteringTest, SeparatesSpatiallyDistantHits) {
-  std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),  // Cluster 1
-      createHit(120, 120, 1001),  // Cluster 2 (distance = ~28 pixels > 5)
-      createHit(101, 101, 1002),  // Should join cluster 1
-      createHit(121, 119, 1003)   // Should join cluster 2
-  };
-
-  size_t num_clusters = abs_clustering->fit(hits);
-
-  EXPECT_EQ(num_clusters, 2);
-
-  // First and third hits should have same label
-  EXPECT_EQ(hits[0].cluster_id, hits[2].cluster_id);
-
-  // Second and fourth hits should have same label (different from first)
-  EXPECT_EQ(hits[1].cluster_id, hits[3].cluster_id);
-  EXPECT_NE(hits[0].cluster_id, hits[1].cluster_id);
-
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 4);
-  EXPECT_EQ(stats.total_clusters, 2);
-  EXPECT_EQ(stats.single_hit_clusters, 0);
-  EXPECT_EQ(stats.multi_hit_clusters, 2);
-}
-
-// Test 5: ABSClustering should merge temporally close hits
-TEST_F(TDCABSClusteringTest, MergesTemporallyCloseHits) {
-  std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),  // Cluster center (time = 25μs)
-      createHit(101, 101, 1002),  // +50ns within 75ns window
-      createHit(99, 99, 998),     // -50ns within 75ns window
-      createHit(102, 98, 1003)    // +75ns at edge of window
-  };
-
-  size_t num_clusters = abs_clustering->fit(hits);
-
-  EXPECT_EQ(num_clusters, 1);
-
-  // All hits should have same cluster label
-  for (const auto& hit : hits) {
-    EXPECT_EQ(hit.cluster_id, 0);
-  }
-}
-
-// Test 6: ABSClustering should separate temporally distant hits
-TEST_F(TDCABSClusteringTest, SeparatesTemporallyDistantHits) {
-  std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),  // Cluster 1 (time = 25μs)
-      createHit(101, 101, 1004),  // Cluster 2 (time = 25.1μs > 75ns window)
-      createHit(99, 99, 1001),    // Should join cluster 1
-      createHit(102, 98, 1005)    // Should join cluster 2
-  };
-
-  size_t num_clusters = abs_clustering->fit(hits);
-
-  EXPECT_EQ(num_clusters, 2);
-
-  // First and third hits should have same label
-  EXPECT_EQ(hits[0].cluster_id, hits[2].cluster_id);
-
-  // Second and fourth hits should have same label (different from first)
-  EXPECT_EQ(hits[1].cluster_id, hits[3].cluster_id);
-  EXPECT_NE(hits[0].cluster_id, hits[1].cluster_id);
-}
-
-// Test 7: ABSClustering should handle 8-cluster limit with LRU replacement
-TEST_F(TDCABSClusteringTest, HandlesClusterLimitWithLRUReplacen) {
+// Test 9: Dynamic bucket growth - no space pressure
+TEST_F(TDCABSClusteringTest, DynamicBucketGrowth) {
   std::vector<TDCHit> hits;
 
-  // Create 10 well-separated clusters (only 8 can be active)
-  for (int i = 0; i < 10; ++i) {
-    // Each cluster at different spatial and temporal location
-    hits.push_back(createHit(i * 50, i * 50, 1000 + i * 100));  // Main hit
-    hits.push_back(
-        createHit(i * 50 + 1, i * 50 + 1, 1000 + i * 100 + 1));  // Second hit
+  // Create 20 spatially separated neutron clusters (3 hits each)
+  for (int i = 0; i < 20; ++i) {
+    uint16_t base_x = i * 50;  // Well separated spatially
+    uint16_t base_y = i * 50;
+    uint32_t base_tof = i * 1000;  // Well separated temporally
+
+    hits.push_back(createHit(base_x, base_y, base_tof));
+    hits.push_back(createHit(base_x + 1, base_y + 1, base_tof + 1));
+    hits.push_back(createHit(base_x + 2, base_y + 2, base_tof + 2));
   }
 
   size_t num_clusters = abs_clustering->fit(hits);
 
-  // Should create 10 clusters total (8 active + 2 replaced)
-  EXPECT_EQ(num_clusters, 10);
+  // Should form 20 valid neutron clusters (no space pressure)
+  EXPECT_EQ(num_clusters, 20);
 
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 20);
-  EXPECT_EQ(stats.total_clusters, 10);
-  EXPECT_GT(stats.cluster_replacements, 0);  // Should have replacements
+  // Verify all hits are properly clustered
+  for (const auto& hit : hits) {
+    EXPECT_NE(hit.cluster_id, -1);
+  }
 }
 
-// Test 8: ABSClustering should assign correct cluster labels
-TEST_F(TDCABSClusteringTest, AssignsCorrectClusterLabels) {
+// Test 10: Configuration parameter effects
+TEST_F(TDCABSClusteringTest, ConfigurationParameterEffects) {
   std::vector<TDCHit> hits = {
-      createHit(10, 10, 1000),  // Cluster 0
-      createHit(50, 50, 2000),  // Cluster 1 (spatially distant)
-      createHit(11, 11, 1001),  // Should join cluster 0
-      createHit(51, 49, 2001),  // Should join cluster 1
+      createHit(100, 100, 1000), createHit(101, 101, 1001),
+      createHit(102, 102, 1002), createHit(103, 103, 1003),
+      createHit(104, 104, 1004),
   };
+
+  // Test with min_cluster_size = 5
+  ABSConfig strict_config = config;
+  strict_config.min_cluster_size = 5;
+  strict_config.neutron_correlation_window =
+      100.0;  // 4 TDC units to fit all 5 hits
+  abs_clustering->updateConfig(strict_config);
 
   size_t num_clusters = abs_clustering->fit(hits);
 
-  EXPECT_EQ(num_clusters, 2);
+  // Should form one valid cluster with all 5 hits
+  EXPECT_EQ(num_clusters, 1);
+  for (const auto& hit : hits) {
+    EXPECT_EQ(hit.cluster_id, 0);
+  }
 
-  const auto& labels = abs_clustering->getClusterLabels();
-  EXPECT_EQ(labels.size(), 4);
+  // Test with min_cluster_size = 6 (too strict)
+  strict_config.min_cluster_size = 6;
+  strict_config.neutron_correlation_window = 100.0;  // Keep same window
+  abs_clustering->updateConfig(strict_config);
+  abs_clustering->reset();
 
-  // Check that hits are assigned to correct clusters
-  EXPECT_EQ(labels[0], 0);  // First hit starts cluster 0
-  EXPECT_EQ(labels[1], 1);  // Second hit starts cluster 1
-  EXPECT_EQ(labels[2], 0);  // Third hit joins cluster 0
-  EXPECT_EQ(labels[3], 1);  // Fourth hit joins cluster 1
+  // Reset hits cluster_id for fresh test
+  for (auto& hit : hits) {
+    hit.cluster_id = -1;
+  }
 
-  // Check that TDCHit objects have correct cluster_id
-  EXPECT_EQ(hits[0].cluster_id, 0);
-  EXPECT_EQ(hits[1].cluster_id, 1);
-  EXPECT_EQ(hits[2].cluster_id, 0);
-  EXPECT_EQ(hits[3].cluster_id, 1);
+  num_clusters = abs_clustering->fit(hits);
+
+  // Should remain unclustered
+  EXPECT_EQ(num_clusters, 0);
+  for (const auto& hit : hits) {
+    EXPECT_EQ(hit.cluster_id, -1);
+  }
 }
 
-// Test 9: ABSClustering should reset state correctly
-TEST_F(TDCABSClusteringTest, ResetsStateCorrectly) {
-  std::vector<TDCHit> hits = {createHit(100, 100, 1000)};
+// Test 11: Reset functionality
+TEST_F(TDCABSClusteringTest, ResetFunctionality) {
+  std::vector<TDCHit> hits = {
+      createHit(100, 100, 1000),
+      createHit(101, 101, 1001),
+      createHit(102, 102, 1002),
+  };
 
   // First clustering
-  abs_clustering->fit(hits);
-  EXPECT_EQ(abs_clustering->getClusterLabels().size(), 1);
+  size_t num_clusters = abs_clustering->fit(hits);
+  EXPECT_EQ(num_clusters, 1);
 
-  // Reset and check state is cleared
+  // Reset
   abs_clustering->reset();
-  EXPECT_TRUE(abs_clustering->getClusterLabels().empty());
-
-  auto stats = abs_clustering->getStatistics();
-  EXPECT_EQ(stats.total_hits, 0);
-  EXPECT_EQ(stats.total_clusters, 0);
 
   // Second clustering should start fresh
-  std::vector<TDCHit> new_hits = {createHit(200, 200, 2000)};
-  size_t num_clusters = abs_clustering->fit(new_hits);
+  for (auto& hit : hits) {
+    hit.cluster_id = -1;  // Reset hit cluster IDs
+  }
 
-  EXPECT_EQ(num_clusters, 1);
-  EXPECT_EQ(new_hits[0].cluster_id, 0);  // Should restart from label 0
-}
-
-// Test 10: ABSClustering should update configuration correctly
-TEST_F(TDCABSClusteringTest, UpdatesConfigurationCorrectly) {
-  // Create hits that would cluster with radius=5 but not with radius=2
-  std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),
-      createHit(103, 103, 1001)  // Distance = sqrt(18) ≈ 4.2 pixels
-  };
-
-  // With radius=5, should form one cluster
-  size_t num_clusters = abs_clustering->fit(hits);
-  EXPECT_EQ(num_clusters, 1);
-
-  // Update config to smaller radius
-  ABSConfig new_config = config;
-  new_config.radius = 2.0;
-  abs_clustering->updateConfig(new_config);
-  abs_clustering->reset();
-
-  // Create fresh hits (reset clears cluster_id)
-  hits = {createHit(100, 100, 1000), createHit(103, 103, 1001)};
-
-  // With radius=2, should form two clusters
   num_clusters = abs_clustering->fit(hits);
-  EXPECT_EQ(num_clusters, 2);
-}
-
-// Test 11: ABSClustering should handle edge cases
-TEST_F(TDCABSClusteringTest, HandlesEdgeCases) {
-  // Test with hits at spatial boundary - accounting for bounding box expansion
-  std::vector<TDCHit> hits = {
-      createHit(100, 100, 1000),
-      createHit(105, 100, 1001),  // 5 pixels away (should cluster)
-      createHit(111, 100, 1002)  // 11 pixels from first, 6 from expanded bounds
-                                 // (should not cluster)
-  };
-
-  size_t num_clusters = abs_clustering->fit(hits);
-
-  EXPECT_EQ(num_clusters, 2);
-  EXPECT_EQ(hits[0].cluster_id,
-            hits[1].cluster_id);  // First two should cluster
-  EXPECT_NE(hits[0].cluster_id,
-            hits[2].cluster_id);  // Third should be separate
-}
-
-// Test 12: ABSClustering should provide performance statistics
-TEST_F(TDCABSClusteringTest, ProvidesPerformanceStatistics) {
-  std::vector<TDCHit> hits;
-
-  // Create test dataset with well-separated hits (spatially and temporally)
-  for (int i = 0; i < 100; ++i) {
-    hits.push_back(createHit(i * 20, i * 20,
-                             1000 + i * 10));  // 20-pixel spacing, 250ns apart
-  }
-
-  abs_clustering->fit(hits);
-  auto stats = abs_clustering->getStatistics();
-
-  EXPECT_EQ(stats.total_hits, 100);
-  EXPECT_EQ(stats.total_clusters, 100);
-  EXPECT_EQ(stats.single_hit_clusters, 100);
-  EXPECT_EQ(stats.multi_hit_clusters, 0);
-  EXPECT_DOUBLE_EQ(stats.mean_cluster_size, 1.0);
-  EXPECT_GT(stats.processing_time_ms, 0.0);  // Should measure some time
-}
-
-// Test 13: ABSClustering should handle large datasets without overflow
-TEST_F(TDCABSClusteringTest, HandlesLargeDatasetWithoutOverflow) {
-  std::vector<TDCHit> hits;
-  hits.reserve(100000);  // Reserve space for 100K hits
-
-  // Create 100K well-separated hits (should create 100K clusters)
-  std::random_device rd;
-  std::mt19937 gen(42);  // Fixed seed for reproducible tests
-  std::uniform_int_distribution<uint16_t> spatial_dist(0, 65535);
-  std::uniform_int_distribution<uint32_t> temporal_dist(0, 1000000);
-
-  for (size_t i = 0; i < 100000; ++i) {
-    // Create spatially and temporally separated hits
-    uint16_t x = spatial_dist(gen);
-    uint16_t y = spatial_dist(gen);
-    uint32_t tof = temporal_dist(gen);
-
-    hits.push_back(createHit(x, y, tof));
-  }
-
-  // This should not crash or overflow
-  size_t num_clusters = abs_clustering->fit(hits);
-
-  auto stats = abs_clustering->getStatistics();
-
-  EXPECT_EQ(stats.total_hits, 100000);
-  EXPECT_GT(num_clusters, 0);
-  EXPECT_LE(num_clusters, 100000);  // Can't have more clusters than hits
-
-  // Verify no invalid cluster labels
-  const auto& labels = abs_clustering->getClusterLabels();
-  for (int label : labels) {
-    EXPECT_GE(label, 0);  // All labels should be non-negative
-    EXPECT_LT(label, static_cast<int>(num_clusters));  // Within valid range
-  }
-}
-
-// Test 14: ABSClustering should handle overflow scenario gracefully
-TEST_F(TDCABSClusteringTest, HandlesClusterOverflowGracefully) {
-  // Create configuration that forces many small clusters
-  ABSConfig stress_config = config;
-  stress_config.radius = 0.1;         // Very small radius
-  stress_config.time_range_ns = 0.1;  // Very small time window
-  stress_config.max_clusters = 8;     // Limited active clusters
-
-  auto stress_clustering = std::make_unique<ABSClustering>(stress_config);
-
-  std::vector<TDCHit> hits;
-  hits.reserve(50000);
-
-  // Create hits that will each form their own cluster
-  for (size_t i = 0; i < 50000; ++i) {
-    // Space hits far apart to ensure separate clusters
-    uint16_t x = static_cast<uint16_t>((i % 500) * 10);
-    uint16_t y = static_cast<uint16_t>((i / 500) * 10);
-    uint32_t tof = static_cast<uint32_t>(i * 100);  // 2.5μs apart
-
-    hits.push_back(createHit(x, y, tof));
-  }
-
-  // This should create ~50K clusters without integer overflow
-  size_t num_clusters = stress_clustering->fit(hits);
-
-  auto stats = stress_clustering->getStatistics();
-
-  EXPECT_EQ(stats.total_hits, 50000);
-  EXPECT_GT(num_clusters, 32767);            // Should exceed old int16_t limit
-  EXPECT_GT(stats.cluster_replacements, 0);  // Should have many replacements
-
-  // Verify cluster labels are valid
-  const auto& labels = stress_clustering->getClusterLabels();
-  for (int label : labels) {
-    EXPECT_GE(label, 0);
-  }
+  EXPECT_EQ(num_clusters, 1);
+  EXPECT_EQ(hits[0].cluster_id, 0);  // Should start from 0 again
 }
 
 }  // namespace tdcsophiread

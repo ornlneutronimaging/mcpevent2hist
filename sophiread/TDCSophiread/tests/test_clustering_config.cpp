@@ -52,8 +52,8 @@ TEST_F(TDCClusteringConfigTest, HasVenusDefaults) {
   // Test ABS defaults (VENUS optimized)
   EXPECT_EQ(config.abs.radius, 5.0);
   EXPECT_EQ(config.abs.min_cluster_size, 1);
-  EXPECT_EQ(config.abs.time_range_ns, 75.0);
-  EXPECT_EQ(config.abs.max_clusters, 8);
+  EXPECT_EQ(config.abs.neutron_correlation_window, 75.0);
+  EXPECT_EQ(config.abs.scan_interval, static_cast<size_t>(100));
 
   // Test Centroid defaults (8x super-resolution)
   EXPECT_EQ(config.centroid.super_resolution_factor, 8.0);
@@ -96,7 +96,7 @@ TEST_F(TDCClusteringConfigTest, LoadsFromValidJsonFile) {
   // Test ABS parameters were loaded
   EXPECT_EQ(config.abs.radius, 3.0);
   EXPECT_EQ(config.abs.min_cluster_size, 2);
-  EXPECT_EQ(config.abs.time_range_ns, 50.0);
+  EXPECT_EQ(config.abs.neutron_correlation_window, 50.0);
 
   // Test Centroid parameters were loaded
   EXPECT_EQ(config.centroid.super_resolution_factor, 4.0);
@@ -119,7 +119,7 @@ TEST_F(TDCClusteringConfigTest, LoadsFromJsonObject) {
 
   EXPECT_EQ(config.clustering_algorithm, "abs");
   EXPECT_EQ(config.abs.radius, 7.5);
-  EXPECT_EQ(config.abs.time_range_ns, 100.0);
+  EXPECT_EQ(config.abs.neutron_correlation_window, 100.0);
 
   // Verify other values remain as defaults
   EXPECT_EQ(config.peak_fitting_algorithm, "centroid");
@@ -242,8 +242,8 @@ TEST_F(TDCClusteringConfigTest, ABSConfigValidatesParameters) {
   // Test valid configuration
   config.radius = 5.0;
   config.min_cluster_size = 1;
-  config.time_range_ns = 75.0;
-  config.max_clusters = 8;
+  config.neutron_correlation_window = 75.0;
+  config.scan_interval = 100;
 
   EXPECT_NO_THROW(config.validate());
 
@@ -256,11 +256,11 @@ TEST_F(TDCClusteringConfigTest, ABSConfigValidatesParameters) {
   EXPECT_THROW(config.validate(), std::invalid_argument);
 
   config.min_cluster_size = 1;
-  config.time_range_ns = -10.0;  // Negative time range
+  config.neutron_correlation_window = -10.0;  // Negative time range
   EXPECT_THROW(config.validate(), std::invalid_argument);
 
-  config.time_range_ns = 75.0;
-  config.max_clusters = 0;  // Zero max clusters
+  config.neutron_correlation_window = 75.0;
+  config.scan_interval = 0;  // Zero scan interval
   EXPECT_THROW(config.validate(), std::invalid_argument);
 }
 

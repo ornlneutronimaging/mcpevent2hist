@@ -96,9 +96,6 @@ add_tdc_test(neutron)
 # TDD Test 8: ABS clustering algorithm (tests written FIRST)
 add_tdc_test(abs_clustering)
 
-# DEBUG Test: ABS clustering debug with detailed logging
-add_tdc_test(abs_debug)
-
 # TDD Test 9: Centroid peak fitting algorithm (tests written FIRST)
 add_tdc_test(centroid_fitting)
 

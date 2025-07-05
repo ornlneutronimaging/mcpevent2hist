@@ -31,24 +31,34 @@ std::vector<TDCNeutron> CentroidPeakFitting::extractNeutrons(
   std::vector<TDCHit> filtered_hits = applyTOTFilter(hits);
   stats_.hits_below_threshold = hits.size() - filtered_hits.size();
 
-  // Group hits by cluster ID
-  auto cluster_groups = groupHitsByCluster(filtered_hits);
-  stats_.total_clusters_found = cluster_groups.size();
+  // MEMORY OPTIMIZATION: Process clusters in-place without copying hits
+  // Sort by cluster_id for efficient in-place processing
+  std::sort(filtered_hits.begin(), filtered_hits.end(),
+            [](const TDCHit& a, const TDCHit& b) {
+              return a.cluster_id < b.cluster_id;
+            });
 
-  // Process each cluster to extract neutrons
-  neutrons.reserve(cluster_groups.size());
+  // Process clusters in-place using iterators to avoid copying
+  neutrons.reserve(filtered_hits.size() / 4);  // Rough estimate
 
-  for (const auto& [cluster_id, cluster_hits] : cluster_groups) {
-    if (cluster_id == -1) {
-      continue;  // Skip unclustered hits
+  auto it = filtered_hits.begin();
+  while (it != filtered_hits.end()) {
+    int current_cluster_id = it->cluster_id;
+
+    if (current_cluster_id == -1) {
+      // Skip unclustered hits
+      ++it;
+      continue;
     }
 
-    if (cluster_hits.empty()) {
-      continue;  // Skip empty clusters
-    }
+    // Find end of current cluster
+    auto cluster_end = std::find_if(
+        it, filtered_hits.end(), [current_cluster_id](const TDCHit& hit) {
+          return hit.cluster_id != current_cluster_id;
+        });
 
-    // Calculate centroid for this cluster
-    TDCNeutron neutron = calculateCentroid(cluster_hits);
+    // Calculate centroid for this cluster range
+    TDCNeutron neutron = calculateCentroidFromRange(it, cluster_end);
     neutrons.push_back(neutron);
 
     // Update cluster size statistics
@@ -57,8 +67,12 @@ std::vector<TDCNeutron> CentroidPeakFitting::extractNeutrons(
     } else {
       stats_.multi_hit_neutrons++;
     }
+
+    // Move to next cluster
+    it = cluster_end;
   }
 
+  stats_.total_clusters_found = neutrons.size();
   updateStatistics(hits.size(), neutrons);
   return neutrons;
 }
@@ -141,17 +155,6 @@ std::vector<TDCHit> CentroidPeakFitting::applyTOTFilter(
   }
 
   return filtered_hits;
-}
-
-std::map<int, std::vector<TDCHit>> CentroidPeakFitting::groupHitsByCluster(
-    const std::vector<TDCHit>& hits) const {
-  std::map<int, std::vector<TDCHit>> cluster_groups;
-
-  for (const auto& hit : hits) {
-    cluster_groups[hit.cluster_id].push_back(hit);
-  }
-
-  return cluster_groups;
 }
 
 void CentroidPeakFitting::updateStatistics(
