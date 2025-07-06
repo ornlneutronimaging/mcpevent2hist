@@ -168,37 +168,19 @@ TEST_F(TDCClusterProcessorTest, ProcessesHitsWithProgressCallback) {
   }
 }
 
-// Test 8: TDCClusterProcessor should process hits in chunks
-TEST_F(TDCClusterProcessorTest, ProcessesHitsInChunks) {
+// Test 8: TDCClusterProcessor should process hits efficiently
+TEST_F(TDCClusterProcessorTest, ProcessesHitsEfficiently) {
   TDCClusterProcessor processor(config_);
 
-  // Process with small chunk size
-  auto neutrons_chunked = processor.processHitsInChunks(test_hits_, 3);
+  // Process hits (no chunking needed - optimized in-place processing)
+  auto neutrons = processor.processHits(test_hits_);
 
-  // Reset and process all at once for comparison
-  processor.reset();
-  auto neutrons_all = processor.processHits(test_hits_);
+  // Should produce valid results
+  EXPECT_GT(neutrons.size(), 0);
 
-  // Should produce similar results (may differ due to chunk boundaries)
-  EXPECT_GT(neutrons_chunked.size(), 0);
-  EXPECT_GT(neutrons_all.size(), 0);
-}
-
-// Test 9: TDCClusterProcessor should process hits by chip
-TEST_F(TDCClusterProcessorTest, ProcessesHitsByChip) {
-  TDCClusterProcessor processor(config_);
-
-  auto chip_neutrons = processor.processHitsByChip(test_hits_);
-
-  // Should have results for chips that have hits
-  EXPECT_GT(chip_neutrons.size(), 0);
-
-  // All neutrons should have correct chip assignments
-  for (const auto& [chip_id, neutrons] : chip_neutrons) {
-    for (const auto& neutron : neutrons) {
-      EXPECT_EQ(neutron.chip_id, chip_id);
-    }
-  }
+  // Verify processing metrics are updated
+  EXPECT_GT(processor.getLastProcessingTimeMs(), 0.0);
+  EXPECT_GT(processor.getLastHitsPerSecond(), 0.0);
 }
 
 // Test 10: TDCClusterProcessor should update configuration correctly

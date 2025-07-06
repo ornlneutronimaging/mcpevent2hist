@@ -105,7 +105,7 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHits(
 }
 
 std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
-    const std::vector<TDCHit>& hits,
+    std::vector<TDCHit>& hits,
     const std::function<void(double)>& progress_callback) {
   if (progress_callback) {
     progress_callback(0.0);  // Start
@@ -152,14 +152,15 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
     throw std::invalid_argument("Invalid input hits detected");
   }
 
-  std::vector<TDCHit> clustered_hits = hits;
+  // FIXED: Process hits in-place (no copy needed since hits is now non-const)
+  // This eliminates 10GB memory copy for large datasets
 
   if (progress_callback) {
     progress_callback(0.1);  // After validation
   }
 
   // Phase 1: Clustering
-  clustering_algorithm_->fit(clustered_hits);
+  clustering_algorithm_->fit(hits);
 
   if (progress_callback) {
     progress_callback(0.6);  // After clustering
@@ -167,7 +168,7 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
 
   // Phase 2: Peak fitting
   std::vector<TDCNeutron> neutrons =
-      peak_fitting_algorithm_->extractNeutrons(clustered_hits);
+      peak_fitting_algorithm_->extractNeutrons(hits);
 
   // Phase 3: Apply super-resolution scaling to final coordinates (only for
   // clustered data)
@@ -184,46 +185,6 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
   updatePerformanceMetrics(hits.size(), neutrons.size());
 
   return neutrons;
-}
-
-std::vector<TDCNeutron> TDCClusterProcessor::processHitsInChunks(
-    std::vector<TDCHit>& hits, size_t chunk_size) {
-  if (chunk_size == 0 || hits.size() <= chunk_size) {
-    // Process all at once
-    return processHits(hits);
-  }
-
-  std::vector<TDCNeutron> all_neutrons;
-  size_t total_hits = 0;
-
-  start_time_ = std::chrono::high_resolution_clock::now();
-
-  // Process hits in chunks
-  for (size_t start = 0; start < hits.size(); start += chunk_size) {
-    size_t end = std::min(start + chunk_size, hits.size());
-    std::vector<TDCHit> chunk(hits.begin() + start, hits.begin() + end);
-
-    // Reset clustering algorithm for each chunk
-    clustering_algorithm_->reset();
-    // Note: IPeakFitting doesn't have reset(), but CentroidPeakFitting does
-    if (auto* centroid_fitting =
-            dynamic_cast<CentroidPeakFitting*>(peak_fitting_algorithm_.get())) {
-      centroid_fitting->reset();
-    }
-
-    // Process chunk
-    auto chunk_neutrons = processHits(chunk);
-
-    // Accumulate results
-    all_neutrons.insert(all_neutrons.end(), chunk_neutrons.begin(),
-                        chunk_neutrons.end());
-    total_hits += chunk.size();
-  }
-
-  // Update overall metrics
-  updatePerformanceMetrics(total_hits, all_neutrons.size());
-
-  return all_neutrons;
 }
 
 std::string TDCClusterProcessor::getClusteringAlgorithm() const {
@@ -315,34 +276,6 @@ void TDCClusterProcessor::reset() {
 
 bool TDCClusterProcessor::isClusteringEnabled() const {
   return config_.enable_clustering;
-}
-
-std::map<uint8_t, std::vector<TDCNeutron>>
-TDCClusterProcessor::processHitsByChip(std::vector<TDCHit>& hits) {
-  std::map<uint8_t, std::vector<TDCNeutron>> chip_neutrons;
-
-  // Group hits by chip
-  std::map<uint8_t, std::vector<TDCHit>> chip_hits;
-  for (const auto& hit : hits) {
-    chip_hits[hit.chip_id].push_back(hit);
-  }
-
-  // Process each chip separately
-  for (auto& [chip_id, hits_for_chip] : chip_hits) {
-    // Reset algorithms for each chip
-    clustering_algorithm_->reset();
-    // Note: IPeakFitting doesn't have reset(), but CentroidPeakFitting does
-    if (auto* centroid_fitting =
-            dynamic_cast<CentroidPeakFitting*>(peak_fitting_algorithm_.get())) {
-      centroid_fitting->reset();
-    }
-
-    // Process hits for this chip
-    auto neutrons = processHits(hits_for_chip);
-    chip_neutrons[chip_id] = std::move(neutrons);
-  }
-
-  return chip_neutrons;
 }
 
 std::string TDCClusterProcessor::getProcessingSummary() const {

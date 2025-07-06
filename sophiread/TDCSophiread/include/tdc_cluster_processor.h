@@ -88,17 +88,8 @@ class TDCClusterProcessor : public IClusterProcessor {
    * @return Vector of neutron events
    */
   std::vector<TDCNeutron> processHitsWithProgress(
-      const std::vector<TDCHit>& hits,
+      std::vector<TDCHit>& hits,
       const std::function<void(double)>& progress_callback = nullptr);
-
-  /**
-   * @brief Process hits in chunks for large datasets
-   * @param hits Input hits to cluster
-   * @param chunk_size Maximum hits per chunk (0 = process all at once)
-   * @return Vector of neutron events from all chunks
-   */
-  std::vector<TDCNeutron> processHitsInChunks(std::vector<TDCHit>& hits,
-                                              size_t chunk_size = 1000000);
 
   /**
    * @brief Get current configuration
@@ -148,14 +139,6 @@ class TDCClusterProcessor : public IClusterProcessor {
    * @return True if clustering is enabled
    */
   bool isClusteringEnabled() const;
-
-  /**
-   * @brief Process single chip hits separately (for debugging/analysis)
-   * @param hits Input hits (all chips)
-   * @return Map of chip_id to neutron events for that chip
-   */
-  std::map<uint8_t, std::vector<TDCNeutron>> processHitsByChip(
-      std::vector<TDCHit>& hits);
 
   /**
    * @brief Create processing summary string
