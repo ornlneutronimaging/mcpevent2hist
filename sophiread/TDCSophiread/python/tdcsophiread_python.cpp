@@ -60,7 +60,21 @@ class ProgressCallback {
   py::function callback_;
 };
 
-// Helper function to convert hits to numpy arrays
+// Wrapper class for zero-copy numpy access to TDCHit vector
+class TDCHitView {
+ public:
+  std::vector<TDCHit> data;
+
+  // Constructor from existing vector (moves data)
+  TDCHitView(std::vector<TDCHit>&& hits) : data(std::move(hits)) {}
+
+  // Constructor from existing vector (copies data)
+  TDCHitView(const std::vector<TDCHit>& hits) : data(hits) {}
+
+  size_t size() const { return data.size(); }
+};
+
+// Helper function to convert hits to numpy arrays (DEPRECATED - use TDCHitView)
 py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
   size_t n = hits.size();
 
@@ -205,7 +219,7 @@ class TDCStreamProcessor {
       }
 
       // Add chunk results to list
-      results.append(hits_to_numpy(hits));
+      results.append(TDCHitView(std::move(hits)));
     }
 
     if (callback.is_valid()) {
@@ -306,7 +320,28 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tot", &TDCHit::tot, "Time-over-threshold")
       .def_readwrite("chip_id", &TDCHit::chip_id, "Chip ID (0-3)")
       .def_readwrite("timestamp", &TDCHit::timestamp,
-                     "Hit timestamp (25ns units)");
+                     "Hit timestamp (25ns units)")
+      .def_readwrite("cluster_id", &TDCHit::cluster_id,
+                     "Cluster ID (-1 = unclustered)");
+
+  // Define numpy dtype for TDCHit to enable zero-copy structured arrays
+  PYBIND11_NUMPY_DTYPE(TDCHit, tof, x, y, timestamp, tot, chip_id, cluster_id);
+
+  // TDCHitView for zero-copy numpy access
+  py::class_<TDCHitView>(m, "TDCHitView", py::buffer_protocol())
+      .def(py::init<const std::vector<TDCHit>&>())
+      .def("size", &TDCHitView::size)
+      .def_buffer([](TDCHitView& view) -> py::buffer_info {
+        return py::buffer_info(
+            view.data.data(),                        /* Pointer to buffer */
+            sizeof(TDCHit),                          /* Size of one scalar */
+            py::format_descriptor<TDCHit>::format(), /* Python struct-style
+                                                        format descriptor */
+            1,                                       /* Number of dimensions */
+            {view.data.size()},                      /* Buffer dimensions */
+            {sizeof(TDCHit)} /* Strides (in bytes) for each index */
+        );
+      });
 
   // Bind vector of TDCHit for efficient operations
   py::bind_vector<std::vector<TDCHit>>(m, "TDCHitVector");
@@ -490,6 +525,14 @@ PYBIND11_MODULE(_core, m) {
         "Convert vector of hits to dictionary of numpy arrays",
         py::return_value_policy::move);
 
+  // Zero-copy function to create structured numpy array view
+  m.def(
+      "hits_to_numpy_view",
+      [](const std::vector<TDCHit>& hits) { return TDCHitView(hits); },
+      py::arg("hits"),
+      "Create zero-copy TDCHitView for structured numpy array access",
+      py::return_value_policy::move);
+
   // Convenience function to convert neutrons to numpy arrays
   m.def("neutrons_to_numpy", &neutrons_to_numpy, py::arg("neutrons"),
         "Convert vector of neutrons to dictionary of numpy arrays",
@@ -524,7 +567,7 @@ PYBIND11_MODULE(_core, m) {
             callback(1.0, "Processing complete");
           }
 
-          return hits_to_numpy(hits);
+          return TDCHitView(std::move(hits));
         } catch (const std::exception& e) {
           throw TDCProcessingError("Failed to process TPX3 file: " +
                                    std::string(e.what()));
