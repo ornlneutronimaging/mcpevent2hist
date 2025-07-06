@@ -74,6 +74,21 @@ class TDCHitView {
   size_t size() const { return data.size(); }
 };
 
+// Wrapper class for zero-copy numpy access to TDCNeutron vector
+class TDCNeutronView {
+ public:
+  std::vector<TDCNeutron> data;
+
+  // Constructor from existing vector (moves data)
+  TDCNeutronView(std::vector<TDCNeutron>&& neutrons)
+      : data(std::move(neutrons)) {}
+
+  // Constructor from existing vector (copies data)
+  TDCNeutronView(const std::vector<TDCNeutron>& neutrons) : data(neutrons) {}
+
+  size_t size() const { return data.size(); }
+};
+
 // Helper function to convert hits to numpy arrays (DEPRECATED - use TDCHitView)
 py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
   size_t n = hits.size();
@@ -360,6 +375,25 @@ PYBIND11_MODULE(_core, m) {
       .def("getTOFMilliseconds", &TDCNeutron::getTOFMilliseconds,
            "Get TOF in milliseconds");
 
+  // Define numpy dtype for TDCNeutron to enable zero-copy structured arrays
+  PYBIND11_NUMPY_DTYPE(TDCNeutron, x, y, tof, tot, n_hits, chip_id, reserved);
+
+  // TDCNeutronView for zero-copy numpy access
+  py::class_<TDCNeutronView>(m, "TDCNeutronView", py::buffer_protocol())
+      .def(py::init<const std::vector<TDCNeutron>&>())
+      .def("size", &TDCNeutronView::size)
+      .def_buffer([](TDCNeutronView& view) -> py::buffer_info {
+        return py::buffer_info(
+            view.data.data(),   /* Pointer to buffer */
+            sizeof(TDCNeutron), /* Size of one scalar */
+            py::format_descriptor<TDCNeutron>::format(), /* Python struct-style
+                                                            format descriptor */
+            1,                   /* Number of dimensions */
+            {view.data.size()},  /* Buffer dimensions */
+            {sizeof(TDCNeutron)} /* Strides (in bytes) for each index */
+        );
+      });
+
   // Bind vector of TDCNeutron for efficient operations
   py::bind_vector<std::vector<TDCNeutron>>(m, "TDCNeutronVector");
 
@@ -533,6 +567,16 @@ PYBIND11_MODULE(_core, m) {
       "Create zero-copy TDCHitView for structured numpy array access",
       py::return_value_policy::move);
 
+  // Zero-copy function to create structured numpy array view for neutrons
+  m.def(
+      "neutrons_to_numpy_view",
+      [](const std::vector<TDCNeutron>& neutrons) {
+        return TDCNeutronView(neutrons);
+      },
+      py::arg("neutrons"),
+      "Create zero-copy TDCNeutronView for structured numpy array access",
+      py::return_value_policy::move);
+
   // Convenience function to convert neutrons to numpy arrays
   m.def("neutrons_to_numpy", &neutrons_to_numpy, py::arg("neutrons"),
         "Convert vector of neutrons to dictionary of numpy arrays",
@@ -659,6 +703,34 @@ PYBIND11_MODULE(_core, m) {
           std::vector<TDCHit> hits;
           if (py::isinstance<std::vector<TDCHit>>(hits_data)) {
             hits = hits_data.cast<std::vector<TDCHit>>();
+          } else if (py::isinstance<TDCHitView>(hits_data)) {
+            // Handle TDCHitView (zero-copy)
+            auto hit_view = hits_data.cast<TDCHitView>();
+            hits = hit_view.data;  // Use the vector directly
+          } else if (py::isinstance<py::array>(hits_data)) {
+            // Handle structured numpy array
+            auto arr = hits_data.cast<py::array>();
+            if (arr.dtype().kind() == 'V') {  // Structured array
+              // Get the buffer info to access raw data
+              py::buffer_info buf = arr.request();
+              if (buf.itemsize != sizeof(TDCHit)) {
+                throw TDCProcessingError(
+                    "Numpy array itemsize does not match TDCHit size");
+              }
+
+              // Cast buffer data to TDCHit array
+              TDCHit* hit_ptr = static_cast<TDCHit*>(buf.ptr);
+              size_t n_hits = buf.size;
+
+              // Copy data from numpy array to vector
+              hits.reserve(n_hits);
+              for (size_t i = 0; i < n_hits; ++i) {
+                hits.push_back(hit_ptr[i]);
+              }
+            } else {
+              throw TDCProcessingError(
+                  "Numpy array must be structured array with TDCHit dtype");
+            }
           } else if (py::isinstance<py::dict>(hits_data)) {
             // Convert from numpy arrays
             auto hits_dict = hits_data.cast<py::dict>();
@@ -696,14 +768,15 @@ PYBIND11_MODULE(_core, m) {
             }
           } else {
             throw TDCProcessingError(
-                "Hits must be vector<TDCHit> or dictionary of arrays");
+                "Hits must be vector<TDCHit>, TDCHitView, structured numpy "
+                "array, or dictionary of arrays");
           }
 
           // Cluster hits into neutrons
           TDCClusterProcessor cluster_processor(cluster_config);
           auto neutrons = cluster_processor.processHits(hits);
 
-          return neutrons_to_numpy(neutrons);
+          return TDCNeutronView(std::move(neutrons));
         } catch (const std::exception& e) {
           throw TDCProcessingError("Failed to cluster hits: " +
                                    std::string(e.what()));
