@@ -89,98 +89,6 @@ class TDCNeutronView {
   size_t size() const { return data.size(); }
 };
 
-// Helper function to convert hits to numpy arrays (DEPRECATED - use TDCHitView)
-py::dict hits_to_numpy(const std::vector<TDCHit>& hits) {
-  size_t n = hits.size();
-
-  // Create numpy arrays for each field
-  auto x = py::array_t<uint16_t>(n);
-  auto y = py::array_t<uint16_t>(n);
-  auto tof = py::array_t<uint32_t>(n);
-  auto tot = py::array_t<uint16_t>(n);
-  auto chip_id = py::array_t<uint8_t>(n);
-  auto timestamp = py::array_t<uint32_t>(n);
-
-  // Get raw pointers for fast access
-  auto x_ptr = static_cast<uint16_t*>(x.mutable_unchecked<1>().mutable_data(0));
-  auto y_ptr = static_cast<uint16_t*>(y.mutable_unchecked<1>().mutable_data(0));
-  auto tof_ptr =
-      static_cast<uint32_t*>(tof.mutable_unchecked<1>().mutable_data(0));
-  auto tot_ptr =
-      static_cast<uint16_t*>(tot.mutable_unchecked<1>().mutable_data(0));
-  auto chip_id_ptr =
-      static_cast<uint8_t*>(chip_id.mutable_unchecked<1>().mutable_data(0));
-  auto timestamp_ptr =
-      static_cast<uint32_t*>(timestamp.mutable_unchecked<1>().mutable_data(0));
-
-  // Copy data
-  for (size_t i = 0; i < n; ++i) {
-    x_ptr[i] = hits[i].x;
-    y_ptr[i] = hits[i].y;
-    tof_ptr[i] = hits[i].tof;
-    tot_ptr[i] = hits[i].tot;
-    chip_id_ptr[i] = hits[i].chip_id;
-    timestamp_ptr[i] = hits[i].timestamp;
-  }
-
-  // Return as dictionary
-  py::dict result;
-  result["x"] = x;
-  result["y"] = y;
-  result["tof"] = tof;
-  result["tot"] = tot;
-  result["chip_id"] = chip_id;
-  result["timestamp"] = timestamp;
-
-  return result;
-}
-
-// Helper function to convert neutrons to numpy arrays
-py::dict neutrons_to_numpy(const std::vector<TDCNeutron>& neutrons) {
-  size_t n = neutrons.size();
-
-  // Create numpy arrays for each field
-  auto x = py::array_t<double>(n);
-  auto y = py::array_t<double>(n);
-  auto tof = py::array_t<uint32_t>(n);
-  auto tot = py::array_t<uint16_t>(n);
-  auto n_hits = py::array_t<uint16_t>(n);
-  auto chip_id = py::array_t<uint8_t>(n);
-
-  // Get raw pointers for fast access
-  auto x_ptr = static_cast<double*>(x.mutable_unchecked<1>().mutable_data(0));
-  auto y_ptr = static_cast<double*>(y.mutable_unchecked<1>().mutable_data(0));
-  auto tof_ptr =
-      static_cast<uint32_t*>(tof.mutable_unchecked<1>().mutable_data(0));
-  auto tot_ptr =
-      static_cast<uint16_t*>(tot.mutable_unchecked<1>().mutable_data(0));
-  auto n_hits_ptr =
-      static_cast<uint16_t*>(n_hits.mutable_unchecked<1>().mutable_data(0));
-  auto chip_id_ptr =
-      static_cast<uint8_t*>(chip_id.mutable_unchecked<1>().mutable_data(0));
-
-  // Copy data
-  for (size_t i = 0; i < n; ++i) {
-    x_ptr[i] = neutrons[i].x;
-    y_ptr[i] = neutrons[i].y;
-    tof_ptr[i] = neutrons[i].tof;
-    tot_ptr[i] = neutrons[i].tot;
-    n_hits_ptr[i] = neutrons[i].n_hits;
-    chip_id_ptr[i] = neutrons[i].chip_id;
-  }
-
-  // Return as dictionary
-  py::dict result;
-  result["x"] = x;
-  result["y"] = y;
-  result["tof"] = tof;
-  result["tot"] = tot;
-  result["n_hits"] = n_hits;
-  result["chip_id"] = chip_id;
-
-  return result;
-}
-
 // Streaming processor with progress callbacks and memory management
 class TDCStreamProcessor {
  public:
@@ -554,11 +462,6 @@ PYBIND11_MODULE(_core, m) {
       .def("get_last_packet_count", &TDCProcessor::getLastPacketCount,
            "Get number of packets processed in last operation");
 
-  // Convenience function to convert hits to numpy arrays
-  m.def("hits_to_numpy", &hits_to_numpy, py::arg("hits"),
-        "Convert vector of hits to dictionary of numpy arrays",
-        py::return_value_policy::move);
-
   // Zero-copy function to create structured numpy array view
   m.def(
       "hits_to_numpy_view",
@@ -576,11 +479,6 @@ PYBIND11_MODULE(_core, m) {
       py::arg("neutrons"),
       "Create zero-copy TDCNeutronView for structured numpy array access",
       py::return_value_policy::move);
-
-  // Convenience function to convert neutrons to numpy arrays
-  m.def("neutrons_to_numpy", &neutrons_to_numpy, py::arg("neutrons"),
-        "Convert vector of neutrons to dictionary of numpy arrays",
-        py::return_value_policy::move);
 
   // High-level convenience function for simple usage with enhanced error
   // handling
@@ -673,7 +571,7 @@ PYBIND11_MODULE(_core, m) {
           TDCClusterProcessor cluster_processor(cluster_config);
           auto neutrons = cluster_processor.processHits(hits);
 
-          return neutrons_to_numpy(neutrons);
+          return TDCNeutronView(std::move(neutrons));
         } catch (const std::exception& e) {
           throw TDCProcessingError("Failed to process TPX3 to neutrons: " +
                                    std::string(e.what()));

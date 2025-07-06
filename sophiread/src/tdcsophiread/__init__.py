@@ -44,7 +44,6 @@ __all__ = [
     # Utility functions
     "process_tpx3",
     "process_tpx3_stream",
-    "hits_to_numpy",
     # Python modules
     "config",
     "cli",
