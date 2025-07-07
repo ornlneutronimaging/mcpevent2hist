@@ -6,11 +6,18 @@ platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
 
 [tasks]
-# Primary TDC-only build (default)
-configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON"
+# Primary TDC-only build (default - Release mode)
+configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON -DCMAKE_BUILD_TYPE=Release"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
 test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
     "build",
+] }
+
+# Debug build (enables assertions and debug symbols)
+configure-debug = "cmake -G Ninja -S . -B build-debug -DBUILD_PYTHON_BINDINGS=ON -DCMAKE_BUILD_TYPE=Debug"
+build-debug = { cmd = "ninja -C build-debug", depends-on = ["configure-debug"] }
+test-debug = { cmd = "cd build-debug && ctest -V --output-on-failure", depends-on = [
+    "build-debug",
 ] }
 
 # Legacy build (optional)

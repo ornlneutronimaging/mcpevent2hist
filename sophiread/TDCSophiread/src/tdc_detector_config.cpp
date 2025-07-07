@@ -3,6 +3,7 @@
 
 #include "tdc_detector_config.h"
 
+#include <cassert>
 #include <fstream>
 #include <sstream>
 
@@ -151,20 +152,11 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
 std::pair<int, int> DetectorConfig::mapChipToGlobal(uint16_t chip_id,
                                                     uint16_t local_x,
                                                     uint16_t local_y) const {
-  // Validate chip_id
-  if (chip_id >= m_ChipTransforms.size()) {
-    throw std::invalid_argument(
-        "Invalid chip_id: " + std::to_string(chip_id) +
-        " (max: " + std::to_string(m_ChipTransforms.size() - 1) + ")");
-  }
-
-  // Validate local coordinates
-  if (local_x >= m_ChipSizeX || local_y >= m_ChipSizeY) {
-    throw std::invalid_argument(
-        "Local coordinates out of bounds: (" + std::to_string(local_x) + ", " +
-        std::to_string(local_y) + ") max: (" + std::to_string(m_ChipSizeX - 1) +
-        ", " + std::to_string(m_ChipSizeY - 1) + ")");
-  }
+  // Debug-only validation (compiled out in release builds with -DNDEBUG)
+  assert(chip_id < m_ChipTransforms.size() &&
+         "Invalid chip_id exceeds available transformations");
+  assert(local_x < m_ChipSizeX && local_y < m_ChipSizeY &&
+         "Local coordinates exceed chip boundaries");
 
   // Apply transformation matrix for the specified chip
   return m_ChipTransforms[chip_id].apply(local_x, local_y);

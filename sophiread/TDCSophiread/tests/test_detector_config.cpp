@@ -146,9 +146,6 @@ TEST_F(TDCDetectorConfigTest, ProvidesCoordinateMapping) {
   auto [global_x3, global_y3] = config.mapChipToGlobal(3, 100, 150);
   EXPECT_EQ(global_x3, 100);  // Chip 3: x unchanged (NO transformation)
   EXPECT_EQ(global_y3, 150);  // y unchanged
-
-  // Test invalid chip ID
-  EXPECT_THROW(config.mapChipToGlobal(4, 100, 150), std::invalid_argument);
 }
 
 // Test 7: Should support JSON-configurable transformation matrices
@@ -210,10 +207,6 @@ TEST_F(TDCDetectorConfigTest, SupportsJsonTransformationMatrices) {
   auto [x3, y3] = config.mapChipToGlobal(3, 10, 20);
   EXPECT_EQ(x3, 501);
   EXPECT_EQ(y3, 491);
-
-  // Test out of bounds coordinates
-  EXPECT_THROW(config.mapChipToGlobal(0, 512, 150), std::invalid_argument);
-  EXPECT_THROW(config.mapChipToGlobal(0, 100, 512), std::invalid_argument);
 }
 
 // Test 7: Should provide pre-calculated TDC values for optimization
