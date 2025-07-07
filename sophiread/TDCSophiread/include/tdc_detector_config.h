@@ -122,6 +122,19 @@ class DetectorConfig {
   double getTdcFrequency() const { return m_TdcFrequency; }
 
   /**
+   * @brief Get pre-calculated TDC period in seconds
+   * @return TDC period (1.0 / TDC frequency) - eliminates division in hot path
+   */
+  double getTdcPeriodSeconds() const { return m_TdcPeriodSeconds; }
+
+  /**
+   * @brief Get pre-calculated TDC correction value in 25ns units
+   * @return TDC correction value for missing TDC algorithm - eliminates FP math
+   * in hot path
+   */
+  uint32_t getTdcCorrection25ns() const { return m_TdcCorrection25ns; }
+
+  /**
    * @brief Check if missing TDC correction is enabled
    * @return true if correction is enabled (default: true)
    */
@@ -186,11 +199,21 @@ class DetectorConfig {
    */
   void validateConfig() const;
 
+  /**
+   * @brief Update pre-calculated TDC values based on current frequency
+   */
+  void updateTdcCalculations();
+
   // ==================== MEMBER VARIABLES ====================
 
   // Timing parameters
   double m_TdcFrequency = 60.0;  // Hz (SNS default)
   bool m_EnableMissingTdcCorrection = true;
+
+  // Pre-calculated TDC values (computed from m_TdcFrequency)
+  double m_TdcPeriodSeconds = 1.0 / 60.0;  // 1.0 / m_TdcFrequency
+  uint32_t m_TdcCorrection25ns =
+      666667;  // (m_TdcPeriodSeconds * 1e9 / 25 + 0.5)
 
   // Chip parameters
   uint16_t m_ChipSizeX = 256;  // pixels per chip

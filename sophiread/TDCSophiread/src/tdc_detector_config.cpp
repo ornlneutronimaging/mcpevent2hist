@@ -39,6 +39,7 @@ DetectorConfig DetectorConfig::venusDefaults() {
   // Chip 3: x unchanged, y unchanged -> [[1, 0, 0], [0, 1, 0]]
   config.m_ChipTransforms[3] = ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
+  config.updateTdcCalculations();
   config.validateConfig();
   return config;
 }
@@ -77,6 +78,7 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
 
     if (timing.contains("tdc_frequency_hz")) {
       detector_config.m_TdcFrequency = timing["tdc_frequency_hz"];
+      detector_config.updateTdcCalculations();
     }
 
     if (timing.contains("enable_missing_tdc_correction")) {
@@ -139,6 +141,7 @@ DetectorConfig DetectorConfig::fromJson(const nlohmann::json& config) {
         ChipTransform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
   }
 
+  detector_config.updateTdcCalculations();
   detector_config.validateConfig();
   return detector_config;
 }
@@ -186,6 +189,12 @@ void DetectorConfig::setChipTransform(uint16_t chip_id,
 }
 
 // ==================== PRIVATE METHODS ====================
+
+void DetectorConfig::updateTdcCalculations() {
+  m_TdcPeriodSeconds = 1.0 / m_TdcFrequency;
+  m_TdcCorrection25ns =
+      static_cast<uint32_t>(m_TdcPeriodSeconds * 1e9 / 25 + 0.5);
+}
 
 void DetectorConfig::validateConfig() const {
   // Validate timing parameters

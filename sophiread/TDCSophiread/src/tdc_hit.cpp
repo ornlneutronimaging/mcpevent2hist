@@ -39,7 +39,7 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
 
     // Apply missing TDC correction only if requested
     if (apply_tdc_correction) {
-      tof = applyMissingTDCCorrection(raw_tof, config.getTdcFrequency());
+      tof = applyMissingTDCCorrection(raw_tof, config);
     } else {
       tof = raw_tof;
     }
@@ -53,19 +53,17 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
 }
 
 uint32_t applyMissingTDCCorrection(uint32_t tof_uncorrected,
-                                   double tdc_frequency) {
+                                   const DetectorConfig& config) {
   // Convert TOF to seconds: TOF * 25ns
   double tof_seconds = tof_uncorrected * 25e-9;
 
-  // Calculate TDC period in seconds
-  double tdc_period_seconds = 1.0 / tdc_frequency;
+  // Use pre-calculated TDC period (eliminates division in hot path)
+  double tdc_period_seconds = config.getTdcPeriodSeconds();
 
   // Check if correction is needed (Python: if TOF*25/1e9 > 1/TDC_frequency)
   if (tof_seconds > tdc_period_seconds) {
-    // Subtract one TDC period (Python: TOF - (1/TDC_frequency)*1e9/25)
-    // Use proper rounding instead of truncation
-    uint32_t correction_25ns =
-        static_cast<uint32_t>(tdc_period_seconds * 1e9 / 25 + 0.5);
+    // Use pre-calculated correction value (eliminates FP math in hot path)
+    uint32_t correction_25ns = config.getTdcCorrection25ns();
     return tof_uncorrected - correction_25ns;
   }
 

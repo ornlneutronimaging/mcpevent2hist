@@ -97,19 +97,21 @@ TDCHit convertPacketToHit(const TPX3Packet& packet, uint8_t chip_id,
                           bool apply_tdc_correction);
 
 /**
- * @brief Apply missing TDC correction to time-of-flight
+ * @brief Apply missing TDC correction to time-of-flight (optimized)
  *
  * Implements the critical algorithm from Python reference:
  * if TOF * 25ns > 1/TDC_frequency, subtract one TDC period
  *
  * This corrects for missing TDC pulses in the data stream.
+ * Uses pre-calculated values from DetectorConfig to eliminate billions of
+ * FLOPs.
  *
  * @param tof_uncorrected Raw time-of-flight in 25ns units
- * @param tdc_frequency TDC frequency in Hz (e.g., 60.0 for VENUS)
+ * @param config Detector configuration with pre-calculated TDC values
  * @return uint32_t Corrected time-of-flight in 25ns units
  */
 uint32_t applyMissingTDCCorrection(uint32_t tof_uncorrected,
-                                   double tdc_frequency);
+                                   const DetectorConfig& config);
 
 /**
  * @brief Detect and correct timestamp rollover

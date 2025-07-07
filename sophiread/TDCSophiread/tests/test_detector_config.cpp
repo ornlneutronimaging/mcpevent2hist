@@ -216,4 +216,41 @@ TEST_F(TDCDetectorConfigTest, SupportsJsonTransformationMatrices) {
   EXPECT_THROW(config.mapChipToGlobal(0, 100, 512), std::invalid_argument);
 }
 
+// Test 7: Should provide pre-calculated TDC values for optimization
+TEST_F(TDCDetectorConfigTest, ProvidesPreCalculatedTdcValues) {
+  // Test VENUS defaults (60 Hz)
+  auto venus_config = DetectorConfig::venusDefaults();
+
+  // Verify TDC frequency
+  EXPECT_DOUBLE_EQ(venus_config.getTdcFrequency(), 60.0);
+
+  // Verify pre-calculated TDC period (should be 1.0 / 60.0)
+  double expected_period = 1.0 / 60.0;
+  EXPECT_DOUBLE_EQ(venus_config.getTdcPeriodSeconds(), expected_period);
+
+  // Verify pre-calculated correction value (should match
+  // applyMissingTDCCorrection calculation)
+  uint32_t expected_correction =
+      static_cast<uint32_t>(expected_period * 1e9 / 25 + 0.5);
+  EXPECT_EQ(venus_config.getTdcCorrection25ns(), expected_correction);
+  EXPECT_EQ(venus_config.getTdcCorrection25ns(),
+            666667);  // Known value for 60Hz
+
+  // Test different frequency via JSON
+  nlohmann::json custom_config = {
+      {"detector", {{"timing", {{"tdc_frequency_hz", 30.0}}}}}};
+
+  auto config_30hz = DetectorConfig::fromJson(custom_config);
+
+  // Verify 30Hz calculations
+  EXPECT_DOUBLE_EQ(config_30hz.getTdcFrequency(), 30.0);
+  EXPECT_DOUBLE_EQ(config_30hz.getTdcPeriodSeconds(), 1.0 / 30.0);
+
+  uint32_t expected_correction_30hz =
+      static_cast<uint32_t>((1.0 / 30.0) * 1e9 / 25 + 0.5);
+  EXPECT_EQ(config_30hz.getTdcCorrection25ns(), expected_correction_30hz);
+  EXPECT_EQ(config_30hz.getTdcCorrection25ns(),
+            1333333);  // Known value for 30Hz
+}
+
 }  // namespace tdcsophiread
