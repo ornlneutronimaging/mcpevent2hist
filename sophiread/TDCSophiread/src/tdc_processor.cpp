@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstring>
 #include <execution>
+#include <iostream>
 #include <stdexcept>
 
 #include "tdc_io.h"
@@ -23,233 +24,165 @@ TDCProcessor::TDCProcessor(const DetectorConfig& config)
     : m_Config(config),
       m_MissingTdcCorrectionEnabled(config.isMissingTdcCorrectionEnabled()) {}
 
-std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path) {
+std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path,
+                                              size_t chunk_size_mb,
+                                              bool parallel,
+                                              size_t num_threads) {
   auto start_time = std::chrono::high_resolution_clock::now();
 
-  // Open file once
-  auto mapped_file = MappedFile::open(file_path);
+  // Get total file size for chunking
+  std::error_code ec;
+  auto file_size = std::filesystem::file_size(file_path, ec);
+  if (ec) {
+    throw std::runtime_error("Cannot determine file size: " + file_path);
+  }
 
-  // Phase 1: Discover sections using mapped data
-  auto sections = discoverSections(mapped_file->data(), mapped_file->size());
-
-  if (sections.empty()) {
+  if (file_size == 0) {
     updateMetrics(std::chrono::microseconds(0), 0, 0);
     return {};
   }
 
-  // Phase 1: Propagate TDC state across sections
-  // Per-chip TDC state tracking
-  std::array<uint32_t, 4> chip_tdc_state = {0, 0, 0, 0};
-  std::array<bool, 4> chip_has_tdc = {false, false, false, false};
+  // Convert chunk size to bytes
+  size_t chunk_size_bytes = chunk_size_mb * 1024 * 1024;
 
-  for (auto& section : sections) {
-    // Inherit TDC from previous section of same chip
-    if (chip_has_tdc[section.chip_id]) {
-      section.initial_tdc_timestamp = chip_tdc_state[section.chip_id];
-      section.has_initial_tdc = true;
-    } else {
-      section.initial_tdc_timestamp = 0;
-      section.has_initial_tdc = false;
-    }
+  // Reset TDC state for this file
+  m_ChipTdcState = {0, 0, 0, 0};
+  m_ChipHasTdc = {false, false, false, false};
 
-    // Scan section for TDC updates
-    scanSectionForTdc(mapped_file->data(), section, chip_tdc_state,
-                      chip_has_tdc);
-  }
-
-  // Phase 2: Process sections (single-threaded for now)
   std::vector<TDCHit> all_hits;
   size_t total_packets = 0;
+  size_t current_offset = 0;
 
-  // Pre-allocate based on estimated hit count (assume ~70% of packets are hits)
-  constexpr double HIT_ESTIMATE_FACTOR = 0.7;
-  size_t estimated_total_packets = 0;
-  for (const auto& section : sections) {
-    estimated_total_packets += (section.end_offset - section.start_offset) / 8;
-  }
-  size_t estimated_hits =
-      static_cast<size_t>(estimated_total_packets * HIT_ESTIMATE_FACTOR);
-  all_hits.reserve(estimated_hits);
+  // Process file in chunks
+  while (current_offset < file_size) {
+    // Determine chunk size (don't exceed file size)
+    size_t remaining = file_size - current_offset;
+    size_t current_chunk_size = std::min(chunk_size_bytes, remaining);
 
-  for (const auto& section : sections) {
-    auto section_hits = processSection(mapped_file->data(), section);
-    all_hits.insert(all_hits.end(), section_hits.begin(), section_hits.end());
-    total_packets += (section.end_offset - section.start_offset) / 8;
-  }
+    // Map current chunk
+    auto mapped_file =
+        MappedFile::open(file_path, current_offset, current_chunk_size);
 
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
-      end_time - start_time);
+    // Find sections within this chunk
+    auto chunk_sections =
+        discoverSections(mapped_file->data(), mapped_file->size());
 
-  updateMetrics(duration, all_hits.size(), total_packets);
-
-  return all_hits;
-}
-
-std::vector<TDCHit> TDCProcessor::processFileParallel(
-    const std::string& file_path, size_t num_threads) {
-  auto start_time = std::chrono::high_resolution_clock::now();
-
-  // Open file once
-  auto mapped_file = MappedFile::open(file_path);
-
-  // Phase 1: Discover sections using mapped data (must be sequential)
-  auto sections = discoverSections(mapped_file->data(), mapped_file->size());
-
-  if (sections.empty()) {
-    updateMetrics(std::chrono::microseconds(0), 0, 0);
-    return {};
-  }
-
-  // Phase 1: Propagate TDC state across sections (must be sequential)
-  std::array<uint32_t, 4> chip_tdc_state = {0, 0, 0, 0};
-  std::array<bool, 4> chip_has_tdc = {false, false, false, false};
-
-  for (auto& section : sections) {
-    // Inherit TDC from previous section of same chip
-    if (chip_has_tdc[section.chip_id]) {
-      section.initial_tdc_timestamp = chip_tdc_state[section.chip_id];
-      section.has_initial_tdc = true;
-    } else {
-      section.initial_tdc_timestamp = 0;
-      section.has_initial_tdc = false;
+    if (chunk_sections.empty()) {
+      // No sections found, advance to next chunk
+      current_offset += current_chunk_size;
+      continue;
     }
 
-    // Scan section for TDC updates
-    scanSectionForTdc(mapped_file->data(), section, chip_tdc_state,
-                      chip_has_tdc);
-  }
+    // Adjust section offsets to be relative to file start
+    for (auto& section : chunk_sections) {
+      section.start_offset += current_offset;
+      section.end_offset += current_offset;
+    }
 
-  // Phase 2: Process sections in parallel
-  auto all_hits =
-      processSectionsParallel(mapped_file->data(), sections, num_threads);
+    // Apply "always leave last section" strategy (unless we're at end of file)
+    std::vector<TDCSection> sections_to_process;
+    bool at_end_of_file = (current_offset + current_chunk_size >= file_size);
 
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
-      end_time - start_time);
-
-  // Calculate total packets for metrics
-  size_t total_packets = 0;
-  for (const auto& section : sections) {
-    total_packets += (section.end_offset - section.start_offset) / 8;
-  }
-
-  updateMetrics(duration, all_hits.size(), total_packets);
-
-  return all_hits;
-}
-
-std::vector<TDCHit> TDCProcessor::processChunk(const std::string& file_path,
-                                               size_t start_offset,
-                                               size_t requested_size,
-                                               size_t& actual_processed) {
-  auto start_time = std::chrono::high_resolution_clock::now();
-
-  // Open file
-  auto mapped_file = MappedFile::open(file_path);
-
-  if (start_offset >= mapped_file->size()) {
-    actual_processed = 0;
-    return {};
-  }
-
-  // Simple smart chunking: find complete sections within requested range
-  const uint8_t* data = mapped_file->data();
-  std::vector<TDCSection> chunk_sections;
-
-  size_t current_offset = start_offset;
-  size_t chunk_limit =
-      std::min(start_offset + requested_size, mapped_file->size());
-
-  // Scan for TPX3 headers within the requested chunk
-  while (current_offset + 7 < chunk_limit) {
-    // Direct pointer cast (safe since TPX3 files are 8-byte aligned)
-    const uint64_t* packet_ptr =
-        reinterpret_cast<const uint64_t*>(data + current_offset);
-    uint64_t packet = *packet_ptr;
-
-    if (isTPX3Header(packet)) {
-      // Found a section start
-      uint8_t chip_id = extractChipId(packet);
-      size_t section_start = current_offset;
-
-      // Find the end of this section (next header or end of data)
-      size_t section_end = chunk_limit;
-      for (size_t scan = current_offset + 8; scan + 7 < mapped_file->size();
-           scan += 8) {
-        // Direct pointer cast for scanning
-        const uint64_t* scan_packet_ptr =
-            reinterpret_cast<const uint64_t*>(data + scan);
-        uint64_t scan_packet = *scan_packet_ptr;
-        if (isTPX3Header(scan_packet)) {
-          section_end = scan;
-          break;
-        }
-      }
-
-      // Only include this section if it ends within our chunk limit
-      if (section_end <= chunk_limit) {
-        TDCSection section;
-        section.start_offset = section_start;
-        section.end_offset = section_end;
-        section.chip_id = chip_id;
-        chunk_sections.push_back(section);
-        current_offset = section_end;
+    if (at_end_of_file) {
+      // At end of file - process all sections
+      sections_to_process = chunk_sections;
+    } else {
+      // Not at end - leave last section for next chunk
+      if (chunk_sections.size() > 1) {
+        sections_to_process.assign(chunk_sections.begin(),
+                                   chunk_sections.end() - 1);
       } else {
-        // This section extends beyond our chunk - stop here
-        break;
+        // Only one section - leave it for next chunk
+        current_offset = chunk_sections[0].start_offset;
+        continue;
       }
+    }
+
+    if (sections_to_process.empty()) {
+      current_offset += current_chunk_size;
+      continue;
+    }
+
+    /* CRITICAL TDC PROCESSING LOGIC - DO NOT MODIFY WITHOUT UNDERSTANDING:
+     *
+     * TDC inheritance is per-chip and sequential within each section:
+     *
+     * Within each section:
+     * 1. Start with inherited TDC from previous section of same chip (if
+     * available)
+     * 2. Skip hit packets until first TDC packet is encountered (if no
+     * inherited TDC)
+     * 3. When TDC packet found → use that TDC for subsequent hits in same
+     * section
+     * 4. TDC only affects hits that come AFTER it in the same section
+     * 5. Update m_ChipTdcState[chip] with final TDC for inheritance by future
+     * sections
+     *
+     * Example:
+     * Section 0 (chip 0): no inherited TDC → find TDC=1000 → use for hits →
+     * save to m_ChipTdcState[0] Section 1 (chip 1): no inherited TDC → find
+     * TDC=2000 → use for hits → save to m_ChipTdcState[1] Section 2 (chip 0):
+     * inherit TDC=1000 → process hits immediately → update m_ChipTdcState[0] if
+     * new TDC found
+     *
+     * This ensures correct TOF calculation and maintains TDC continuity across
+     * sections.
+     */
+
+    // Inherit TDC state from previous processing of the same chip AND scan for
+    // TDC updates
+    for (auto& section : sections_to_process) {
+      // First, inherit TDC from previous section of same chip
+      if (m_ChipHasTdc[section.chip_id]) {
+        section.initial_tdc_timestamp = m_ChipTdcState[section.chip_id];
+        section.has_initial_tdc = true;
+      } else {
+        section.initial_tdc_timestamp = 0;
+        section.has_initial_tdc = false;
+      }
+
+      // Then scan this section for TDC updates and update global state
+      section.start_offset -= current_offset;
+      section.end_offset -= current_offset;
+      scanSectionForTdc(mapped_file->data(), section, m_ChipTdcState,
+                        m_ChipHasTdc);
+      section.start_offset += current_offset;
+      section.end_offset += current_offset;
+    }
+
+    // Process sections (parallel or sequential)
+    std::vector<TDCHit> chunk_hits;
+    if (parallel && sections_to_process.size() > 1) {
+      // Adjust offsets back to chunk-relative for processing
+      for (auto& section : sections_to_process) {
+        section.start_offset -= current_offset;
+        section.end_offset -= current_offset;
+      }
+      chunk_hits = processSectionsParallel(mapped_file->data(),
+                                           sections_to_process, num_threads);
     } else {
-      current_offset += 8;
+      // Sequential processing
+      for (auto& section : sections_to_process) {
+        section.start_offset -= current_offset;
+        section.end_offset -= current_offset;
+        auto section_hits = processSection(mapped_file->data(), section);
+        chunk_hits.insert(chunk_hits.end(), section_hits.begin(),
+                          section_hits.end());
+        total_packets += (section.end_offset - section.start_offset) / 8;
+      }
     }
-  }
 
-  if (chunk_sections.empty()) {
-    actual_processed = 0;
-    return {};
-  }
+    // Accumulate hits from this chunk
+    all_hits.insert(all_hits.end(), chunk_hits.begin(), chunk_hits.end());
 
-  actual_processed = chunk_sections.back().end_offset - start_offset;
-
-  // Inherit TDC state from previous processing
-  for (auto& section : chunk_sections) {
-    if (m_ChipHasTdc[section.chip_id]) {
-      section.initial_tdc_timestamp = m_ChipTdcState[section.chip_id];
-      section.has_initial_tdc = true;
+    // Move to next chunk (start from beginning of last unprocessed section)
+    if (current_offset + current_chunk_size >= file_size) {
+      // Reached end of file
+      break;
+    } else {
+      // Start next chunk from the section we left behind
+      current_offset = chunk_sections.back().start_offset;
     }
-  }
-
-  // Propagate TDC within this chunk
-  // Use global chip state and scan sections
-  for (auto& section : chunk_sections) {
-    scanSectionForTdc(data, section, m_ChipTdcState, m_ChipHasTdc);
-  }
-
-  // Update global TDC state for next chunk
-  for (const auto& section : chunk_sections) {
-    if (section.final_tdc_timestamp != section.initial_tdc_timestamp ||
-        section.has_initial_tdc) {
-      m_ChipTdcState[section.chip_id] = section.final_tdc_timestamp;
-      m_ChipHasTdc[section.chip_id] = true;
-    }
-  }
-
-  // Process sections
-  std::vector<TDCHit> all_hits;
-  size_t total_packets = 0;
-
-  // Pre-allocate based on estimated hit count
-  size_t estimated_total_packets = 0;
-  for (const auto& section : chunk_sections) {
-    estimated_total_packets += (section.end_offset - section.start_offset) / 8;
-  }
-  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * 0.7);
-  all_hits.reserve(estimated_hits);
-
-  for (const auto& section : chunk_sections) {
-    auto section_hits = processSection(data, section);
-    all_hits.insert(all_hits.end(), section_hits.begin(), section_hits.end());
-    total_packets += (section.end_offset - section.start_offset) / 8;
   }
 
   auto end_time = std::chrono::high_resolution_clock::now();

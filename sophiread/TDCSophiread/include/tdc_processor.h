@@ -57,43 +57,18 @@ class TDCProcessor {
   explicit TDCProcessor(const DetectorConfig& config);
 
   /**
-   * @brief Process entire TPX3 file (single-threaded baseline)
+   * @brief Process TPX3 file with chunk-based memory mapping
    * @param file_path Path to TPX3 file to process
+   * @param chunk_size_mb Chunk size in megabytes (default: 512MB)
+   * @param parallel Enable TBB parallelization (default: false)
+   * @param num_threads Number of TBB threads (0 = auto-detect, default: 0)
    * @return Vector of TDCHit objects representing all detected hits
    * @throws std::runtime_error if file cannot be read or is invalid
    */
-  std::vector<TDCHit> processFile(const std::string& file_path);
-
-  /**
-   * @brief Process entire TPX3 file with TBB parallelization
-   * @param file_path Path to TPX3 file to process
-   * @param num_threads Number of TBB threads to use (0 = auto-detect)
-   * @return Vector of TDCHit objects representing all detected hits
-   * @throws std::runtime_error if file cannot be read or is invalid
-   *
-   * Phase 2 implementation: Parallelizes section processing after
-   * sequential TDC propagation. Achieves target 120M hits/sec performance.
-   */
-  std::vector<TDCHit> processFileParallel(const std::string& file_path,
-                                          size_t num_threads = 0);
-
-  /**
-   * @brief Process a chunk of file with section-aware boundaries
-   * @param file_path Path to TPX3 file
-   * @param start_offset Byte offset to start processing
-   * @param requested_size Requested number of bytes to process
-   * @param actual_processed Output: actual bytes processed (respects section
-   * boundaries)
-   * @return Vector of TDCHit objects from processed sections
-   *
-   * This method ensures complete section processing:
-   * - Finds all TPX3 headers in the requested range
-   * - Processes only complete sections (N-1 if N headers found)
-   * - Returns actual bytes processed up to last complete section
-   */
-  std::vector<TDCHit> processChunk(const std::string& file_path,
-                                   size_t start_offset, size_t requested_size,
-                                   size_t& actual_processed);
+  std::vector<TDCHit> processFile(const std::string& file_path,
+                                  size_t chunk_size_mb = 512,
+                                  bool parallel = false,
+                                  size_t num_threads = 0);
 
   /**
    * @brief Discover all sections in TPX3 data

@@ -284,9 +284,10 @@ TEST_F(TDCProcessorTest, MapsCoordinatesAccordingToPythonReference) {
   EXPECT_EQ(hits[3].y, 4);
 }
 
-// Test 6: Smart chunking should respect section boundaries
-TEST_F(TDCProcessorTest, SmartChunkingRespectsSectionBoundaries) {
-  // Define expected behavior: When processing chunks, don't split sections
+// Test 6: Chunk-based processing produces consistent results
+TEST_F(TDCProcessorTest, ChunkBasedProcessingConsistentResults) {
+  // Test that chunk-based processing produces same results as before
+  // but with configurable memory usage
 
   std::vector<uint64_t> packets = {
       // Section 1: 32 bytes (4 packets)
@@ -299,31 +300,27 @@ TEST_F(TDCProcessorTest, SmartChunkingRespectsSectionBoundaries) {
       createTPX3HeaderPacket(2), createTDCPacket(3000),
       createHitPacket(0x040B, 103, 203)};
 
-  createTestTPX3File("smart_chunking.tpx3", packets);
-  std::string file_path = (test_dir / "smart_chunking.tpx3").string();
+  createTestTPX3File("chunk_processing.tpx3", packets);
+  std::string file_path = (test_dir / "chunk_processing.tpx3").string();
 
   TDCProcessor processor(*config);
   processor.setMissingTdcCorrectionEnabled(
       false);  // Disable for consistent results
 
-  // Request 40 bytes (would split Section 2)
-  size_t requested_chunk_size = 40;
-  size_t actual_processed = 0;
+  // Process with different chunk sizes - should get same results
+  auto hits_large = processor.processFile(file_path, 1024);  // 1GB chunks
+  auto hits_small = processor.processFile(file_path, 1);     // 1MB chunks
 
-  auto hits = processor.processChunk(file_path, 0, requested_chunk_size,
-                                     actual_processed);
+  // Results should be identical regardless of chunk size
+  EXPECT_EQ(hits_large.size(), hits_small.size());
+  EXPECT_EQ(hits_large.size(), 4);  // All 4 hits processed
 
-  // Should process only Section 1 (32 bytes) to avoid splitting Section 2
-  EXPECT_EQ(actual_processed, 32);
-  EXPECT_EQ(hits.size(), 2);  // Two hits from Section 1
-
-  // Process next chunk starting from byte 32 with larger request to get both
-  // sections
-  auto hits2 = processor.processChunk(file_path, 32, 48, actual_processed);
-
-  // Should process Sections 2 and 3 (48 bytes total)
-  EXPECT_EQ(actual_processed, 48);
-  EXPECT_EQ(hits2.size(), 2);  // Two hits from Sections 2 and 3
+  // Content should be identical
+  for (size_t i = 0; i < hits_large.size(); ++i) {
+    EXPECT_EQ(hits_large[i].x, hits_small[i].x);
+    EXPECT_EQ(hits_large[i].y, hits_small[i].y);
+    EXPECT_EQ(hits_large[i].tof, hits_small[i].tof);
+  }
 }
 
 // Test 7: Performance baseline for single-threaded processing
@@ -459,10 +456,10 @@ TEST_F(TDCProcessorTest, ParallelProcessingMatchesSequential) {
   processor.setMissingTdcCorrectionEnabled(false);  // For consistent comparison
 
   // Process with single-threaded method
-  auto sequential_hits = processor.processFile(file_path);
+  auto sequential_hits = processor.processFile(file_path, 512, false, 0);
 
   // Process with parallel method (using 4 threads)
-  auto parallel_hits = processor.processFileParallel(file_path, 4);
+  auto parallel_hits = processor.processFile(file_path, 512, true, 4);
 
   // Results should be identical in content (order may differ due to
   // parallelization)
@@ -523,7 +520,7 @@ TEST_F(TDCProcessorTest, ParallelProcessingAchievesTargetPerformance) {
   // Benchmark parallel processing with multiple thread counts
   auto start_time = std::chrono::high_resolution_clock::now();
   auto hits =
-      processor.processFileParallel(file_path, 0);  // Auto-detect threads
+      processor.processFile(file_path, 512, true, 0);  // Auto-detect threads
   auto end_time = std::chrono::high_resolution_clock::now();
 
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(

@@ -22,10 +22,13 @@ class MappedFile {
    * @brief Factory method to open and map a file
    *
    * @param filepath Path to the file to map
+   * @param offset Byte offset to start mapping (default: 0)
+   * @param size Number of bytes to map (default: 0 = entire file)
    * @return std::unique_ptr<MappedFile> Mapped file instance
    * @throws std::runtime_error if file cannot be opened or mapped
    */
-  static std::unique_ptr<MappedFile> open(const std::string& filepath);
+  static std::unique_ptr<MappedFile> open(const std::string& filepath,
+                                          size_t offset = 0, size_t size = 0);
 
   /**
    * @brief Destructor - unmaps the file
@@ -46,11 +49,18 @@ class MappedFile {
   const uint8_t* data() const { return m_Data; }
 
   /**
-   * @brief Get size of mapped file
+   * @brief Get size of mapped region
    *
-   * @return size_t File size in bytes
+   * @return size_t Mapped region size in bytes
    */
   size_t size() const { return m_Size; }
+
+  /**
+   * @brief Get total file size
+   *
+   * @return size_t Total file size in bytes
+   */
+  size_t file_size() const { return m_FileSize; }
 
   /**
    * @brief Get file path
@@ -64,17 +74,23 @@ class MappedFile {
    * @brief Private constructor - use open() factory method
    *
    * @param filepath File path
-   * @param data Mapped data pointer
-   * @param size File size
+   * @param data Mapped data pointer (adjusted for offset)
+   * @param size Mapped region size
+   * @param file_size Total file size
    * @param fd File descriptor (Unix)
+   * @param mapped_ptr Actual mmap pointer (for unmapping)
+   * @param mapped_size Actual mmap size (for unmapping)
    */
   MappedFile(const std::string& filepath, const uint8_t* data, size_t size,
-             int fd);
+             size_t file_size, int fd, void* mapped_ptr, size_t mapped_size);
 
   std::string m_Filepath;  ///< Original file path
-  const uint8_t* m_Data;   ///< Mapped data pointer
-  size_t m_Size;           ///< File size in bytes
+  const uint8_t* m_Data;   ///< Mapped data pointer (adjusted for offset)
+  size_t m_Size;           ///< Mapped region size in bytes
+  size_t m_FileSize;       ///< Total file size in bytes
   int m_FileDescriptor;    ///< Unix file descriptor
+  void* m_MappedPtr;       ///< Actual mmap pointer (for unmapping)
+  size_t m_MappedSize;     ///< Actual mmap size (for unmapping)
 };
 
 }  // namespace tdcsophiread
