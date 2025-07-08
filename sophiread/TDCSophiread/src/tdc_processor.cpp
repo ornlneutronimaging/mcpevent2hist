@@ -50,6 +50,13 @@ std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path,
   m_ChipHasTdc = {false, false, false, false};
 
   std::vector<TDCHit> all_hits;
+
+  // Pre-allocate all_hits based on file size (Finding 1 optimization)
+  // Using same 0.7 estimation factor as elsewhere in the code
+  size_t file_total_packets = file_size / 8;
+  size_t file_estimated_hits = static_cast<size_t>(file_total_packets * 0.7);
+  all_hits.reserve(file_estimated_hits);
+
   size_t total_packets = 0;
   size_t current_offset = 0;
 
@@ -152,6 +159,15 @@ std::vector<TDCHit> TDCProcessor::processFile(const std::string& file_path,
 
     // Process sections (parallel or sequential)
     std::vector<TDCHit> chunk_hits;
+
+    // Pre-allocate chunk_hits based on sections size (Finding 1 optimization)
+    size_t chunk_total_packets = 0;
+    for (const auto& section : sections_to_process) {
+      chunk_total_packets += (section.end_offset - section.start_offset) / 8;
+    }
+    size_t chunk_estimated_hits =
+        static_cast<size_t>(chunk_total_packets * 0.7);
+    chunk_hits.reserve(chunk_estimated_hits);
     if (parallel && sections_to_process.size() > 1) {
       // Adjust offsets back to chunk-relative for processing
       for (auto& section : sections_to_process) {
