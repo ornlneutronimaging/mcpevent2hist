@@ -270,6 +270,13 @@ std::vector<TDCHit> TDCProcessor::processSectionsParallel(
       (num_threads == 0) ? tbb::task_arena::automatic : num_threads;
   tbb::task_arena arena(actual_threads);
 
+  // Calculate estimated hits for pre-allocation (Finding 5 optimization)
+  size_t estimated_total_packets = 0;
+  for (const auto& section : sections) {
+    estimated_total_packets += (section.end_offset - section.start_offset) / 8;
+  }
+  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * 0.7);
+
   // Use TBB combinable for thread-local hit storage to avoid synchronization
   tbb::combinable<std::vector<TDCHit>> thread_local_hits;
 
@@ -287,6 +294,13 @@ std::vector<TDCHit> TDCProcessor::processSectionsParallel(
         [&](const tbb::blocked_range<size_t>& /* thread_range */) {
           // Get thread-local hit vector
           auto& local_hits = thread_local_hits.local();
+
+          // Pre-allocate thread-local vector on first access (Finding 5
+          // optimization)
+          if (local_hits.capacity() == 0) {
+            size_t thread_estimated_hits = estimated_hits / actual_threads;
+            local_hits.reserve(thread_estimated_hits);
+          }
 
           // Work-stealing loop: each thread grabs batch of sections
           size_t batch_start;
@@ -310,13 +324,7 @@ std::vector<TDCHit> TDCProcessor::processSectionsParallel(
   // Combine all thread-local results into final vector
   std::vector<TDCHit> all_hits;
 
-  // Pre-allocate space based on estimated hit count (before parallel
-  // processing)
-  size_t estimated_total_packets = 0;
-  for (const auto& section : sections) {
-    estimated_total_packets += (section.end_offset - section.start_offset) / 8;
-  }
-  size_t estimated_hits = static_cast<size_t>(estimated_total_packets * 0.7);
+  // Pre-allocate final vector (using calculation from above)
   all_hits.reserve(estimated_hits);
 
   // Combine all thread-local vectors
