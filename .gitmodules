@@ -1,0 +1,3 @@
+[submodule "sophiread/resources/sophiread-data"]
+	path = sophiread/resources/sophiread-data
+	url = git@code.ornl.gov:sns-hfir-scse/infrastructure/test-data/sophiread-data.git
