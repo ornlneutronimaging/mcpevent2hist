@@ -13,6 +13,7 @@
 #include "tdc_cluster_processor.h"
 #include "tdc_clustering_config.h"
 #include "tdc_detector_config.h"
+#include "tdc_graph_clustering.h"
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 #include "tdc_processor.h"
@@ -287,6 +288,182 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("centroid", &ClusteringConfig::centroid,
                      "Centroid fitting configuration")
       .def("summary", &ClusteringConfig::summary, "Get configuration summary");
+
+  // GraphConfig for graph clustering algorithm
+  py::class_<GraphConfig>(m, "GraphConfig")
+      .def(py::init<>())
+      .def(py::init<const ABSConfig&>(), py::arg("abs_config"),
+           "Create from ABSConfig for compatibility")
+      .def_readwrite("radius", &GraphConfig::radius,
+                     "Spatial clustering radius in pixels")
+      .def_readwrite("min_cluster_size", &GraphConfig::min_cluster_size,
+                     "Minimum hits per cluster")
+      .def_readwrite("neutron_correlation_window",
+                     &GraphConfig::neutron_correlation_window,
+                     "Neutron temporal correlation window in nanoseconds")
+      .def_readwrite("grid_size", &GraphConfig::grid_size,
+                     "Spatial grid size for hashing")
+      .def_readwrite("enable_spatial_hash", &GraphConfig::enable_spatial_hash,
+                     "Enable spatial hash optimization")
+      .def_readwrite("parallel_threshold", &GraphConfig::parallel_threshold,
+                     "Minimum hits for parallel processing")
+      .def("validate", &GraphConfig::validate,
+           "Validate configuration parameters");
+
+  // BatchStats for temporal batching analysis
+  py::class_<BatchStats>(m, "BatchStats")
+      .def(py::init<>())
+      .def_readonly("mean_hits_per_window", &BatchStats::mean_hits_per_window,
+                    "Average hits within correlation window")
+      .def_readonly("std_hits_per_window", &BatchStats::std_hits_per_window,
+                    "Standard deviation of hits per window")
+      .def_readonly("optimal_window_tof", &BatchStats::optimal_window_tof,
+                    "Optimal window size in TOF units (25ns)")
+      .def_readonly("overlap_size", &BatchStats::overlap_size,
+                    "Overlap size in hits (3σ for boundary handling)")
+      .def_readonly("num_pulses_analyzed", &BatchStats::num_pulses_analyzed,
+                    "Number of complete pulses analyzed")
+      .def_readonly("pulse_period_tof", &BatchStats::pulse_period_tof,
+                    "TOF period between pulses (25ns units)")
+      .def_readonly("total_hits_analyzed", &BatchStats::total_hits_analyzed,
+                    "Total hits used for statistics");
+
+  // HitBatch for temporal batch definition
+  py::class_<HitBatch>(m, "HitBatch")
+      .def(py::init<>())
+      .def_readonly("start_index", &HitBatch::start_index,
+                    "Batch start index (inclusive)")
+      .def_readonly("end_index", &HitBatch::end_index,
+                    "Batch end index (exclusive)")
+      .def_readonly("overlap_start", &HitBatch::overlap_start,
+                    "Overlap region start index")
+      .def_readonly("overlap_end", &HitBatch::overlap_end,
+                    "Overlap region end index")
+      .def_readonly("tof_window_start", &HitBatch::tof_window_start,
+                    "TOF range start for this batch")
+      .def_readonly("tof_window_end", &HitBatch::tof_window_end,
+                    "TOF range end for this batch")
+      .def("size", &HitBatch::size, "Get number of hits in this batch")
+      .def("isValid", &HitBatch::isValid, "Check if batch is valid");
+
+  // GraphClustering static methods for temporal batching
+  py::class_<GraphClustering>(m, "GraphClustering")
+      .def_static("analyzeHitDistribution",
+                  &GraphClustering::analyzeHitDistribution, py::arg("hits"),
+                  py::arg("num_pulses") = 2,
+                  py::arg("correlation_window") = 75.0,
+                  "Analyze hit distribution for temporal batching")
+      .def_static("createStatisticalBatches",
+                  &GraphClustering::createStatisticalBatches, py::arg("hits"),
+                  py::arg("stats"), "Create temporal batches from hit vector");
+
+  // TemporalGraphClusteringProcessor configuration
+  py::class_<TemporalGraphClusteringProcessor::TemporalConfig>(m,
+                                                               "TemporalConfig")
+      .def(py::init<>())
+      .def_readwrite(
+          "graph_config",
+          &TemporalGraphClusteringProcessor::TemporalConfig::graph_config,
+          "Base graph clustering configuration")
+      .def_readwrite(
+          "num_workers",
+          &TemporalGraphClusteringProcessor::TemporalConfig::num_workers,
+          "Number of worker threads (0 = auto-detect)")
+      .def_readwrite(
+          "min_batch_size",
+          &TemporalGraphClusteringProcessor::TemporalConfig::min_batch_size,
+          "Minimum hits per batch")
+      .def_readwrite(
+          "max_batch_size",
+          &TemporalGraphClusteringProcessor::TemporalConfig::max_batch_size,
+          "Maximum hits per batch")
+      .def_readwrite(
+          "overlap_factor",
+          &TemporalGraphClusteringProcessor::TemporalConfig::overlap_factor,
+          "Overlap size multiplier (default: 3.0 for 3σ)")
+      .def_readwrite("enable_memory_pools",
+                     &TemporalGraphClusteringProcessor::TemporalConfig::
+                         enable_memory_pools,
+                     "Enable per-worker memory pools")
+      .def_readwrite("enable_temporal_aging",
+                     &TemporalGraphClusteringProcessor::TemporalConfig::
+                         enable_temporal_aging,
+                     "Enable temporal aging within batches");
+
+  // TemporalGraphClusteringProcessor statistics
+  py::class_<TemporalGraphClusteringProcessor::ProcessingStats>(
+      m, "TemporalProcessingStats")
+      .def(py::init<>())
+      .def_readonly("total_hits_processed",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        total_hits_processed,
+                    "Total hits processed")
+      .def_readonly("total_neutrons_produced",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        total_neutrons_produced,
+                    "Total neutrons produced")
+      .def_readonly("num_batches_created",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        num_batches_created,
+                    "Number of temporal batches created")
+      .def_readonly(
+          "num_workers_used",
+          &TemporalGraphClusteringProcessor::ProcessingStats::num_workers_used,
+          "Number of worker threads used")
+      .def_readonly(
+          "analysis_time_ms",
+          &TemporalGraphClusteringProcessor::ProcessingStats::analysis_time_ms,
+          "Time for hit distribution analysis")
+      .def_readonly(
+          "batching_time_ms",
+          &TemporalGraphClusteringProcessor::ProcessingStats::batching_time_ms,
+          "Time for batch creation")
+      .def_readonly("processing_time_ms",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        processing_time_ms,
+                    "Time for parallel batch processing")
+      .def_readonly("aggregation_time_ms",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        aggregation_time_ms,
+                    "Time for result aggregation")
+      .def_readonly(
+          "total_time_ms",
+          &TemporalGraphClusteringProcessor::ProcessingStats::total_time_ms,
+          "Total processing time")
+      .def_readonly(
+          "hits_per_second",
+          &TemporalGraphClusteringProcessor::ProcessingStats::hits_per_second,
+          "Processing rate")
+      .def_readonly("neutron_efficiency",
+                    &TemporalGraphClusteringProcessor::ProcessingStats::
+                        neutron_efficiency,
+                    "Neutrons per hit ratio");
+
+  // TemporalGraphClusteringProcessor - main interface
+  py::class_<TemporalGraphClusteringProcessor>(
+      m, "TemporalGraphClusteringProcessor")
+      .def(py::init<>(), "Create processor with default configuration")
+      .def(py::init<const TemporalGraphClusteringProcessor::TemporalConfig&>(),
+           py::arg("config"), "Create processor with custom configuration")
+      .def(
+          "processHits",
+          [](TemporalGraphClusteringProcessor& self,
+             const std::vector<TDCHit>& hits) {
+            auto neutrons = self.processHits(hits);
+            return TDCNeutronView(std::move(neutrons));
+          },
+          py::arg("hits"),
+          "Process hits using temporal batching for high performance")
+      .def("getStatistics", &TemporalGraphClusteringProcessor::getStatistics,
+           "Get processing statistics from last operation",
+           py::return_value_policy::reference_internal)
+      .def("updateConfig", &TemporalGraphClusteringProcessor::updateConfig,
+           py::arg("config"), "Update processor configuration")
+      .def("getConfig", &TemporalGraphClusteringProcessor::getConfig,
+           "Get current configuration",
+           py::return_value_policy::reference_internal)
+      .def("reset", &TemporalGraphClusteringProcessor::reset,
+           "Reset processor state and statistics");
 
   // TDCClusterProcessor - main clustering interface
   py::class_<TDCClusterProcessor>(m, "TDCClusterProcessor")

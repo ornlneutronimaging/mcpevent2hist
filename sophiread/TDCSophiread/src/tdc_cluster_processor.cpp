@@ -12,6 +12,7 @@
 
 #include "tdc_abs_clustering.h"
 #include "tdc_centroid_fitting.h"
+#include "tdc_graph_clustering.h"
 
 namespace tdcsophiread {
 
@@ -30,6 +31,10 @@ void TDCClusterProcessor::initializeAlgorithms() {
   // Initialize clustering algorithm based on configuration
   if (config_.clustering_algorithm == "abs") {
     clustering_algorithm_ = std::make_unique<ABSClustering>(config_.abs);
+  } else if (config_.clustering_algorithm == "graph") {
+    // Create GraphConfig from ABSConfig for compatibility
+    GraphConfig graph_config(config_.abs);
+    clustering_algorithm_ = std::make_unique<GraphClustering>(graph_config);
   } else {
     throw std::invalid_argument("Unsupported clustering algorithm: " +
                                 config_.clustering_algorithm);

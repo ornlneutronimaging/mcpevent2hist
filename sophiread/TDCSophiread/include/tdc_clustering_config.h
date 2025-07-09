@@ -7,6 +7,11 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+// Forward declaration to avoid circular include
+namespace tdcsophiread {
+struct GraphConfig;
+}
+
 namespace tdcsophiread {
 
 /**
@@ -138,6 +143,8 @@ struct ClusteringConfig {
   ABSConfig abs;                    ///< ABS algorithm configuration
   CentroidConfig centroid;          ///< Centroid algorithm configuration
   FastGaussianConfig fastgaussian;  ///< FastGaussian algorithm configuration
+  // GraphConfig graph;                ///< Graph algorithm configuration
+  // (forward declared)
 
   bool enable_clustering;  ///< Enable/disable clustering (default: true)
   bool

@@ -15,6 +15,7 @@ set(TDC_SOURCES
     src/tdc_clustering_config.cpp
     src/tdc_neutron.cpp
     src/tdc_abs_clustering.cpp
+    src/tdc_graph_clustering.cpp
     src/tdc_centroid_fitting.cpp
     src/tdc_cluster_processor.cpp
     # Streaming components (TDD approach)
@@ -95,6 +96,9 @@ add_tdc_test(neutron)
 
 # TDD Test 8: ABS clustering algorithm (tests written FIRST)
 add_tdc_test(abs_clustering)
+
+# TDD Test 8b: Graph clustering algorithm (tests written FIRST)
+add_tdc_test(graph_clustering)
 
 # TDD Test 9: Centroid peak fitting algorithm (tests written FIRST)
 add_tdc_test(centroid_fitting)
