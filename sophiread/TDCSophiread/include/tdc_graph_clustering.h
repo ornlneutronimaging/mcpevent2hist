@@ -12,7 +12,8 @@
 #include <vector>
 
 #include "tdc_clustering.h"
-#include "tdc_clustering_config.h"
+// Forward declarations
+struct ClusteringConfig;
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 
@@ -45,21 +46,54 @@ struct GraphConfig {
         parallel_threshold(100000) {}
 
   /**
-   * @brief Construct from ABSConfig for compatibility
+   * @brief Validate configuration parameters
+   * @throws std::invalid_argument if parameters are invalid
    */
-  explicit GraphConfig(const ABSConfig& abs_config)
-      : radius(abs_config.radius),
-        min_cluster_size(abs_config.min_cluster_size),
-        neutron_correlation_window(abs_config.neutron_correlation_window),
-        grid_size(abs_config.radius),
-        enable_spatial_hash(true),
-        parallel_threshold(100000) {}
+  void validate() const;
+};
+
+/**
+ * @brief Configuration for temporal graph clustering processor
+ */
+struct TemporalGraphConfig {
+  GraphConfig graph_config;  ///< Base graph clustering configuration
+  size_t num_workers;        ///< Number of worker threads (0 = auto-detect)
+  size_t min_batch_size;     ///< Minimum hits per batch (default: 1000)
+  size_t max_batch_size;     ///< Maximum hits per batch (default: 100000)
+  double overlap_factor;     ///< Overlap size multiplier (default: 3.0 for 3σ)
+  bool enable_memory_pools;  ///< Enable per-worker memory pools (default: true)
+  bool enable_temporal_aging;  ///< Enable temporal aging within batches
+                               ///< (default: true)
+
+  /**
+   * @brief Default constructor with production defaults
+   */
+  TemporalGraphConfig()
+      : graph_config(),
+        num_workers(0),
+        min_batch_size(1000),
+        max_batch_size(100000),
+        overlap_factor(3.0),
+        enable_memory_pools(true),
+        enable_temporal_aging(true) {}
 
   /**
    * @brief Validate configuration parameters
    * @throws std::invalid_argument if parameters are invalid
    */
   void validate() const;
+
+  /**
+   * @brief Load from JSON object
+   * @param json JSON configuration
+   */
+  void fromJson(const nlohmann::json& json);
+
+  /**
+   * @brief Convert to JSON object
+   * @return JSON representation
+   */
+  nlohmann::json toJson() const;
 };
 
 /**
@@ -375,33 +409,6 @@ class GraphClustering : public IClusteringAlgorithm {
 class TemporalGraphClusteringProcessor {
  public:
   /**
-   * @brief Configuration for temporal processor
-   */
-  struct TemporalConfig {
-    GraphConfig graph_config;  ///< Base graph clustering configuration
-    size_t num_workers;        ///< Number of worker threads (0 = auto-detect)
-    size_t min_batch_size;     ///< Minimum hits per batch (default: 1000)
-    size_t max_batch_size;     ///< Maximum hits per batch (default: 100000)
-    double overlap_factor;  ///< Overlap size multiplier (default: 3.0 for 3σ)
-    bool enable_memory_pools;    ///< Enable per-worker memory pools (default:
-                                 ///< true)
-    bool enable_temporal_aging;  ///< Enable temporal aging within batches
-                                 ///< (default: true)
-
-    /**
-     * @brief Default constructor with production defaults
-     */
-    TemporalConfig()
-        : graph_config(),
-          num_workers(0),
-          min_batch_size(1000),
-          max_batch_size(100000),
-          overlap_factor(3.0),
-          enable_memory_pools(true),
-          enable_temporal_aging(true) {}
-  };
-
-  /**
    * @brief Processing statistics for performance monitoring
    */
   struct ProcessingStats {
@@ -439,7 +446,7 @@ class TemporalGraphClusteringProcessor {
    * @param config Temporal processing configuration
    */
   explicit TemporalGraphClusteringProcessor(
-      const TemporalConfig& config = TemporalConfig());
+      const TemporalGraphConfig& config = TemporalGraphConfig());
 
   /**
    * @brief Destructor
@@ -463,13 +470,13 @@ class TemporalGraphClusteringProcessor {
    * @brief Update processor configuration
    * @param config New temporal processing configuration
    */
-  void updateConfig(const TemporalConfig& config);
+  void updateConfig(const TemporalGraphConfig& config);
 
   /**
    * @brief Get current configuration
    * @return Current temporal processing configuration
    */
-  const TemporalConfig& getConfig() const;
+  const TemporalGraphConfig& getConfig() const;
 
   /**
    * @brief Reset processor state and statistics
@@ -477,8 +484,8 @@ class TemporalGraphClusteringProcessor {
   void reset();
 
  private:
-  TemporalConfig config_;  ///< Current configuration
-  ProcessingStats stats_;  ///< Processing statistics
+  TemporalGraphConfig config_;  ///< Current configuration
+  ProcessingStats stats_;       ///< Processing statistics
 
   // Worker pool management
   std::vector<std::unique_ptr<GraphClustering>> workers_;  ///< Worker instances

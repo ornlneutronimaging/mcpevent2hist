@@ -11,6 +11,7 @@
 #include <unordered_set>
 
 #include "tdc_centroid_fitting.h"
+#include "tdc_clustering_config.h"
 
 // TBB headers for parallelization
 #include <tbb/blocked_range.h>
@@ -48,8 +49,8 @@ GraphClustering::GraphClustering(const GraphConfig& config)
 }
 
 void GraphClustering::configure(const ClusteringConfig& config) {
-  // Extract graph parameters from ABS config for compatibility
-  config_ = GraphConfig(config.abs);
+  // Use properly configured GraphConfig
+  config_ = config.graph;
 }
 
 size_t GraphClustering::fit(std::vector<TDCHit>& hits) {
@@ -795,7 +796,7 @@ std::vector<TDCNeutron> GraphClustering::processBatch(
 // TemporalGraphClusteringProcessor implementation
 
 TemporalGraphClusteringProcessor::TemporalGraphClusteringProcessor(
-    const TemporalConfig& config)
+    const TemporalGraphConfig& config)
     : config_(config), stats_() {
   initializeWorkers();
 }
@@ -1070,13 +1071,12 @@ TemporalGraphClusteringProcessor::getStatistics() const {
 }
 
 void TemporalGraphClusteringProcessor::updateConfig(
-    const TemporalConfig& config) {
+    const TemporalGraphConfig& config) {
   config_ = config;
   initializeWorkers();  // Reinitialize workers with new config
 }
 
-const TemporalGraphClusteringProcessor::TemporalConfig&
-TemporalGraphClusteringProcessor::getConfig() const {
+const TemporalGraphConfig& TemporalGraphClusteringProcessor::getConfig() const {
   return config_;
 }
 

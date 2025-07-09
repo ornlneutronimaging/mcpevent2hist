@@ -27,14 +27,18 @@ TDCClusterProcessor::TDCClusterProcessor(const ClusteringConfig& config)
   initializeAlgorithms();
 }
 
+TDCClusterProcessor::~TDCClusterProcessor() = default;
+
 void TDCClusterProcessor::initializeAlgorithms() {
   // Initialize clustering algorithm based on configuration
   if (config_.clustering_algorithm == "abs") {
     clustering_algorithm_ = std::make_unique<ABSClustering>(config_.abs);
   } else if (config_.clustering_algorithm == "graph") {
-    // Create GraphConfig from ABSConfig for compatibility
-    GraphConfig graph_config(config_.abs);
-    clustering_algorithm_ = std::make_unique<GraphClustering>(graph_config);
+    // Use properly configured GraphConfig
+    clustering_algorithm_ = std::make_unique<GraphClustering>(config_.graph);
+  } else if (config_.clustering_algorithm == "temporal_graph") {
+    temporal_processor_ = std::make_unique<TemporalGraphClusteringProcessor>(
+        config_.temporal_graph);
   } else {
     throw std::invalid_argument("Unsupported clustering algorithm: " +
                                 config_.clustering_algorithm);
@@ -87,6 +91,22 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHits(
   // Validate input hits
   if (!validateInputHits(hits)) {
     throw std::invalid_argument("Invalid input hits detected");
+  }
+
+  // Handle temporal_graph as special case
+  if (config_.clustering_algorithm == "temporal_graph") {
+    // TemporalGraphClusteringProcessor handles both clustering and peak fitting
+    std::vector<TDCNeutron> neutrons = temporal_processor_->processHits(hits);
+
+    // Apply super-resolution scaling to final coordinates
+    double super_res_factor = config_.centroid.super_resolution_factor;
+    for (auto& neutron : neutrons) {
+      neutron.x *= super_res_factor;
+      neutron.y *= super_res_factor;
+    }
+
+    updatePerformanceMetrics(hits.size(), neutrons.size());
+    return neutrons;
   }
 
   // MEMORY OPTIMIZATION: Process hits in-place - NO COPY (saves ~145MB)
@@ -157,12 +177,36 @@ std::vector<TDCNeutron> TDCClusterProcessor::processHitsWithProgress(
     throw std::invalid_argument("Invalid input hits detected");
   }
 
-  // FIXED: Process hits in-place (no copy needed since hits is now non-const)
-  // This eliminates 10GB memory copy for large datasets
-
   if (progress_callback) {
     progress_callback(0.1);  // After validation
   }
+
+  // Handle temporal_graph as special case
+  if (config_.clustering_algorithm == "temporal_graph") {
+    // TemporalGraphClusteringProcessor handles both clustering and peak fitting
+    std::vector<TDCNeutron> neutrons = temporal_processor_->processHits(hits);
+
+    if (progress_callback) {
+      progress_callback(0.9);  // After temporal processing
+    }
+
+    // Apply super-resolution scaling to final coordinates
+    double super_res_factor = config_.centroid.super_resolution_factor;
+    for (auto& neutron : neutrons) {
+      neutron.x *= super_res_factor;
+      neutron.y *= super_res_factor;
+    }
+
+    if (progress_callback) {
+      progress_callback(1.0);  // Complete
+    }
+
+    updatePerformanceMetrics(hits.size(), neutrons.size());
+    return neutrons;
+  }
+
+  // FIXED: Process hits in-place (no copy needed since hits is now non-const)
+  // This eliminates 10GB memory copy for large datasets
 
   // Phase 1: Clustering
   clustering_algorithm_->fit(hits);
@@ -273,6 +317,9 @@ void TDCClusterProcessor::reset() {
             dynamic_cast<CentroidPeakFitting*>(peak_fitting_algorithm_.get())) {
       centroid_fitting->reset();
     }
+  }
+  if (temporal_processor_) {
+    temporal_processor_->reset();
   }
   last_hit_count_ = 0;
   last_neutron_count_ = 0;

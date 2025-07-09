@@ -14,6 +14,9 @@
 
 namespace tdcsophiread {
 
+// Forward declarations
+class TemporalGraphClusteringProcessor;
+
 /**
  * @brief Main cluster processor implementing the complete hits-to-neutrons
  * pipeline
@@ -34,7 +37,9 @@ class TDCClusterProcessor : public IClusterProcessor {
       clustering_algorithm_;  ///< Clustering algorithm instance
   std::unique_ptr<IPeakFitting>
       peak_fitting_algorithm_;  ///< Peak fitting algorithm instance
-  ClusteringConfig config_;     ///< Current configuration
+  std::unique_ptr<TemporalGraphClusteringProcessor>
+      temporal_processor_;   ///< Temporal graph clustering processor
+  ClusteringConfig config_;  ///< Current configuration
 
   // Performance metrics
   mutable std::chrono::high_resolution_clock::time_point start_time_;
@@ -70,7 +75,7 @@ class TDCClusterProcessor : public IClusterProcessor {
   /**
    * @brief Destructor
    */
-  ~TDCClusterProcessor() override = default;
+  ~TDCClusterProcessor() override;
 
   // IClusterProcessor interface implementation
   void configure(const ClusteringConfig& config) override;

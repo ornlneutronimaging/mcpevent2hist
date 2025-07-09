@@ -7,14 +7,52 @@
 #include <array>
 #include <chrono>
 #include <limits>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "tdc_clustering.h"
-#include "tdc_clustering_config.h"
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 
 namespace tdcsophiread {
+
+/**
+ * @brief Configuration for ABS (Adaptive Box Search) clustering algorithm
+ */
+struct ABSConfig {
+  double radius;  ///< Spatial clustering radius in pixels (default: 5.0)
+  uint16_t min_cluster_size;          ///< Minimum hits per cluster (default: 1)
+  double neutron_correlation_window;  ///< Neutron temporal correlation window
+                                      ///< in nanoseconds (default: 75.0)
+  size_t scan_interval;  ///< Scan for aged buckets every N hits (default: 100)
+
+  /**
+   * @brief Default constructor with VENUS detector defaults
+   */
+  ABSConfig()
+      : radius(5.0),
+        min_cluster_size(1),
+        neutron_correlation_window(75.0),
+        scan_interval(100) {}
+
+  /**
+   * @brief Validate configuration parameters
+   * @throws std::invalid_argument if parameters are invalid
+   */
+  void validate() const;
+
+  /**
+   * @brief Load from JSON object
+   * @param json JSON configuration
+   */
+  void fromJson(const nlohmann::json& json);
+
+  /**
+   * @brief Convert to JSON object
+   * @return JSON representation
+   */
+  nlohmann::json toJson() const;
+};
 
 /**
  * @brief Bucket for dynamic ABS clustering algorithm

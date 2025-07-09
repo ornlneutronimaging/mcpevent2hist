@@ -7,85 +7,12 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-// Forward declaration to avoid circular include
-namespace tdcsophiread {
-struct GraphConfig;
-}
+// Include algorithm headers for config definitions
+#include "tdc_abs_clustering.h"
+#include "tdc_centroid_fitting.h"
+#include "tdc_graph_clustering.h"
 
 namespace tdcsophiread {
-
-/**
- * @brief Configuration for ABS (Adaptive Box Search) clustering algorithm
- */
-struct ABSConfig {
-  double radius;  ///< Spatial clustering radius in pixels (default: 5.0)
-  uint16_t min_cluster_size;          ///< Minimum hits per cluster (default: 1)
-  double neutron_correlation_window;  ///< Neutron temporal correlation window
-                                      ///< in nanoseconds (default: 75.0)
-  size_t scan_interval;  ///< Scan for aged buckets every N hits (default: 100)
-
-  /**
-   * @brief Default constructor with VENUS detector defaults
-   */
-  ABSConfig()
-      : radius(5.0),
-        min_cluster_size(1),
-        neutron_correlation_window(75.0),
-        scan_interval(100) {}
-
-  /**
-   * @brief Validate configuration parameters
-   * @throws std::invalid_argument if parameters are invalid
-   */
-  void validate() const;
-
-  /**
-   * @brief Load from JSON object
-   * @param json JSON configuration
-   */
-  void fromJson(const nlohmann::json& json);
-
-  /**
-   * @brief Convert to JSON object
-   * @return JSON representation
-   */
-  nlohmann::json toJson() const;
-};
-
-/**
- * @brief Configuration for centroid peak fitting algorithm
- */
-struct CentroidConfig {
-  double super_resolution_factor;  ///< Coordinate scaling factor (default: 8.0)
-  bool weighted_by_tot;      ///< Use TOT weighting for centroid (default: true)
-  double min_tot_threshold;  ///< Minimum TOT for hit inclusion (default: 0.0)
-
-  /**
-   * @brief Default constructor with VENUS detector defaults
-   */
-  CentroidConfig()
-      : super_resolution_factor(8.0),
-        weighted_by_tot(true),
-        min_tot_threshold(0.0) {}
-
-  /**
-   * @brief Validate configuration parameters
-   * @throws std::invalid_argument if parameters are invalid
-   */
-  void validate() const;
-
-  /**
-   * @brief Load from JSON object
-   * @param json JSON configuration
-   */
-  void fromJson(const nlohmann::json& json);
-
-  /**
-   * @brief Convert to JSON object
-   * @return JSON representation
-   */
-  nlohmann::json toJson() const;
-};
 
 /**
  * @brief Configuration for FastGaussian peak fitting algorithm
@@ -143,8 +70,9 @@ struct ClusteringConfig {
   ABSConfig abs;                    ///< ABS algorithm configuration
   CentroidConfig centroid;          ///< Centroid algorithm configuration
   FastGaussianConfig fastgaussian;  ///< FastGaussian algorithm configuration
-  // GraphConfig graph;                ///< Graph algorithm configuration
-  // (forward declared)
+  GraphConfig graph;                ///< Graph algorithm configuration
+  TemporalGraphConfig
+      temporal_graph;  ///< Temporal graph algorithm configuration
 
   bool enable_clustering;  ///< Enable/disable clustering (default: true)
   bool

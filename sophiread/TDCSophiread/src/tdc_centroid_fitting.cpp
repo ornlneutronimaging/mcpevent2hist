@@ -9,6 +9,8 @@
 #include <map>
 #include <numeric>
 
+#include "tdc_clustering_config.h"
+
 namespace tdcsophiread {
 
 CentroidPeakFitting::CentroidPeakFitting(const CentroidConfig& config)

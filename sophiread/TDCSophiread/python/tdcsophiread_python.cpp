@@ -287,13 +287,13 @@ PYBIND11_MODULE(_core, m) {
                      "ABS algorithm configuration")
       .def_readwrite("centroid", &ClusteringConfig::centroid,
                      "Centroid fitting configuration")
+      .def_readwrite("temporal_graph", &ClusteringConfig::temporal_graph,
+                     "Temporal graph clustering configuration")
       .def("summary", &ClusteringConfig::summary, "Get configuration summary");
 
   // GraphConfig for graph clustering algorithm
   py::class_<GraphConfig>(m, "GraphConfig")
       .def(py::init<>())
-      .def(py::init<const ABSConfig&>(), py::arg("abs_config"),
-           "Create from ABSConfig for compatibility")
       .def_readwrite("radius", &GraphConfig::radius,
                      "Spatial clustering radius in pixels")
       .def_readwrite("min_cluster_size", &GraphConfig::min_cluster_size,
@@ -358,36 +358,23 @@ PYBIND11_MODULE(_core, m) {
                   py::arg("stats"), "Create temporal batches from hit vector");
 
   // TemporalGraphClusteringProcessor configuration
-  py::class_<TemporalGraphClusteringProcessor::TemporalConfig>(m,
-                                                               "TemporalConfig")
+  py::class_<TemporalGraphConfig>(m, "TemporalGraphConfig")
       .def(py::init<>())
-      .def_readwrite(
-          "graph_config",
-          &TemporalGraphClusteringProcessor::TemporalConfig::graph_config,
-          "Base graph clustering configuration")
-      .def_readwrite(
-          "num_workers",
-          &TemporalGraphClusteringProcessor::TemporalConfig::num_workers,
-          "Number of worker threads (0 = auto-detect)")
-      .def_readwrite(
-          "min_batch_size",
-          &TemporalGraphClusteringProcessor::TemporalConfig::min_batch_size,
-          "Minimum hits per batch")
-      .def_readwrite(
-          "max_batch_size",
-          &TemporalGraphClusteringProcessor::TemporalConfig::max_batch_size,
-          "Maximum hits per batch")
-      .def_readwrite(
-          "overlap_factor",
-          &TemporalGraphClusteringProcessor::TemporalConfig::overlap_factor,
-          "Overlap size multiplier (default: 3.0 for 3σ)")
+      .def_readwrite("graph_config", &TemporalGraphConfig::graph_config,
+                     "Base graph clustering configuration")
+      .def_readwrite("num_workers", &TemporalGraphConfig::num_workers,
+                     "Number of worker threads (0 = auto-detect)")
+      .def_readwrite("min_batch_size", &TemporalGraphConfig::min_batch_size,
+                     "Minimum hits per batch")
+      .def_readwrite("max_batch_size", &TemporalGraphConfig::max_batch_size,
+                     "Maximum hits per batch")
+      .def_readwrite("overlap_factor", &TemporalGraphConfig::overlap_factor,
+                     "Overlap size multiplier (default: 3.0 for 3σ)")
       .def_readwrite("enable_memory_pools",
-                     &TemporalGraphClusteringProcessor::TemporalConfig::
-                         enable_memory_pools,
+                     &TemporalGraphConfig::enable_memory_pools,
                      "Enable per-worker memory pools")
       .def_readwrite("enable_temporal_aging",
-                     &TemporalGraphClusteringProcessor::TemporalConfig::
-                         enable_temporal_aging,
+                     &TemporalGraphConfig::enable_temporal_aging,
                      "Enable temporal aging within batches");
 
   // TemporalGraphClusteringProcessor statistics
@@ -443,8 +430,8 @@ PYBIND11_MODULE(_core, m) {
   py::class_<TemporalGraphClusteringProcessor>(
       m, "TemporalGraphClusteringProcessor")
       .def(py::init<>(), "Create processor with default configuration")
-      .def(py::init<const TemporalGraphClusteringProcessor::TemporalConfig&>(),
-           py::arg("config"), "Create processor with custom configuration")
+      .def(py::init<const TemporalGraphConfig&>(), py::arg("config"),
+           "Create processor with custom configuration")
       .def(
           "processHits",
           [](TemporalGraphClusteringProcessor& self,

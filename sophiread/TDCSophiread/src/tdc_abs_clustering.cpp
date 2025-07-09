@@ -7,6 +7,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "tdc_clustering_config.h"
+
 namespace tdcsophiread {
 
 ABSClustering::ABSClustering(const ABSConfig& config)

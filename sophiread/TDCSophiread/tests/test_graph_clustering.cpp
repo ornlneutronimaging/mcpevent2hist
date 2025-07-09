@@ -528,7 +528,7 @@ TEST_F(GraphClusteringTest, TemporalProcessorBasicFunctionality) {
 // Test 22: Test TemporalGraphClusteringProcessor with custom configuration
 TEST_F(GraphClusteringTest, TemporalProcessorCustomConfig) {
   // Create custom configuration
-  TemporalGraphClusteringProcessor::TemporalConfig config;
+  TemporalGraphConfig config;
   config.graph_config = config_;
   config.num_workers = 2;  // Force specific worker count
   config.min_batch_size = 500;
@@ -640,7 +640,7 @@ TEST_F(GraphClusteringTest, TemporalProcessorPerformanceScaling) {
   }
 
   // Test with 1 worker
-  TemporalGraphClusteringProcessor::TemporalConfig config1;
+  TemporalGraphConfig config1;
   config1.num_workers = 1;
   TemporalGraphClusteringProcessor processor1(config1);
 
@@ -652,7 +652,7 @@ TEST_F(GraphClusteringTest, TemporalProcessorPerformanceScaling) {
           .count();
 
   // Test with multiple workers
-  TemporalGraphClusteringProcessor::TemporalConfig config2;
+  TemporalGraphConfig config2;
   config2.num_workers = 4;
   TemporalGraphClusteringProcessor processor2(config2);
 
