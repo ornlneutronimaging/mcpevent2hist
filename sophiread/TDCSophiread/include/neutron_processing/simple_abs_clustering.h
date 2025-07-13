@@ -164,6 +164,34 @@ class SimpleABSClustering : public IHitClustering {
   int32_t next_cluster_id_;  ///< Next available cluster ID
   size_t hits_processed_;    ///< Hit counter for scan timing
 
+  // Performance optimization: pre-allocated vectors to avoid hot-path
+  // allocations
+  mutable std::vector<size_t>
+      buckets_to_close_;  ///< Reusable vector for aged bucket collection
+  mutable std::vector<size_t>
+      remaining_buckets_;  ///< Reusable vector for final bucket closure
+
+  // Spatial indexing optimization: simple spatial hash for faster bucket lookup
+  struct SpatialBin {
+    std::vector<size_t> bucket_indices;  ///< Bucket indices in this spatial bin
+    void addBucket(size_t bucket_idx) { bucket_indices.push_back(bucket_idx); }
+    void removeBucket(size_t bucket_idx) {
+      auto it =
+          std::find(bucket_indices.begin(), bucket_indices.end(), bucket_idx);
+      if (it != bucket_indices.end()) {
+        std::swap(*it, bucket_indices.back());
+        bucket_indices.pop_back();
+      }
+    }
+    void clear() { bucket_indices.clear(); }
+  };
+
+  static constexpr size_t SPATIAL_GRID_SIZE = 32;  ///< 32x32 spatial grid
+  static constexpr size_t SPATIAL_BIN_SIZE =
+      8;  ///< 8x8 pixel bins for 256x256 detector
+  std::array<std::array<SpatialBin, SPATIAL_GRID_SIZE>, SPATIAL_GRID_SIZE>
+      spatial_bins_;
+
   // Initial bucket pool size
   static constexpr size_t INITIAL_BUCKET_POOL_SIZE = 100;
 
@@ -173,6 +201,27 @@ class SimpleABSClustering : public IHitClustering {
    * @return Index of compatible bucket, or -1 if none found
    */
   int findCompatibleBucket(const TDCHit& hit) const;
+
+  /**
+   * @brief Get spatial bin coordinates for a hit
+   * @param hit Hit to get bin coordinates for
+   * @return Pair of (bin_x, bin_y) coordinates
+   */
+  std::pair<size_t, size_t> getSpatialBin(const TDCHit& hit) const;
+
+  /**
+   * @brief Add bucket to spatial index
+   * @param bucket_idx Index of bucket to add
+   * @param hit Hit that defines the bucket's initial position
+   */
+  void addBucketToSpatialIndex(size_t bucket_idx, const TDCHit& hit);
+
+  /**
+   * @brief Remove bucket from spatial index
+   * @param bucket_idx Index of bucket to remove
+   * @param hit Hit that defines the bucket's position
+   */
+  void removeBucketFromSpatialIndex(size_t bucket_idx, const TDCHit& hit);
 
   /**
    * @brief Get or create bucket for hit

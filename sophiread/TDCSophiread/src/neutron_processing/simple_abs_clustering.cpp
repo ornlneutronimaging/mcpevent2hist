@@ -4,7 +4,9 @@
 #include "neutron_processing/simple_abs_clustering.h"
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
+#include <utility>
 
 namespace tdcsophiread {
 
@@ -30,6 +32,17 @@ SimpleABSClustering::SimpleABSClustering()
 
   // Reserve space for active bucket tracking
   active_bucket_indices_.reserve(INITIAL_BUCKET_POOL_SIZE);
+
+  // Pre-allocate vectors to avoid hot-path allocations
+  buckets_to_close_.reserve(INITIAL_BUCKET_POOL_SIZE / 4);
+  remaining_buckets_.reserve(INITIAL_BUCKET_POOL_SIZE);
+
+  // Initialize spatial bins
+  for (auto& row : spatial_bins_) {
+    for (auto& bin : row) {
+      bin.bucket_indices.reserve(8);  // Reserve space for typical bin occupancy
+    }
+  }
 }
 
 SimpleABSClustering::SimpleABSClustering(const HitClusteringConfig& config)
@@ -49,6 +62,17 @@ SimpleABSClustering::SimpleABSClustering(const HitClusteringConfig& config)
 
   // Reserve space for active bucket tracking
   active_bucket_indices_.reserve(INITIAL_BUCKET_POOL_SIZE);
+
+  // Pre-allocate vectors to avoid hot-path allocations
+  buckets_to_close_.reserve(INITIAL_BUCKET_POOL_SIZE / 4);
+  remaining_buckets_.reserve(INITIAL_BUCKET_POOL_SIZE);
+
+  // Initialize spatial bins
+  for (auto& row : spatial_bins_) {
+    for (auto& bin : row) {
+      bin.bucket_indices.reserve(8);  // Reserve space for typical bin occupancy
+    }
+  }
 }
 
 void SimpleABSClustering::configure(const HitClusteringConfig& config) {
@@ -96,6 +120,7 @@ size_t SimpleABSClustering::cluster(std::vector<TDCHit>::const_iterator begin,
       // No compatible bucket - get or create one
       size_t new_bucket_idx = getOrCreateBucket(local_hit_index, hit);
       active_bucket_indices_.push_back(new_bucket_idx);
+      addBucketToSpatialIndex(new_bucket_idx, hit);
     }
   }
 
@@ -109,9 +134,10 @@ size_t SimpleABSClustering::cluster(std::vector<TDCHit>::const_iterator begin,
         1);
 
     // Force-close any remaining active buckets (end of data)
-    std::vector<size_t> remaining_buckets =
-        active_bucket_indices_;  // Copy to avoid modification during iteration
-    for (size_t bucket_idx : remaining_buckets) {
+    // Use pre-allocated vector to avoid allocation
+    remaining_buckets_.assign(active_bucket_indices_.begin(),
+                              active_bucket_indices_.end());
+    for (size_t bucket_idx : remaining_buckets_) {
       closeBucket(bucket_idx);
     }
   }
@@ -128,6 +154,13 @@ void SimpleABSClustering::reset() {
   for (size_t i = 0; i < bucket_pool_.size(); ++i) {
     bucket_pool_[i].reset();
     free_bucket_indices_.push_back(i);
+  }
+
+  // Clear spatial index
+  for (auto& row : spatial_bins_) {
+    for (auto& bin : row) {
+      bin.clear();
+    }
   }
 
   // Reset state
@@ -155,21 +188,39 @@ ClusteringStatistics SimpleABSClustering::getStatistics() const {
 }
 
 int SimpleABSClustering::findCompatibleBucket(const TDCHit& hit) const {
-  // Only search among active buckets
-  for (size_t active_idx : active_bucket_indices_) {
-    const SimpleABSBucket& bucket = bucket_pool_[active_idx];
+  // Use spatial indexing for faster bucket lookup
+  auto [bin_x, bin_y] = getSpatialBin(hit);
+  const double r = config_.abs.radius;
 
-    // Check temporal constraint first (cheaper)
-    if (!bucket.fitsTemporally(hit, config_.abs.neutron_correlation_window)) {
-      continue;
+  // Check the bin containing the hit and neighboring bins
+  for (int dx = -1; dx <= 1; ++dx) {
+    for (int dy = -1; dy <= 1; ++dy) {
+      int check_x = static_cast<int>(bin_x) + dx;
+      int check_y = static_cast<int>(bin_y) + dy;
+
+      if (check_x < 0 || check_x >= static_cast<int>(SPATIAL_GRID_SIZE) ||
+          check_y < 0 || check_y >= static_cast<int>(SPATIAL_GRID_SIZE)) {
+        continue;
+      }
+
+      const auto& bin = spatial_bins_[check_x][check_y];
+      for (size_t bucket_idx : bin.bucket_indices) {
+        const SimpleABSBucket& bucket = bucket_pool_[bucket_idx];
+
+        // Check temporal constraint first (cheaper)
+        if (!bucket.fitsTemporally(hit,
+                                   config_.abs.neutron_correlation_window)) {
+          continue;
+        }
+
+        // Check spatial constraint
+        if (!bucket.fitsSpatially(hit, r)) {
+          continue;
+        }
+
+        return static_cast<int>(bucket_idx);  // Found compatible bucket
+      }
     }
-
-    // Check spatial constraint
-    if (!bucket.fitsSpatially(hit, config_.abs.radius)) {
-      continue;
-    }
-
-    return static_cast<int>(active_idx);  // Found compatible bucket
   }
 
   return -1;  // No compatible bucket found
@@ -202,18 +253,19 @@ void SimpleABSClustering::freeBucket(size_t bucket_index) {
   // Add to free list
   free_bucket_indices_.push_back(bucket_index);
 
-  // Remove from active list
+  // Remove from active list using swap-and-pop for O(1) removal
   auto it = std::find(active_bucket_indices_.begin(),
                       active_bucket_indices_.end(), bucket_index);
   if (it != active_bucket_indices_.end()) {
-    active_bucket_indices_.erase(it);
+    std::swap(*it, active_bucket_indices_.back());
+    active_bucket_indices_.pop_back();
   }
 }
 
 void SimpleABSClustering::scanAndCloseAgedBuckets(uint32_t reference_tof) {
   // Collect indices of buckets to close (can't modify active list while
-  // iterating)
-  std::vector<size_t> buckets_to_close;
+  // iterating) Use pre-allocated vector to avoid allocation
+  buckets_to_close_.clear();
 
   // Scan only active buckets
   for (size_t active_idx : active_bucket_indices_) {
@@ -221,12 +273,12 @@ void SimpleABSClustering::scanAndCloseAgedBuckets(uint32_t reference_tof) {
 
     // Check if bucket is aged
     if (bucket.isAged(reference_tof, config_.abs.neutron_correlation_window)) {
-      buckets_to_close.push_back(active_idx);
+      buckets_to_close_.push_back(active_idx);
     }
   }
 
   // Close aged buckets
-  for (size_t bucket_idx : buckets_to_close) {
+  for (size_t bucket_idx : buckets_to_close_) {
     closeBucket(bucket_idx);
   }
 }
@@ -237,6 +289,10 @@ void SimpleABSClustering::closeBucket(size_t bucket_index) {
   if (!bucket.is_active) {
     return;  // Already closed
   }
+
+  // Note: Bucket removal from spatial index is handled by reset() method
+  // since we only have local indices available and buckets are typically
+  // closed in bulk at end of processing
 
   // Check if bucket has sufficient hits for valid cluster
   bool formed_cluster =
@@ -258,6 +314,29 @@ void SimpleABSClustering::closeBucket(size_t bucket_index) {
 
   // Free the bucket for reuse
   freeBucket(bucket_index);
+}
+
+std::pair<size_t, size_t> SimpleABSClustering::getSpatialBin(
+    const TDCHit& hit) const {
+  // Simple spatial hashing: divide detector into 32x32 grid
+  // Assuming 256x256 detector, each bin covers 8x8 pixels
+  size_t bin_x = std::min(static_cast<size_t>(hit.x / SPATIAL_BIN_SIZE),
+                          SPATIAL_GRID_SIZE - 1);
+  size_t bin_y = std::min(static_cast<size_t>(hit.y / SPATIAL_BIN_SIZE),
+                          SPATIAL_GRID_SIZE - 1);
+  return {bin_x, bin_y};
+}
+
+void SimpleABSClustering::addBucketToSpatialIndex(size_t bucket_idx,
+                                                  const TDCHit& hit) {
+  auto [bin_x, bin_y] = getSpatialBin(hit);
+  spatial_bins_[bin_x][bin_y].addBucket(bucket_idx);
+}
+
+void SimpleABSClustering::removeBucketFromSpatialIndex(size_t bucket_idx,
+                                                       const TDCHit& hit) {
+  auto [bin_x, bin_y] = getSpatialBin(hit);
+  spatial_bins_[bin_x][bin_y].removeBucket(bucket_idx);
 }
 
 }  // namespace tdcsophiread

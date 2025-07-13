@@ -229,6 +229,13 @@ class TemporalNeutronProcessor : public INeutronProcessor {
    */
   void calculateClusterIdOffsets(const std::vector<HitBatch>& batches);
 
+  /**
+   * @brief Update performance statistics after processing
+   */
+  void updateStatistics(size_t num_hits, size_t num_neutrons,
+                        double total_time_ms, size_t num_batches,
+                        bool with_labels);
+
  public:
   /**
    * @brief Default constructor with VENUS defaults

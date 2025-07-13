@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "neutron_processing/basic_neutron_processor.h"
+#include "neutron_processing/neutron_processing.h"
 #include "neutron_processing/simple_abs_clustering.h"
 #include "neutron_processing/simple_centroid_extraction.h"
 
@@ -73,20 +74,27 @@ std::unique_ptr<INeutronProcessor> NeutronProcessorFactory::create(
   // Validate configuration first
   config.validate();
 
-  // For now, only BasicNeutronProcessor is implemented
-  // Later we'll add TemporalNeutronProcessor based on
-  // config.temporal.num_workers
+  // Create TemporalNeutronProcessor if parallel processing is requested
+  if (config.temporal.num_workers != 1) {
+    return std::make_unique<TemporalNeutronProcessor>(config);
+  }
+
+  // Otherwise use single-threaded BasicNeutronProcessor
   return std::make_unique<BasicNeutronProcessor>(config);
 }
 
 std::vector<std::string> NeutronProcessorFactory::getAvailableProcessorTypes() {
-  return {"basic"};
+  return {"basic", "temporal"};
 }
 
 std::string NeutronProcessorFactory::getProcessorDescription(
     const std::string& processor_name) {
   if (processor_name == "basic") {
     return "Single-threaded processor combining clustering and extraction";
+  }
+  if (processor_name == "temporal") {
+    return "Parallel temporal processor with worker pool and statistical "
+           "batching";
   }
 
   throw std::invalid_argument("Unknown processor: " + processor_name);
