@@ -239,6 +239,15 @@ class ABSClustering : public IClusteringAlgorithm {
   size_t fit(std::vector<TDCHit>& hits) override;
 
   /**
+   * @brief Apply clustering to hit data range
+   * @param begin Iterator to first hit
+   * @param end Iterator to one past last hit
+   * @return Number of clusters found
+   */
+  size_t fit(std::vector<TDCHit>::iterator begin,
+             std::vector<TDCHit>::iterator end) override;
+
+  /**
    * @brief Get cluster labels assigned during fit()
    * @return Vector of cluster labels (one per hit)
    */
@@ -284,6 +293,12 @@ class ABSClustering : public IClusteringAlgorithm {
   void configure(const ClusteringConfig& config) override;
 
   /**
+   * @brief Get current configuration
+   * @return Current clustering configuration
+   */
+  const ClusteringConfig& getConfig() const override;
+
+  /**
    * @brief Get algorithm name
    * @return String identifier for this algorithm
    */
@@ -298,6 +313,8 @@ class ABSClustering : public IClusteringAlgorithm {
  private:
   // Configuration parameters
   ABSConfig config_;
+  ClusteringConfig
+      clustering_config_;  ///< Full clustering configuration for getConfig()
 
   // Bucket pool management
   std::vector<ABSBucket> bucket_pool_;  ///< Pool of reusable buckets

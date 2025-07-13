@@ -801,9 +801,49 @@ TemporalGraphClusteringProcessor::TemporalGraphClusteringProcessor(
   initializeWorkers();
 }
 
-TemporalGraphClusteringProcessor::~TemporalGraphClusteringProcessor() {
+TemporalGraphClusteringProcessor::~TemporalGraphClusteringProcessor() = default;
+
+void TemporalGraphClusteringProcessor::initializeWorkers() {
+  // Calculate optimal worker count
+  size_t num_workers = config_.num_workers;
+  if (num_workers == 0) {
+    num_workers = calculateOptimalWorkerCount();
+  }
+
+  // Create worker instances for clustering
   workers_.clear();
+  workers_.reserve(num_workers);
+  for (size_t i = 0; i < num_workers; ++i) {
+    workers_.push_back(std::make_unique<GraphClustering>(config_.graph_config));
+  }
+
+  // Create peak fitting instances for neutron extraction
+  peak_fitters_.clear();
+  peak_fitters_.reserve(num_workers);
+  for (size_t i = 0; i < num_workers; ++i) {
+    peak_fitters_.push_back(
+        std::make_unique<CentroidPeakFitting>(config_.centroid_config));
+  }
+
+  // Initialize worker results storage
   worker_results_.clear();
+  worker_results_.resize(num_workers);
+}
+
+size_t TemporalGraphClusteringProcessor::calculateOptimalWorkerCount() const {
+  // Use hardware concurrency as default
+  size_t hw_threads = std::thread::hardware_concurrency();
+  if (hw_threads == 0) {
+    hw_threads = 8;  // Fallback if detection fails
+  }
+
+  // Leave some threads for system tasks
+  size_t optimal_workers = hw_threads;
+  if (hw_threads > 4) {
+    optimal_workers = hw_threads - 1;
+  }
+
+  return optimal_workers;
 }
 
 std::vector<TDCNeutron> TemporalGraphClusteringProcessor::processHits(
@@ -878,191 +918,58 @@ TemporalGraphClusteringProcessor::processBatchesParallel(
   worker_results_.clear();
   worker_results_.resize(workers_.size());
 
-  // Process batches in parallel using TBB
+  // Distribute batches across workers in round-robin fashion
+  // This spreads overlapping regions across different workers
+  std::vector<std::vector<size_t>> worker_batch_indices(workers_.size());
+  for (size_t batch_idx = 0; batch_idx < batches.size(); ++batch_idx) {
+    size_t worker_id = batch_idx % workers_.size();
+    worker_batch_indices[worker_id].push_back(batch_idx);
+  }
+
+  // Process assigned batches in parallel
   tbb::parallel_for(
-      tbb::blocked_range<size_t>(0, batches.size()),
+      tbb::blocked_range<size_t>(0, workers_.size()),
       [&](const tbb::blocked_range<size_t>& range) {
-        // Determine worker ID for this thread
-        size_t worker_id =
-            tbb::this_task_arena::current_thread_index() % workers_.size();
+        for (size_t worker_id = range.begin(); worker_id != range.end();
+             ++worker_id) {
+          for (size_t batch_idx : worker_batch_indices[worker_id]) {
+            const auto& batch = batches[batch_idx];
 
-        for (size_t batch_idx = range.begin(); batch_idx != range.end();
-             ++batch_idx) {
-          const auto& batch = batches[batch_idx];
+            if (!batch.isValid() || batch.size() == 0) {
+              continue;
+            }
 
-          // Process batch using assigned worker
-          auto batch_neutrons =
-              GraphClustering::processBatch(batch, config_.graph_config);
+            // Work directly on the hits slice - no copying
+            std::vector<TDCHit>& hits =
+                const_cast<std::vector<TDCHit>&>(*batch.hits_ptr);
 
-          // Accumulate results for this worker
-          worker_results_[worker_id].insert(worker_results_[worker_id].end(),
-                                            batch_neutrons.begin(),
-                                            batch_neutrons.end());
+            // Create a temporary vector view for this batch
+            std::vector<TDCHit> batch_view(hits.begin() + batch.start_index,
+                                           hits.begin() + batch.end_index);
+
+            // Use worker's clustering instance to assign cluster labels
+            workers_[worker_id]->fit(batch_view);
+
+            // Use worker's peak fitting to extract neutrons
+            auto batch_neutrons =
+                peak_fitters_[worker_id]->extractNeutrons(batch_view);
+
+            // Accumulate results for this worker
+            worker_results_[worker_id].insert(worker_results_[worker_id].end(),
+                                              batch_neutrons.begin(),
+                                              batch_neutrons.end());
+          }
         }
       });
 
-  // Phase 4: Combine results from all workers with deduplication
-  auto aggregation_start = std::chrono::high_resolution_clock::now();
-  auto combined_neutrons = combineWorkerResults(worker_results_);
-  auto aggregation_end = std::chrono::high_resolution_clock::now();
-  stats_.aggregation_time_ms =
-      std::chrono::duration_cast<std::chrono::microseconds>(aggregation_end -
-                                                            aggregation_start)
-          .count() /
-      1000.0;
-
-  return combined_neutrons;
-}
-
-std::vector<TDCNeutron> TemporalGraphClusteringProcessor::combineWorkerResults(
-    const std::vector<std::vector<TDCNeutron>>& worker_results) {
-  // Calculate total size for efficient allocation
-  size_t total_neutrons = 0;
-  for (const auto& worker_result : worker_results) {
-    total_neutrons += worker_result.size();
-  }
-
-  if (total_neutrons == 0) {
-    return std::vector<TDCNeutron>();
-  }
-
-  // Optimize for common case: single worker or no duplicates expected
-  if (worker_results.size() == 1) {
-    // Single worker - no deduplication needed, return copy
-    return worker_results[0];
-  }
-
-  // Combine all worker results with pre-allocated capacity
+  // Combine results from all workers
   std::vector<TDCNeutron> combined_neutrons;
-  combined_neutrons.reserve(total_neutrons);
-
-  // Use move semantics when possible and efficient insertion
-  for (const auto& worker_result : worker_results) {
-    if (!worker_result.empty()) {
-      combined_neutrons.insert(combined_neutrons.end(), worker_result.begin(),
-                               worker_result.end());
-    }
+  for (const auto& worker_result : worker_results_) {
+    combined_neutrons.insert(combined_neutrons.end(), worker_result.begin(),
+                             worker_result.end());
   }
-
-  // Deduplicate neutrons from overlap regions if multiple workers produced
-  // results
-  if (combined_neutrons.size() > 1) {
-    combined_neutrons = deduplicateNeutrons(combined_neutrons);
-  }
-
-  // Shrink to fit actual size after deduplication
-  combined_neutrons.shrink_to_fit();
 
   return combined_neutrons;
-}
-
-std::vector<TDCNeutron> TemporalGraphClusteringProcessor::deduplicateNeutrons(
-    std::vector<TDCNeutron>& neutrons) {
-  if (neutrons.size() <= 1) {
-    return neutrons;
-  }
-
-  // Sort neutrons by TOF for efficient temporal comparison
-  std::sort(
-      neutrons.begin(), neutrons.end(),
-      [](const TDCNeutron& a, const TDCNeutron& b) { return a.tof < b.tof; });
-
-  std::vector<TDCNeutron> deduplicated;
-  deduplicated.reserve(neutrons.size());
-
-  // Deduplication parameters (from overlap factor and graph config)
-  const double spatial_tolerance =
-      config_.graph_config.radius * 0.5;  // Half of clustering radius
-  const uint32_t temporal_tolerance =
-      static_cast<uint32_t>(config_.graph_config.neutron_correlation_window /
-                            25.0);  // 75ns in 25ns units
-
-  // Track which neutrons have been marked as duplicates
-  std::vector<bool> is_duplicate(neutrons.size(), false);
-
-  // Compare each neutron with subsequent neutrons within temporal window
-  for (size_t i = 0; i < neutrons.size(); ++i) {
-    if (is_duplicate[i]) {
-      continue;  // Skip neutrons already marked as duplicates
-    }
-
-    const TDCNeutron& neutron_i = neutrons[i];
-
-    // Look for duplicates in subsequent neutrons (within temporal tolerance)
-    for (size_t j = i + 1; j < neutrons.size(); ++j) {
-      const TDCNeutron& neutron_j = neutrons[j];
-
-      // Stop searching if TOF difference exceeds temporal tolerance
-      if (neutron_j.tof - neutron_i.tof > temporal_tolerance) {
-        break;
-      }
-
-      if (is_duplicate[j]) {
-        continue;  // Skip neutrons already marked as duplicates
-      }
-
-      // Calculate spatial distance
-      double dx =
-          static_cast<double>(neutron_i.x) - static_cast<double>(neutron_j.x);
-      double dy =
-          static_cast<double>(neutron_i.y) - static_cast<double>(neutron_j.y);
-      double spatial_distance = std::sqrt(dx * dx + dy * dy);
-
-      // Check if neutrons are duplicates (same spatial-temporal signature)
-      if (spatial_distance <= spatial_tolerance) {
-        // Found a duplicate - keep the one with more hits (higher confidence)
-
-        if (neutron_i.n_hits >= neutron_j.n_hits) {
-          // Keep neutron_i, mark neutron_j as duplicate
-          is_duplicate[j] = true;
-        } else {
-          // Keep neutron_j, mark neutron_i as duplicate
-          is_duplicate[i] = true;
-          break;  // Stop checking for neutron_i
-        }
-      }
-    }
-
-    // Add neutron_i to deduplicated list if it's not a duplicate
-    if (!is_duplicate[i]) {
-      deduplicated.push_back(neutron_i);
-    }
-  }
-
-  return deduplicated;
-}
-
-void TemporalGraphClusteringProcessor::initializeWorkers() {
-  // Calculate optimal worker count
-  size_t num_workers = config_.num_workers;
-  if (num_workers == 0) {
-    num_workers = calculateOptimalWorkerCount();
-  }
-
-  // Create worker instances
-  workers_.clear();
-  workers_.reserve(num_workers);
-
-  for (size_t i = 0; i < num_workers; ++i) {
-    workers_.push_back(std::make_unique<GraphClustering>(config_.graph_config));
-  }
-
-  // Initialize worker results storage
-  worker_results_.clear();
-  worker_results_.resize(num_workers);
-}
-
-size_t TemporalGraphClusteringProcessor::calculateOptimalWorkerCount() const {
-  // Use hardware concurrency with some reasonable limits
-  size_t hardware_threads = std::thread::hardware_concurrency();
-
-  if (hardware_threads == 0) {
-    hardware_threads =
-        4;  // Fallback for systems that don't report thread count
-  }
-
-  // Use all available threads for high-performance clustering
-  return hardware_threads;
 }
 
 const TemporalGraphClusteringProcessor::ProcessingStats&
@@ -1073,7 +980,7 @@ TemporalGraphClusteringProcessor::getStatistics() const {
 void TemporalGraphClusteringProcessor::updateConfig(
     const TemporalGraphConfig& config) {
   config_ = config;
-  initializeWorkers();  // Reinitialize workers with new config
+  initializeWorkers();
 }
 
 const TemporalGraphConfig& TemporalGraphClusteringProcessor::getConfig() const {
@@ -1082,13 +989,9 @@ const TemporalGraphConfig& TemporalGraphClusteringProcessor::getConfig() const {
 
 void TemporalGraphClusteringProcessor::reset() {
   stats_ = ProcessingStats();
-
-  // Clear worker results
   for (auto& worker_result : worker_results_) {
     worker_result.clear();
   }
-
-  // Reset each worker
   for (auto& worker : workers_) {
     worker->reset();
   }

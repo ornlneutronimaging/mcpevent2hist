@@ -38,6 +38,12 @@ class IClusteringAlgorithm {
   virtual void configure(const ClusteringConfig& config) = 0;
 
   /**
+   * @brief Get current configuration
+   * @return Current clustering configuration
+   */
+  virtual const ClusteringConfig& getConfig() const = 0;
+
+  /**
    * @brief Perform clustering analysis on hits
    *
    * Analyzes the input hits and assigns cluster labels. This is the main
@@ -47,6 +53,15 @@ class IClusteringAlgorithm {
    * @return Number of clusters found
    */
   virtual size_t fit(std::vector<TDCHit>& hits) = 0;
+
+  /**
+   * @brief Apply clustering algorithm to hit data range
+   * @param begin Iterator to first hit
+   * @param end Iterator to one past last hit
+   * @return Number of clusters found
+   */
+  virtual size_t fit(std::vector<TDCHit>::iterator begin,
+                     std::vector<TDCHit>::iterator end) = 0;
 
   /**
    * @brief Get cluster labels assigned to hits

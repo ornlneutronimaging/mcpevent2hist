@@ -379,10 +379,43 @@ std::vector<TDCHit> ClusterProcessingUtils::filterHitsByChip(
   return filtered_hits;
 }
 
+/*
+ * ⚠️ CRITICAL ERROR - FUNCTION DISABLED ⚠️
+ *
+ * This function is FUNDAMENTALLY WRONG for TPX3 data processing and has been
+ * permanently disabled. It was identified as the root cause of clustering
+ * failures.
+ *
+ * WHY THIS IS WRONG:
+ * 1. TOF is PERIODIC (0-16.67ms, then resets) - NOT a monotonic timeline
+ * 2. TOF represents time-of-flight calculation, NOT absolute timestamp
+ * 3. Sorting by TOF destroys the natural temporal structure from hardware
+ * 4. Creates artificial boundaries at pulse period transitions
+ * 5. Breaks neutron correlation across pulse boundaries
+ * 6. Leads to incorrect physics results and poor performance
+ *
+ * CORRECT APPROACH:
+ * - Respect the natural acquisition order of hits
+ * - Use statistical temporal batching that preserves pulse structure
+ * - Leverage periodicity for parallel processing boundaries
+ *
+ * DO NOT RE-ENABLE THIS FUNCTION - it represents a fundamental misunderstanding
+ * of TPX3 data structure constraints.
+ */
 void ClusterProcessingUtils::sortHitsByTimestamp(std::vector<TDCHit>& hits) {
+  // FUNCTION PERMANENTLY DISABLED - SEE COMMENT ABOVE
+  throw std::runtime_error(
+      "sortHitsByTimestamp() is permanently disabled - sorting hits by TOF is "
+      "fundamentally wrong for TPX3 data. TOF is periodic (0-16.67ms) and "
+      "sorting destroys the natural temporal structure. Use statistical "
+      "temporal batching instead.");
+
+  /*
+  // ORIGINAL FLAWED IMPLEMENTATION (DO NOT USE):
   std::sort(hits.begin(), hits.end(), [](const TDCHit& a, const TDCHit& b) {
-    return a.tof < b.tof;  // Sort by time-of-flight
+    return a.tof < b.tof;  // ⚠️ WRONG: TOF is periodic, not monotonic!
   });
+  */
 }
 
 std::vector<TDCHit> ClusterProcessingUtils::filterValidClusteredHits(

@@ -167,8 +167,10 @@ class ClusterProcessingUtils {
                                               uint8_t chip_id);
 
   /**
-   * @brief Sort hits by timestamp for temporal clustering
-   * @param hits Hits to sort (modified in-place)
+   * ⚠️ FUNCTION PERMANENTLY DISABLED ⚠️
+   * This function is fundamentally wrong for TPX3 data - TOF is periodic,
+   * not monotonic. Sorting by TOF destroys temporal structure.
+   * @deprecated DO NOT USE - throws runtime_error if called
    */
   static void sortHitsByTimestamp(std::vector<TDCHit>& hits);
 

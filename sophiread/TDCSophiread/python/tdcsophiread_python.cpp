@@ -10,10 +10,12 @@
 #include <fstream>
 #include <stdexcept>
 
-#include "tdc_cluster_processor.h"
-#include "tdc_clustering_config.h"
+// Legacy clustering headers disabled - moved to legacy/
+// #include "tdc_cluster_processor.h"
+// #include "tdc_clustering_config.h"
+// #include "tdc_graph_clustering.h"
+
 #include "tdc_detector_config.h"
-#include "tdc_graph_clustering.h"
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 #include "tdc_processor.h"
@@ -231,6 +233,13 @@ PYBIND11_MODULE(_core, m) {
 
   // Bind vector of TDCNeutron for efficient operations
   py::bind_vector<std::vector<TDCNeutron>>(m, "TDCNeutronVector");
+
+  /*
+  ========================================================================
+  LEGACY CLUSTERING BINDINGS DISABLED - MOVED TO legacy/ FOLDER
+  All clustering-related Python bindings are commented out until the new
+  neutron processing architecture is implemented.
+  ========================================================================
 
   // ABSConfig for ABS clustering algorithm
   py::class_<ABSConfig>(m, "ABSConfig")
@@ -494,6 +503,7 @@ PYBIND11_MODULE(_core, m) {
       .def("reset", &TDCClusterProcessor::reset, "Reset processor state")
       .def("get_processing_summary", &TDCClusterProcessor::getProcessingSummary,
            "Get human-readable processing summary");
+  */
 
   // TDCProcessor class - main interface
   py::class_<TDCProcessor>(m, "TDCProcessor")
@@ -609,6 +619,10 @@ PYBIND11_MODULE(_core, m) {
       py::arg("file_path"), py::arg("chunk_size_mb") = 512,
       py::arg("progress_callback") = py::none(),
       "Process large TPX3 files with chunk-based memory mapping");
+
+  /*
+  // LEGACY CLUSTERING CONVENIENCE FUNCTIONS DISABLED
+  // These will be re-implemented with the new neutron processing architecture
 
   // Clustering convenience function - process TPX3 file directly to neutrons
   m.def(
@@ -749,6 +763,7 @@ PYBIND11_MODULE(_core, m) {
       },
       py::arg("hits"), py::arg("clustering_config") = py::none(),
       "Cluster hits into neutron events");
+  */
 }
 
 }  // namespace tdcsophiread

@@ -6,21 +6,27 @@ cmake_minimum_required(VERSION 3.20)
 # Project will inherit version from parent project
 message(STATUS "Configuring TDCSophiread (TDC-only implementation)")
 
-# Source files (TDD implementation in progress)
+# Core TDC processing sources (clustering disabled for clean implementation)
 set(TDC_SOURCES
     src/tdc_detector_config.cpp
     src/tdc_io.cpp
     src/tdc_hit.cpp
     src/tdc_processor.cpp
-    src/tdc_clustering_config.cpp
     src/tdc_neutron.cpp
-    src/tdc_abs_clustering.cpp
-    src/tdc_graph_clustering.cpp
-    src/tdc_centroid_fitting.cpp
-    src/tdc_cluster_processor.cpp
     # Streaming components (TDD approach)
     src/tdc_temporal_window.cpp
-    src/tdc_streaming_config.cpp)
+    src/tdc_streaming_config.cpp
+    # New neutron processing architecture
+    src/neutron_processing/neutron_config.cpp
+    src/neutron_processing/neutron_factories.cpp
+    src/neutron_processing/simple_abs_clustering.cpp
+    src/neutron_processing/simple_centroid_extraction.cpp
+    src/neutron_processing/basic_neutron_processor.cpp)
+
+# Legacy clustering sources moved to legacy/ and disabled
+# src/legacy/tdc_clustering_config.cpp src/legacy/tdc_abs_clustering.cpp
+# src/legacy/tdc_graph_clustering.cpp src/legacy/tdc_centroid_fitting.cpp
+# src/legacy/tdc_cluster_processor.cpp
 
 # Create TDCSophiread library target
 add_library(TDCSophiread ${TDC_SOURCES})
@@ -56,8 +62,8 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
 enable_testing()
 include(GoogleTest)
 
-# ----------------- TDD TEST INFRASTRUCTURE ----------------- # Function to add
-# TDC tests following TDD approach
+# ----------------- TDD TEST INFRASTRUCTURE -----------------
+# Function to add TDC tests following TDD approach
 function(add_tdc_test test_name)
   add_executable(${test_name} tests/test_${test_name}.cpp)
   target_link_libraries(
@@ -66,6 +72,19 @@ function(add_tdc_test test_name)
             GTest::Main ${ARGN} # Additional libraries can be passed as
                                 # arguments
   )
+  gtest_discover_tests(${test_name})
+
+  # Set test properties for better output
+  set_target_properties(${test_name} PROPERTIES CXX_STANDARD 20
+                                                CXX_STANDARD_REQUIRED ON)
+endfunction()
+
+# Function to add neutron processing tests
+function(add_neutron_test test_name)
+  add_executable(${test_name} tests/neutron_processing/test_${test_name}.cpp)
+  target_link_libraries(
+    ${test_name} PRIVATE TDCSophiread TBB::tbb nlohmann_json::nlohmann_json
+                         GTest::GTest GTest::Main ${ARGN})
   gtest_discover_tests(${test_name})
 
   # Set test properties for better output
@@ -88,36 +107,18 @@ add_tdc_test(hit)
 # TDD Test 5: Basic single-threaded processor (tests written FIRST)
 add_tdc_test(processor)
 
-# TDD Test 6: Clustering configuration system (tests written FIRST)
-add_tdc_test(clustering_config)
-
-# TDD Test 7: Neutron data structure and utilities (tests written FIRST)
+# TDD Test 6: Neutron data structure and utilities (tests written FIRST)
 add_tdc_test(neutron)
 
-# TDD Test 8: ABS clustering algorithm (tests written FIRST)
-add_tdc_test(abs_clustering)
+# Legacy clustering tests disabled - moved to legacy/
+# add_tdc_test(clustering_config) add_tdc_test(abs_clustering)
+# add_tdc_test(graph_clustering) add_tdc_test(centroid_fitting)
+# add_tdc_test(cluster_processor)
 
-# TDD Test 8b: Graph clustering algorithm (tests written FIRST)
-add_tdc_test(graph_clustering)
-
-# TDD Test 9: Centroid peak fitting algorithm (tests written FIRST)
-add_tdc_test(centroid_fitting)
-
-# TDD Test 10: Complete cluster processor pipeline (tests written FIRST)
-add_tdc_test(cluster_processor)
-
-# Performance Test: Clustering performance validation (disabled pending
-# realistic expectations) Note: Original tests expected 120M hits/sec
-# single-threaded, but this requires 32-core system and full
-# TPX3->hits->neutrons pipeline. Clustering alone is only 10-15% of processing
-# time.
-option(BUILD_PERFORMANCE_TESTS "Build performance benchmark tests" OFF)
-if(BUILD_PERFORMANCE_TESTS)
-  add_tdc_test(clustering_performance)
-endif()
-
-# Integration Test: End-to-end clustering workflow validation
-add_tdc_test(clustering_integration)
+# Legacy performance and integration tests disabled
+# option(BUILD_PERFORMANCE_TESTS "Build performance benchmark tests" OFF)
+# if(BUILD_PERFORMANCE_TESTS) add_tdc_test(clustering_performance) endif()
+# add_tdc_test(clustering_integration)
 
 # Streaming Tests: Memory-efficient streaming components (to be implemented with
 # TDD)
@@ -125,6 +126,13 @@ add_tdc_test(streaming_config) # TDD Step 1: Tests written first
 # add_tdc_test(memory_monitor)
 add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
 # add_tdc_test(async_hdf5_writer) add_tdc_test(streaming_processor)
+
+# ----------------- NEUTRON PROCESSING TESTS (Week 1 Day 5) -----------------
+# New neutron processing architecture tests
+add_neutron_test(neutron_interfaces) # Interface and factory tests
+add_neutron_test(simple_abs_clustering) # ABS clustering algorithm tests
+add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
+add_neutron_test(basic_neutron_processor) # Integration tests
 
 # Note: Additional test targets will be added incrementally following TDD
 # approach Each test will be written BEFORE the corresponding implementation

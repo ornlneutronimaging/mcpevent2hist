@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tdc_centroid_fitting.h"
 #include "tdc_clustering.h"
 // Forward declarations
 struct ClusteringConfig;
@@ -56,7 +57,8 @@ struct GraphConfig {
  * @brief Configuration for temporal graph clustering processor
  */
 struct TemporalGraphConfig {
-  GraphConfig graph_config;  ///< Base graph clustering configuration
+  GraphConfig graph_config;        ///< Base graph clustering configuration
+  CentroidConfig centroid_config;  ///< Centroid peak fitting configuration
   size_t num_workers;        ///< Number of worker threads (0 = auto-detect)
   size_t min_batch_size;     ///< Minimum hits per batch (default: 1000)
   size_t max_batch_size;     ///< Maximum hits per batch (default: 100000)
@@ -70,6 +72,7 @@ struct TemporalGraphConfig {
    */
   TemporalGraphConfig()
       : graph_config(),
+        centroid_config(),
         num_workers(0),
         min_batch_size(1000),
         max_batch_size(100000),
@@ -193,6 +196,8 @@ class GraphClustering : public IClusteringAlgorithm {
   // IClusteringAlgorithm interface implementation
   void configure(const ClusteringConfig& config) override;
   size_t fit(std::vector<TDCHit>& hits) override;
+  size_t fit(std::vector<TDCHit>::iterator begin,
+             std::vector<TDCHit>::iterator end) override;
   const std::vector<int>& getClusterLabels() const override;
   std::string getName() const override;
   void reset() override;
@@ -489,6 +494,8 @@ class TemporalGraphClusteringProcessor {
 
   // Worker pool management
   std::vector<std::unique_ptr<GraphClustering>> workers_;  ///< Worker instances
+  std::vector<std::unique_ptr<CentroidPeakFitting>>
+      peak_fitters_;  ///< Peak fitting instances
   std::vector<std::vector<TDCNeutron>> worker_results_;  ///< Per-worker results
 
   /**
