@@ -39,16 +39,12 @@ std::vector<TDCNeutron> BasicNeutronProcessor::processHits(
     return {};
   }
 
-  // Step 1: Clustering - convert const_iterator to mutable for clustering
-  // Note: This creates a temporary copy for clustering, but it's the simplest
-  // approach for the basic implementation. The temporal processor will avoid
-  // this copy.
+  // Create temporary copy for clustering
   std::vector<TDCHit> mutable_hits(begin, end);
 
   clusterer_->cluster(mutable_hits.begin(), mutable_hits.end());
   const std::vector<int>& cluster_labels = clusterer_->getClusterLabels();
 
-  // Step 2: Extraction - use original const iterators
   std::vector<TDCNeutron> neutrons =
       extractor_->extract(begin, end, cluster_labels);
 
@@ -75,13 +71,12 @@ NeutronProcessingResults BasicNeutronProcessor::processHitsWithLabels(
     return NeutronProcessingResults({});
   }
 
-  // Step 1: Clustering - convert const_iterator to mutable for clustering
+  // Create temporary copy for clustering
   std::vector<TDCHit> mutable_hits(begin, end);
 
   clusterer_->cluster(mutable_hits.begin(), mutable_hits.end());
   const std::vector<int>& cluster_labels = clusterer_->getClusterLabels();
 
-  // Step 2: Extraction - use original const iterators
   std::vector<TDCNeutron> neutrons =
       extractor_->extract(begin, end, cluster_labels);
 

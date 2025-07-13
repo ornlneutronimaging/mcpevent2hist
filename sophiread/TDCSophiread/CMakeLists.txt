@@ -21,7 +21,10 @@ set(TDC_SOURCES
     src/neutron_processing/neutron_factories.cpp
     src/neutron_processing/simple_abs_clustering.cpp
     src/neutron_processing/simple_centroid_extraction.cpp
-    src/neutron_processing/basic_neutron_processor.cpp)
+    src/neutron_processing/basic_neutron_processor.cpp
+    # Temporal processing framework
+    src/neutron_processing/temporal_analysis.cpp
+    src/neutron_processing/hit_batching.cpp)
 
 # Legacy clustering sources moved to legacy/ and disabled
 # src/legacy/tdc_clustering_config.cpp src/legacy/tdc_abs_clustering.cpp
@@ -122,22 +125,21 @@ add_tdc_test(neutron)
 
 # Streaming Tests: Memory-efficient streaming components (to be implemented with
 # TDD)
-add_tdc_test(streaming_config) # TDD Step 1: Tests written first
+add_tdc_test(streaming_config)
 # add_tdc_test(memory_monitor)
 add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
 # add_tdc_test(async_hdf5_writer) add_tdc_test(streaming_processor)
 
-# ----------------- NEUTRON PROCESSING TESTS (Week 1 Day 5) -----------------
+# ----------------- NEUTRON PROCESSING TESTS -----------------
 # New neutron processing architecture tests
 add_neutron_test(neutron_interfaces) # Interface and factory tests
 add_neutron_test(simple_abs_clustering) # ABS clustering algorithm tests
 add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
 add_neutron_test(basic_neutron_processor) # Integration tests
+# Temporal processing tests
+add_neutron_test(temporal_batching) # Temporal analysis and batch creation tests
 
-# Note: Additional test targets will be added incrementally following TDD
-# approach Each test will be written BEFORE the corresponding implementation
-
-# ----------------- PYTHON BINDINGS (Phase 3) -----------------
+# ----------------- PYTHON BINDINGS -----------------
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
 
 if(BUILD_PYTHON_BINDINGS)

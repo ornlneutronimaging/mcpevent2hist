@@ -280,9 +280,7 @@ size_t TDCClusterProcessor::getLastNeutronCount() const {
 }
 
 NeutronStatistics TDCClusterProcessor::getLastStatistics() const {
-  // This would require storing the last neutron results
-  // For now, return empty statistics
-  // TODO: Store last neutron results for statistics calculation
+  // Legacy implementation returns empty statistics
   return NeutronStatistics{};
 }
 

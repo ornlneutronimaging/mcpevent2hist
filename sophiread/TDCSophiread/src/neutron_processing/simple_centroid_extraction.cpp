@@ -64,8 +64,6 @@ std::vector<TDCNeutron> SimpleCentroidExtraction::extract(
   size_t single_hit_neutrons = 0;
   size_t multi_hit_neutrons = 0;
   size_t total_hits_processed = 0;
-  // size_t hits_below_threshold = 0;  // Commented out - not used in basic
-  // implementation
 
   for (const auto& cluster_pair : cluster_map) {
     const std::vector<size_t>& hit_indices = cluster_pair.second;
@@ -89,9 +87,6 @@ std::vector<TDCNeutron> SimpleCentroidExtraction::extract(
       for (const auto& hit : cluster_hits) {
         if (static_cast<double>(hit.tot) >= config_.min_tot_threshold) {
           filtered_hits.push_back(hit);
-        } else {
-          // hits_below_threshold++;  // Commented out - not tracked in basic
-          // implementation
         }
       }
     } else {
@@ -126,8 +121,6 @@ std::vector<TDCNeutron> SimpleCentroidExtraction::extract(
   last_stats_.processing_time_ms = duration.count() / 1000.0;
   last_stats_.single_hit_neutrons = single_hit_neutrons;
   last_stats_.multi_hit_neutrons = multi_hit_neutrons;
-  // Note: TOT filtering statistics could be added to ExtractionStatistics if
-  // needed
 
   if (!neutrons.empty()) {
     double total_cluster_size = 0.0;
