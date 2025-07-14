@@ -66,18 +66,22 @@ class INeutronProcessor {
    * @brief Process hits to extract neutron events (production path)
    *
    * Main processing interface that converts raw TDC hits into neutron
-   * events with sub-pixel precision. Optimized for production use.
+   * events with sub-pixel precision. Optimized for production use with
+   * true zero-copy operation.
    *
-   * @param begin Iterator to first hit in range
-   * @param end Iterator to one past last hit in range
+   * @param hits Reference to hits vector (enables zero-copy batching)
+   * @param start_offset Starting offset in hits vector (default: 0)
+   * @param end_offset Ending offset in hits vector (default: SIZE_MAX = entire
+   * vector)
    * @return Vector of neutron events
    *
    * @note Input hits are in acquisition order and MUST NOT be sorted
    * @note Implementation should leverage TOF periodicity for batching
+   * @note Zero-copy design: no data copying, works directly with input vector
    */
-  virtual std::vector<TDCNeutron> processHits(
-      std::vector<TDCHit>::const_iterator begin,
-      std::vector<TDCHit>::const_iterator end) = 0;
+  virtual std::vector<TDCNeutron> processHits(const std::vector<TDCHit>& hits,
+                                              size_t start_offset = 0,
+                                              size_t end_offset = SIZE_MAX) = 0;
 
   /**
    * @brief Process hits with cluster label tracking (diagnostics path)
@@ -85,16 +89,19 @@ class INeutronProcessor {
    * Extended processing interface that also returns cluster labels
    * for detector diagnostics and troubleshooting workflows.
    *
-   * @param begin Iterator to first hit in range
-   * @param end Iterator to one past last hit in range
+   * @param hits Reference to hits vector (enables zero-copy batching)
+   * @param start_offset Starting offset in hits vector (default: 0)
+   * @param end_offset Ending offset in hits vector (default: SIZE_MAX = entire
+   * vector)
    * @return Results containing both neutrons and cluster labels
    *
    * @note This may have slightly higher memory usage than processHits()
    * @note Cluster labels are indexed to match the input hit range
+   * @note Zero-copy design: no data copying, works directly with input vector
    */
   virtual NeutronProcessingResults processHitsWithLabels(
-      std::vector<TDCHit>::const_iterator begin,
-      std::vector<TDCHit>::const_iterator end) = 0;
+      const std::vector<TDCHit>& hits, size_t start_offset = 0,
+      size_t end_offset = SIZE_MAX) = 0;
 
   /**
    * @brief Configure the processor
@@ -242,13 +249,13 @@ class TemporalNeutronProcessor : public INeutronProcessor {
   explicit TemporalNeutronProcessor(const NeutronProcessingConfig& config);
 
   // INeutronProcessor interface implementation
-  std::vector<TDCNeutron> processHits(
-      std::vector<TDCHit>::const_iterator begin,
-      std::vector<TDCHit>::const_iterator end) override;
+  std::vector<TDCNeutron> processHits(const std::vector<TDCHit>& hits,
+                                      size_t start_offset = 0,
+                                      size_t end_offset = SIZE_MAX) override;
 
   NeutronProcessingResults processHitsWithLabels(
-      std::vector<TDCHit>::const_iterator begin,
-      std::vector<TDCHit>::const_iterator end) override;
+      const std::vector<TDCHit>& hits, size_t start_offset = 0,
+      size_t end_offset = SIZE_MAX) override;
 
   void configure(const NeutronProcessingConfig& config) override;
   const NeutronProcessingConfig& getConfig() const override { return config_; }

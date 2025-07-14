@@ -64,42 +64,45 @@ void TemporalNeutronProcessor::initializeAlgorithmPool() {
 }
 
 std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end) {
+    const std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
   auto start_time = std::chrono::high_resolution_clock::now();
 
-  const size_t num_hits = std::distance(begin, end);
+  // Validate and adjust offsets
+  if (start_offset >= hits.size()) {
+    updateStatistics(0, 0, 0.0, 0);
+    return {};
+  }
+
+  end_offset = std::min(end_offset, hits.size());
+  const size_t num_hits = end_offset - start_offset;
+
   if (num_hits == 0) {
     updateStatistics(0, 0, 0.0, 0);
     return {};
   }
 
-  // Phase 1: Statistical analysis
-  auto stats = TemporalBatching::analyzeHitDistribution(begin, end);
+  // Phase 1: FIXED - Limited statistical analysis (only first 8-12 sections)
+  auto begin_iter = hits.begin() + start_offset;
+  auto analysis_end =
+      begin_iter +
+      std::min(num_hits, size_t(50000));  // Limit to ~50K hits for stats
+  auto stats = TemporalBatching::analyzeHitDistribution(
+      begin_iter, analysis_end, 12);  // 12 sections max
 
-  // Phase 2: Create temporal batches
-  // Create local vector for zero-copy batch creation
-  std::vector<TDCHit> local_hits(begin, end);
-  auto batches = TemporalBatching::createStatisticalBatches(
-      &local_hits, local_hits.begin(), local_hits.end(), stats);
+  // Phase 2: FIXED - Zero-copy batch creation using original vector
+  auto end_iter = hits.begin() + end_offset;
+  auto batches = TemporalBatching::createStatisticalBatches(&hits, begin_iter,
+                                                            end_iter, stats);
 
   if (batches.empty()) {
     updateStatistics(num_hits, 0, 0.0, 0);
     return {};
   }
 
-  // Phase 3: Calculate cluster ID offsets
+  // Phase 3: Calculate cluster ID offsets (can be done in parallel later)
   calculateClusterIdOffsets(batches);
 
-  // Phase 4: Initialize clustering states for all batches
-  for (auto& batch : batches) {
-    batch.initializeResults();
-    if (!batch.clustering_state && !algorithm_pool_.empty()) {
-      batch.clustering_state = algorithm_pool_[0].clusterer->createState();
-    }
-  }
-
-  // Phase 5: Process batches in parallel
+  // Phase 4: FIXED - Process batches in parallel WITH state creation inside TBB
   processBatchesParallel(batches);
 
   // Phase 6: Collect results
@@ -128,25 +131,33 @@ void TemporalNeutronProcessor::processBatchesParallel(
   }
 
   // Use blocked_range for better load balancing
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [this, &batches](const tbb::blocked_range<size_t>& range) {
-                      // Get thread-specific algorithm set
-                      // Use modulo as fallback if thread index exceeds pool
-                      // size
-                      size_t thread_idx =
-                          tbb::this_task_arena::current_thread_index();
-                      if (thread_idx >= algorithm_pool_.size()) {
-                        thread_idx = thread_idx % algorithm_pool_.size();
-                      }
+  tbb::parallel_for(
+      tbb::blocked_range<size_t>(0, batches.size()),
+      [this, &batches](const tbb::blocked_range<size_t>& range) {
+        // Get thread-specific algorithm set
+        size_t thread_idx = tbb::this_task_arena::current_thread_index();
+        if (thread_idx >= algorithm_pool_.size()) {
+          thread_idx = thread_idx % algorithm_pool_.size();
+        }
 
-                      const auto& algorithms = algorithm_pool_[thread_idx];
+        const auto& algorithms = algorithm_pool_[thread_idx];
 
-                      // Process all batches in this thread's range
-                      for (size_t batch_idx = range.begin();
-                           batch_idx != range.end(); ++batch_idx) {
-                        processSingleBatch(batches[batch_idx], algorithms);
-                      }
-                    });
+        // Process all batches in this thread's range
+        for (size_t batch_idx = range.begin(); batch_idx != range.end();
+             ++batch_idx) {
+          auto& batch = batches[batch_idx];
+
+          // FIXED - Create state inside TBB loop (per-thread, released
+          // immediately)
+          batch.initializeResults();
+          batch.clustering_state = algorithms.clusterer->createState();
+
+          processSingleBatch(batch, algorithms);
+
+          // Release state immediately after processing (saves memory)
+          batch.clustering_state.reset();
+        }
+      });
 }
 
 void TemporalNeutronProcessor::processSingleBatch(
@@ -292,11 +303,10 @@ void TemporalNeutronProcessor::updateStatistics(size_t hits_processed,
 // Interface method implementations
 
 NeutronProcessingResults TemporalNeutronProcessor::processHitsWithLabels(
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end) {
+    const std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
   // For label tracking, we need to implement a more complex result aggregation
-  // For now, just process without labels
-  auto neutrons = processHits(begin, end);
+  // For now, just process without labels using the new zero-copy interface
+  auto neutrons = processHits(hits, start_offset, end_offset);
   return NeutronProcessingResults(std::move(neutrons));
 }
 

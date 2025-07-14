@@ -71,7 +71,7 @@ TEST_F(TBBStressTest, HugeDatasetStressTest) {
   TemporalNeutronProcessor processor_1(config_);
 
   auto start_1 = std::chrono::high_resolution_clock::now();
-  auto neutrons_1 = processor_1.processHits(huge_hits.begin(), huge_hits.end());
+  auto neutrons_1 = processor_1.processHits(huge_hits);
   auto end_1 = std::chrono::high_resolution_clock::now();
   auto time_1 =
       std::chrono::duration_cast<std::chrono::microseconds>(end_1 - start_1);
@@ -82,8 +82,7 @@ TEST_F(TBBStressTest, HugeDatasetStressTest) {
   TemporalNeutronProcessor processor_max(config_);
 
   auto start_max = std::chrono::high_resolution_clock::now();
-  auto neutrons_max =
-      processor_max.processHits(huge_hits.begin(), huge_hits.end());
+  auto neutrons_max = processor_max.processHits(huge_hits);
   auto end_max = std::chrono::high_resolution_clock::now();
   auto time_max = std::chrono::duration_cast<std::chrono::microseconds>(
       end_max - start_max);
@@ -130,8 +129,7 @@ TEST_F(TBBStressTest, MediumDatasetPerformanceTest) {
   TemporalNeutronProcessor processor_1(config_);
 
   auto start_1 = std::chrono::high_resolution_clock::now();
-  auto neutrons_1 =
-      processor_1.processHits(medium_hits.begin(), medium_hits.end());
+  auto neutrons_1 = processor_1.processHits(medium_hits);
   auto end_1 = std::chrono::high_resolution_clock::now();
   auto time_1 =
       std::chrono::duration_cast<std::chrono::microseconds>(end_1 - start_1);
@@ -141,8 +139,7 @@ TEST_F(TBBStressTest, MediumDatasetPerformanceTest) {
   TemporalNeutronProcessor processor_4(config_);
 
   auto start_4 = std::chrono::high_resolution_clock::now();
-  auto neutrons_4 =
-      processor_4.processHits(medium_hits.begin(), medium_hits.end());
+  auto neutrons_4 = processor_4.processHits(medium_hits);
   auto end_4 = std::chrono::high_resolution_clock::now();
   auto time_4 =
       std::chrono::duration_cast<std::chrono::microseconds>(end_4 - start_4);

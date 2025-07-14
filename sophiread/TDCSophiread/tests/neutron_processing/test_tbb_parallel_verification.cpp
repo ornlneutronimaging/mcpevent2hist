@@ -80,8 +80,7 @@ TEST_F(TBBParallelVerificationTest, VerifiesPerformanceScaling) {
   TemporalNeutronProcessor processor_1(config_);
 
   auto start_1 = std::chrono::high_resolution_clock::now();
-  auto neutrons_1 =
-      processor_1.processHits(large_hits_.begin(), large_hits_.end());
+  auto neutrons_1 = processor_1.processHits(large_hits_);
   auto end_1 = std::chrono::high_resolution_clock::now();
   auto time_1 =
       std::chrono::duration_cast<std::chrono::milliseconds>(end_1 - start_1);
@@ -91,8 +90,7 @@ TEST_F(TBBParallelVerificationTest, VerifiesPerformanceScaling) {
   TemporalNeutronProcessor processor_4(config_);
 
   auto start_4 = std::chrono::high_resolution_clock::now();
-  auto neutrons_4 =
-      processor_4.processHits(large_hits_.begin(), large_hits_.end());
+  auto neutrons_4 = processor_4.processHits(large_hits_);
   auto end_4 = std::chrono::high_resolution_clock::now();
   auto time_4 =
       std::chrono::duration_cast<std::chrono::milliseconds>(end_4 - start_4);
@@ -138,7 +136,7 @@ TEST_F(TBBParallelVerificationTest, VerifiesTBBConfiguration) {
   EXPECT_EQ(processor.getNumWorkers(), 4);
 
   // Process data
-  auto neutrons = processor.processHits(large_hits_.begin(), large_hits_.end());
+  auto neutrons = processor.processHits(large_hits_);
   EXPECT_GT(neutrons.size(), 0);
 
   std::cout << "TBB max concurrency: " << max_concurrency << std::endl;
@@ -161,7 +159,7 @@ TEST_F(TBBParallelVerificationTest, VerifiesThreadSafety) {
 
   for (int i = 0; i < 4; ++i) {
     futures.push_back(std::async(std::launch::async, [&processors, i, this]() {
-      return processors[i]->processHits(large_hits_.begin(), large_hits_.end());
+      return processors[i]->processHits(large_hits_);
     }));
   }
 
@@ -197,8 +195,7 @@ TEST_F(TBBParallelVerificationTest, StressTestMaxWorkers) {
   std::vector<size_t> neutron_counts;
 
   for (int run = 0; run < 5; ++run) {
-    auto neutrons =
-        processor.processHits(large_hits_.begin(), large_hits_.end());
+    auto neutrons = processor.processHits(large_hits_);
     neutron_counts.push_back(neutrons.size());
     processor.reset();
   }
@@ -228,8 +225,7 @@ TEST_F(TBBParallelVerificationTest, PerformanceAcrossWorkerCounts) {
     TemporalNeutronProcessor processor(config_);
 
     auto start = std::chrono::high_resolution_clock::now();
-    auto neutrons =
-        processor.processHits(large_hits_.begin(), large_hits_.end());
+    auto neutrons = processor.processHits(large_hits_);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto time_ms =

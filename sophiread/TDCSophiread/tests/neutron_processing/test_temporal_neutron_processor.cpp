@@ -108,7 +108,7 @@ TEST_F(TemporalNeutronProcessorTest, CreatesTemporalProcessor) {
 TEST_F(TemporalNeutronProcessorTest, ProcessesHitsSuccessfully) {
   TemporalNeutronProcessor processor(config_);
 
-  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons = processor.processHits(test_hits_);
 
   // Verify processing produced results
   EXPECT_FALSE(neutrons.empty());
@@ -127,7 +127,7 @@ TEST_F(TemporalNeutronProcessorTest, ProcessesHitsSuccessfully) {
 TEST_F(TemporalNeutronProcessorTest, ProvideBasicMetrics) {
   TemporalNeutronProcessor processor(config_);
 
-  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons = processor.processHits(test_hits_);
 
   // Verify basic performance metrics are available
   EXPECT_GT(processor.getLastProcessingTimeMs(), 0.0);
@@ -147,7 +147,7 @@ TEST_F(TemporalNeutronProcessorTest, HandlesEmptyInput) {
   TemporalNeutronProcessor processor(config_);
 
   std::vector<TDCHit> empty_hits;
-  auto neutrons = processor.processHits(empty_hits.begin(), empty_hits.end());
+  auto neutrons = processor.processHits(empty_hits);
 
   EXPECT_TRUE(neutrons.empty());
 
@@ -161,7 +161,7 @@ TEST_F(TemporalNeutronProcessorTest, ProcessesSingleHit) {
   TemporalNeutronProcessor processor(config_);
 
   std::vector<TDCHit> single_hit = {test_hits_[0]};
-  auto neutrons = processor.processHits(single_hit.begin(), single_hit.end());
+  auto neutrons = processor.processHits(single_hit);
 
   // Should produce one neutron from one hit (min_cluster_size = 1)
   EXPECT_EQ(neutrons.size(), 1);
@@ -196,9 +196,9 @@ TEST_F(TemporalNeutronProcessorTest, ProducesDeterministicResults) {
   TemporalNeutronProcessor processor(config_);
 
   // Process the same data multiple times
-  auto neutrons1 = processor.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons1 = processor.processHits(test_hits_);
   processor.reset();
-  auto neutrons2 = processor.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons2 = processor.processHits(test_hits_);
 
   // Results should be identical (deterministic)
   EXPECT_EQ(neutrons1.size(), neutrons2.size());
@@ -210,15 +210,13 @@ TEST_F(TemporalNeutronProcessorTest, DeduplicationWorks) {
   config_.temporal.enable_deduplication = true;
   TemporalNeutronProcessor processor_with_dedup(config_);
 
-  auto neutrons_with_dedup =
-      processor_with_dedup.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons_with_dedup = processor_with_dedup.processHits(test_hits_);
 
   // Test with deduplication disabled
   config_.temporal.enable_deduplication = false;
   TemporalNeutronProcessor processor_no_dedup(config_);
 
-  auto neutrons_no_dedup =
-      processor_no_dedup.processHits(test_hits_.begin(), test_hits_.end());
+  auto neutrons_no_dedup = processor_no_dedup.processHits(test_hits_);
 
   // Should produce similar results
   EXPECT_GT(neutrons_with_dedup.size(), 0);
@@ -270,7 +268,7 @@ TEST_F(TemporalNeutronProcessorTest, HandlesVariableWorkerCounts) {
     EXPECT_EQ(processor.getNumWorkers(), workers);
 
     // Should still process hits correctly
-    auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+    auto neutrons = processor.processHits(test_hits_);
     EXPECT_GT(neutrons.size(), 0);
   }
 }
