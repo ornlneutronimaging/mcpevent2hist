@@ -20,7 +20,6 @@ set(TDC_SOURCES
     src/neutron_processing/neutron_config.cpp
     src/neutron_processing/neutron_factories.cpp
     src/neutron_processing/simple_centroid_extraction.cpp
-    # src/neutron_processing/basic_neutron_processor.cpp # DISABLED - stateful
     # Temporal processing framework
     src/neutron_processing/temporal_analysis.cpp
     src/neutron_processing/hit_batching.cpp
@@ -136,11 +135,8 @@ add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
 # ----------------- NEUTRON PROCESSING TESTS -----------------
 # New neutron processing architecture tests
 add_neutron_test(neutron_interfaces) # Interface and factory tests
-# add_neutron_test(simple_abs_clustering) # ABS clustering algorithm tests -
-# DISABLED (stateful removed)
 add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
-# add_neutron_test(basic_neutron_processor) # Integration tests - DISABLED
-# (stateful) Temporal processing tests
+# Temporal processing tests
 add_neutron_test(temporal_batching) # Temporal analysis and batch creation tests
 add_neutron_test(temporal_neutron_processor) # Parallel temporal processor tests
 add_neutron_test(tbb_parallel_verification) # TBB parallel processing
