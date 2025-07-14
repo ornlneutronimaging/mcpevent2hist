@@ -7,23 +7,25 @@
 #include <string>
 #include <vector>
 
+#include "neutron_processing/clustering_state.h"
 #include "neutron_processing/neutron_config.h"
 #include "tdc_hit.h"
+#include "tdc_neutron.h"
 
 namespace tdcsophiread {
 
 /**
- * @brief Abstract interface for hit clustering algorithms
+ * @brief Abstract interface for hit clustering algorithms (STATELESS)
  *
  * Defines the contract for spatial-temporal clustering algorithms that group
- * TDCHit objects into clusters. The new interface supports iterator-based
- * processing for zero-copy parallel operation.
+ * TDCHit objects into clusters. This interface is designed for stateless
+ * operation to enable safe parallel execution with TBB.
  *
- * Key improvements over legacy interface:
+ * Key features:
+ * - Stateless operation - ALL state passed via parameters
  * - Iterator-based processing for zero-copy operation
- * - Configuration management at instantiation
- * - Proper state management with reset() functionality
- * - Clear separation of concerns (clustering only, no peak fitting)
+ * - Thread-safe by design - no shared mutable state
+ * - Required for achieving >120M hits/sec throughput
  */
 class IHitClustering {
  public:
@@ -42,40 +44,37 @@ class IHitClustering {
   virtual const HitClusteringConfig& getConfig() const = 0;
 
   /**
-   * @brief Perform clustering analysis on hit range (zero-copy)
+   * @brief Create algorithm-specific state object
+   * @return New state object for this algorithm
    *
-   * Analyzes the input hit range and assigns cluster labels. This is the main
-   * clustering computation phase that implements spatial-temporal grouping.
-   * Uses iterators for zero-copy processing in parallel environments.
+   * Creates a new state object appropriate for this clustering algorithm.
+   * The state object will be owned by the HitBatch and passed back to
+   * the algorithm during clustering.
+   */
+  virtual std::unique_ptr<IClusteringState> createState() const = 0;
+
+  /**
+   * @brief Perform clustering analysis on hit range (stateless)
+   *
+   * Analyzes the input hit range and assigns cluster labels. This is a
+   * stateless operation - all working data is stored in the provided state
+   * object, enabling safe concurrent execution.
    *
    * @param begin Iterator to first hit in range
    * @param end Iterator to one past last hit in range
+   * @param state Algorithm-specific state object
+   * @param[out] cluster_labels Output vector for cluster assignments (must be
+   * pre-sized)
    * @return Number of clusters found
    *
-   * @note Hits are not modified - cluster labels stored separately
-   * @note Call getClusterLabels() to access the cluster assignments
+   * @note This method is const - it does not modify the algorithm instance
+   * @note cluster_labels must be pre-sized to match the input range
+   * @note The state object is modified during clustering
    */
   virtual size_t cluster(std::vector<TDCHit>::const_iterator begin,
-                         std::vector<TDCHit>::const_iterator end) = 0;
-
-  /**
-   * @brief Reset algorithm state for new clustering run
-   *
-   * Clears all internal data structures and state while preserving
-   * the current configuration. This allows the same algorithm instance
-   * to be reused for multiple clustering operations.
-   */
-  virtual void reset() = 0;
-
-  /**
-   * @brief Get cluster labels assigned to hits
-   * @return Vector of cluster labels (same size as last processed range)
-   *
-   * @note The returned vector corresponds to the hits processed in the
-   *       last call to cluster(). Index i contains the cluster label
-   *       for the i-th hit in the processed range.
-   */
-  virtual const std::vector<int>& getClusterLabels() const = 0;
+                         std::vector<TDCHit>::const_iterator end,
+                         IClusteringState& state,
+                         std::vector<int>& cluster_labels) const = 0;
 
   /**
    * @brief Get algorithm name for identification
@@ -84,16 +83,13 @@ class IHitClustering {
   virtual std::string getName() const = 0;
 
   /**
-   * @brief Get number of hits processed in last clustering run
-   * @return Hit count from last clustering operation
+   * @brief Get statistics from a clustering state
+   * @param state The state object after clustering
+   * @param num_hits Number of hits that were processed
+   * @return Performance metrics from the clustering operation
    */
-  virtual size_t getLastHitCount() const = 0;
-
-  /**
-   * @brief Get detailed performance statistics
-   * @return Performance metrics from last clustering operation
-   */
-  virtual ClusteringStatistics getStatistics() const = 0;
+  virtual ClusteringStatistics getStatistics(const IClusteringState& state,
+                                             size_t num_hits) const = 0;
 };
 
 /**
@@ -126,8 +122,12 @@ struct BatchStatistics {
 
 /**
  * @brief Temporal batch definition for zero-copy processing
+ *
+ * Enhanced to support stateless clustering by owning the clustering
+ * state and results for this batch.
  */
 struct HitBatch {
+  // Input data (zero-copy reference)
   const std::vector<TDCHit>*
       hits_ptr;               ///< Reference to original hits vector (zero-copy)
   size_t start_index;         ///< Batch start index (inclusive)
@@ -136,6 +136,17 @@ struct HitBatch {
   size_t overlap_end;         ///< Overlap region end index
   uint32_t tof_window_start;  ///< TOF range start for this batch
   uint32_t tof_window_end;    ///< TOF range end for this batch
+
+  // Clustering state and results
+  std::unique_ptr<IClusteringState>
+      clustering_state;             ///< Algorithm-specific working state
+  std::vector<int> cluster_labels;  ///< Clustering results (size = end - start)
+
+  // Neutron extraction results
+  std::vector<TDCNeutron>
+      neutron_results;    ///< Extracted neutrons from this batch
+  int cluster_id_offset;  ///< Offset for cluster IDs (for unique IDs across
+                          ///< batches)
 
   /**
    * @brief Default constructor
@@ -147,7 +158,8 @@ struct HitBatch {
         overlap_start(0),
         overlap_end(0),
         tof_window_start(0),
-        tof_window_end(0) {}
+        tof_window_end(0),
+        cluster_id_offset(0) {}
 
   /**
    * @brief Get number of hits in this batch
@@ -173,6 +185,14 @@ struct HitBatch {
    */
   std::vector<TDCHit>::const_iterator end() const {
     return hits_ptr->begin() + end_index;
+  }
+
+  /**
+   * @brief Initialize cluster labels vector for this batch
+   */
+  void initializeResults() {
+    cluster_labels.clear();
+    cluster_labels.resize(size(), -1);  // Initialize all to unclustered
   }
 };
 

@@ -133,6 +133,9 @@ struct SimpleABSBucket {
    */
   void reset() {
     hit_indices.clear();
+    x_min = x_max = 0;
+    y_min = y_max = 0;
+    start_timestamp = 0;
     cluster_label = -1;
     is_active = false;
   }

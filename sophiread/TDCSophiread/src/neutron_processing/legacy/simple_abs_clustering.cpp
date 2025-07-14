@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <iostream>
 #include <stdexcept>
 #include <utility>
 
@@ -302,12 +303,42 @@ void SimpleABSClustering::closeBucket(size_t bucket_index) {
     // Valid neutron cluster - assign cluster IDs to LOCAL cluster_labels_
     // vector
     for (size_t hit_index : bucket.hit_indices) {
+      if (hit_index >= cluster_labels_.size()) {
+        // This should never happen - it means we have a corrupt index
+        std::cerr << "ERROR: hit_index " << hit_index
+                  << " out of bounds for cluster_labels_ size "
+                  << cluster_labels_.size() << " (bucket " << bucket_index
+                  << " has " << bucket.hit_indices.size() << " hits)"
+                  << std::endl;
+        // Print all indices in the bucket
+        std::cerr << "  Bucket indices: ";
+        for (size_t idx : bucket.hit_indices) {
+          std::cerr << idx << " ";
+        }
+        std::cerr << std::endl;
+        continue;
+      }
       cluster_labels_[hit_index] = bucket.cluster_label;
     }
     next_cluster_id_++;
   } else {
     // Insufficient hits - leave as gamma noise (cluster_id = -1)
     for (size_t hit_index : bucket.hit_indices) {
+      if (hit_index >= cluster_labels_.size()) {
+        // This should never happen - it means we have a corrupt index
+        std::cerr << "ERROR: hit_index " << hit_index
+                  << " out of bounds for cluster_labels_ size "
+                  << cluster_labels_.size() << " (bucket " << bucket_index
+                  << " has " << bucket.hit_indices.size() << " hits)"
+                  << std::endl;
+        // Print all indices in the bucket
+        std::cerr << "  Bucket indices: ";
+        for (size_t idx : bucket.hit_indices) {
+          std::cerr << idx << " ";
+        }
+        std::cerr << std::endl;
+        continue;
+      }
       cluster_labels_[hit_index] = -1;
     }
   }

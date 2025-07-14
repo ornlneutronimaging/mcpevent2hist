@@ -6,10 +6,10 @@
 #include <chrono>
 #include <memory>
 
+#include "neutron_processing/hit_clustering.h"
 #include "neutron_processing/neutron_config.h"
+#include "neutron_processing/neutron_extraction.h"
 #include "neutron_processing/neutron_processing.h"
-#include "neutron_processing/simple_abs_clustering.h"
-#include "neutron_processing/simple_centroid_extraction.h"
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 
@@ -33,8 +33,8 @@ class BasicNeutronProcessor : public INeutronProcessor {
   NeutronProcessingConfig config_;
 
   // Algorithm instances
-  std::unique_ptr<SimpleABSClustering> clusterer_;
-  std::unique_ptr<SimpleCentroidExtraction> extractor_;
+  std::unique_ptr<IHitClustering> clusterer_;
+  std::unique_ptr<INeutronExtraction> extractor_;
 
   // Performance tracking
   mutable ProcessingStatistics last_stats_;
@@ -89,13 +89,13 @@ class BasicNeutronProcessor : public INeutronProcessor {
    * @brief Get direct access to clustering algorithm (for testing)
    * @return Pointer to clustering algorithm instance
    */
-  SimpleABSClustering* getClusterer() const { return clusterer_.get(); }
+  IHitClustering* getClusterer() const { return clusterer_.get(); }
 
   /**
    * @brief Get direct access to extraction algorithm (for testing)
    * @return Pointer to extraction algorithm instance
    */
-  SimpleCentroidExtraction* getExtractor() const { return extractor_.get(); }
+  INeutronExtraction* getExtractor() const { return extractor_.get(); }
 };
 
 }  // namespace tdcsophiread

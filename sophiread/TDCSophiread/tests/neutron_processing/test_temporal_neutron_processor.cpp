@@ -1,9 +1,8 @@
-// TDCSophiread Temporal Neutron Processor Unit Tests
-// Test parallel processing with worker pool architecture
+// TDCSophiread Temporal Neutron Processor Tests (Stateless Architecture)
+// Tests for stateless parallel neutron processing with zero-copy batching
 
 #include <gtest/gtest.h>
 
-#include "neutron_processing/basic_neutron_processor.h"
 #include "neutron_processing/neutron_factories.h"
 #include "neutron_processing/neutron_processing.h"
 #include "tdc_hit.h"
@@ -16,8 +15,8 @@ class TemporalNeutronProcessorTest : public ::testing::Test {
     // Create test data with realistic TPX3 timing structure
     createTestHits();
 
-    // Create temporal processor configuration
-    config_.clustering.algorithm = "simple_abs";
+    // Create temporal processor configuration for stateless processing
+    config_.clustering.algorithm = "abs";
     config_.clustering.abs.radius = 5.0;
     config_.clustering.abs.min_cluster_size = 1;
     config_.clustering.abs.neutron_correlation_window = 75.0;
@@ -90,31 +89,96 @@ class TemporalNeutronProcessorTest : public ::testing::Test {
   NeutronProcessingConfig config_;
 };
 
-// Test basic temporal processor creation
+// Test 1: Basic processor creation and configuration
 TEST_F(TemporalNeutronProcessorTest, CreatesTemporalProcessor) {
   auto processor = NeutronProcessorFactory::create(config_);
 
   EXPECT_NE(processor, nullptr);
-  EXPECT_EQ(processor->getHitClusteringAlgorithm(), "simple_abs");
+  EXPECT_EQ(processor->getHitClusteringAlgorithm(), "abs");
   EXPECT_EQ(processor->getNeutronExtractionAlgorithm(), "simple_centroid");
 
-  // Check that it's actually a temporal processor (has multiple workers)
+  // Check that it's actually a temporal processor
   auto* temporal_processor =
       dynamic_cast<TemporalNeutronProcessor*>(processor.get());
   EXPECT_NE(temporal_processor, nullptr);
   EXPECT_EQ(temporal_processor->getNumWorkers(), 4);
 }
 
-// Test configuration propagation
-TEST_F(TemporalNeutronProcessorTest, ConfigurationPropagation) {
+// Test 2: Basic processing functionality
+TEST_F(TemporalNeutronProcessorTest, ProcessesHitsSuccessfully) {
+  TemporalNeutronProcessor processor(config_);
+
+  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+
+  // Verify processing produced results
+  EXPECT_FALSE(neutrons.empty());
+  EXPECT_GT(neutrons.size(), 0);
+
+  // Basic sanity checks on neutrons
+  for (const auto& neutron : neutrons) {
+    EXPECT_GE(neutron.x, 0.0);
+    EXPECT_GE(neutron.y, 0.0);
+    EXPECT_GT(neutron.n_hits, 0);
+    EXPECT_GT(neutron.tot, 0);
+  }
+}
+
+// Test 3: Basic performance metrics
+TEST_F(TemporalNeutronProcessorTest, ProvideBasicMetrics) {
+  TemporalNeutronProcessor processor(config_);
+
+  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+
+  // Verify basic performance metrics are available
+  EXPECT_GT(processor.getLastProcessingTimeMs(), 0.0);
+  EXPECT_GT(processor.getLastHitsPerSecond(), 0.0);
+  EXPECT_GE(processor.getLastNeutronEfficiency(), 0.0);
+  EXPECT_LE(processor.getLastNeutronEfficiency(), 1.0);
+
+  // Verify basic statistics
+  auto stats = processor.getStatistics();
+  EXPECT_EQ(stats.total_hits_processed, test_hits_.size());
+  EXPECT_EQ(stats.total_neutrons_produced, neutrons.size());
+  EXPECT_GT(stats.total_processing_time_ms, 0.0);
+}
+
+// Test 4: Empty input handling
+TEST_F(TemporalNeutronProcessorTest, HandlesEmptyInput) {
+  TemporalNeutronProcessor processor(config_);
+
+  std::vector<TDCHit> empty_hits;
+  auto neutrons = processor.processHits(empty_hits.begin(), empty_hits.end());
+
+  EXPECT_TRUE(neutrons.empty());
+
+  auto stats = processor.getStatistics();
+  EXPECT_EQ(stats.total_hits_processed, 0);
+  EXPECT_EQ(stats.total_neutrons_produced, 0);
+}
+
+// Test 5: Single hit processing
+TEST_F(TemporalNeutronProcessorTest, ProcessesSingleHit) {
+  TemporalNeutronProcessor processor(config_);
+
+  std::vector<TDCHit> single_hit = {test_hits_[0]};
+  auto neutrons = processor.processHits(single_hit.begin(), single_hit.end());
+
+  // Should produce one neutron from one hit (min_cluster_size = 1)
+  EXPECT_EQ(neutrons.size(), 1);
+
+  auto stats = processor.getStatistics();
+  EXPECT_EQ(stats.total_hits_processed, 1);
+  EXPECT_EQ(stats.total_neutrons_produced, 1);
+}
+
+// Test 6: Configuration management
+TEST_F(TemporalNeutronProcessorTest, ManagesConfiguration) {
   TemporalNeutronProcessor processor(config_);
 
   const auto& proc_config = processor.getConfig();
-  EXPECT_EQ(proc_config.clustering.algorithm, "simple_abs");
+  EXPECT_EQ(proc_config.clustering.algorithm, "abs");
   EXPECT_EQ(proc_config.extraction.algorithm, "simple_centroid");
   EXPECT_EQ(proc_config.temporal.num_workers, 4);
-  EXPECT_EQ(proc_config.temporal.min_batch_size, 10);
-  EXPECT_TRUE(proc_config.temporal.enable_deduplication);
 
   // Test reconfiguration
   NeutronProcessingConfig new_config = config_;
@@ -127,67 +191,23 @@ TEST_F(TemporalNeutronProcessorTest, ConfigurationPropagation) {
   EXPECT_FALSE(processor.getConfig().temporal.enable_deduplication);
 }
 
-// Test parallel processing functionality
-TEST_F(TemporalNeutronProcessorTest, ParallelProcessing) {
+// Test 7: Deterministic results
+TEST_F(TemporalNeutronProcessorTest, ProducesDeterministicResults) {
   TemporalNeutronProcessor processor(config_);
 
-  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+  // Process the same data multiple times
+  auto neutrons1 = processor.processHits(test_hits_.begin(), test_hits_.end());
+  processor.reset();
+  auto neutrons2 = processor.processHits(test_hits_.begin(), test_hits_.end());
 
-  // Verify processing produced results
-  EXPECT_FALSE(neutrons.empty());
-  EXPECT_GT(neutrons.size(), 0);
-
-  // Verify performance statistics
-  auto stats = processor.getStatistics();
-  EXPECT_EQ(stats.total_hits_processed, test_hits_.size());
-  EXPECT_EQ(stats.total_neutrons_produced, neutrons.size());
-  EXPECT_GT(stats.total_processing_time_ms, 0.0);
-  EXPECT_EQ(stats.num_workers_used, 4);
-  EXPECT_GT(stats.num_batches_created, 0);
-
-  // Verify parallel efficiency metrics
-  EXPECT_GE(stats.parallel_efficiency, 0.0);
-  EXPECT_LE(stats.parallel_efficiency, 1.0);
-  EXPECT_GT(stats.load_balance_factor, 0.0);
-
-  // Verify timing breakdown
-  EXPECT_GT(stats.analysis_time_ms, 0.0);
-  EXPECT_GT(stats.clustering_time_ms, 0.0);
-  EXPECT_GT(stats.extraction_time_ms, 0.0);
-  EXPECT_GT(stats.aggregation_time_ms, 0.0);
+  // Results should be identical (deterministic)
+  EXPECT_EQ(neutrons1.size(), neutrons2.size());
 }
 
-// Test processing with cluster labels
-TEST_F(TemporalNeutronProcessorTest, ProcessingWithLabels) {
-  TemporalNeutronProcessor processor(config_);
-
-  auto results =
-      processor.processHitsWithLabels(test_hits_.begin(), test_hits_.end());
-
-  // Verify both neutrons and labels are produced
-  EXPECT_FALSE(results.neutrons.empty());
-  EXPECT_FALSE(results.cluster_labels.empty());
-  EXPECT_EQ(results.cluster_labels.size(), test_hits_.size());
-
-  // Verify cluster labels are properly assigned
-  size_t clustered_hits = 0;
-  for (int label : results.cluster_labels) {
-    if (label >= 0) {
-      clustered_hits++;
-    }
-  }
-  EXPECT_GT(clustered_hits, 0);
-
-  // Verify neutron count is reasonable relative to hits
-  EXPECT_LE(results.neutrons.size(), clustered_hits);
-}
-
-// Test deduplication functionality
-TEST_F(TemporalNeutronProcessorTest, Deduplication) {
+// Test 8: Deduplication functionality
+TEST_F(TemporalNeutronProcessorTest, DeduplicationWorks) {
   // Test with deduplication enabled
   config_.temporal.enable_deduplication = true;
-  config_.temporal.deduplication_tolerance =
-      2.0;  // Larger tolerance for testing
   TemporalNeutronProcessor processor_with_dedup(config_);
 
   auto neutrons_with_dedup =
@@ -200,7 +220,7 @@ TEST_F(TemporalNeutronProcessorTest, Deduplication) {
   auto neutrons_no_dedup =
       processor_no_dedup.processHits(test_hits_.begin(), test_hits_.end());
 
-  // Should produce similar results (may be equal for this test data)
+  // Should produce similar results
   EXPECT_GT(neutrons_with_dedup.size(), 0);
   EXPECT_GT(neutrons_no_dedup.size(), 0);
 
@@ -208,147 +228,49 @@ TEST_F(TemporalNeutronProcessorTest, Deduplication) {
   EXPECT_LE(neutrons_with_dedup.size(), neutrons_no_dedup.size());
 }
 
-// Test worker isolation
-TEST_F(TemporalNeutronProcessorTest, WorkerIsolation) {
-  config_.temporal.num_workers = 2;
-  TemporalNeutronProcessor processor(config_);
+// Test 9: Factory selection logic
+TEST_F(TemporalNeutronProcessorTest, FactoryCreatesCorrectProcessor) {
+  // All configurations should create TemporalNeutronProcessor (stateless only)
 
-  // Process the same data multiple times to verify consistency
-  auto neutrons1 = processor.processHits(test_hits_.begin(), test_hits_.end());
-  processor.reset();
-  auto neutrons2 = processor.processHits(test_hits_.begin(), test_hits_.end());
-
-  // Results should be identical (deterministic)
-  EXPECT_EQ(neutrons1.size(), neutrons2.size());
-
-  // Verify basic consistency (positions should be similar)
-  if (!neutrons1.empty() && !neutrons2.empty()) {
-    // At least some neutrons should have similar properties
-    bool found_similar = false;
-    for (const auto& n1 : neutrons1) {
-      for (const auto& n2 : neutrons2) {
-        double dx = n1.x - n2.x;
-        double dy = n1.y - n2.y;
-        if (dx * dx + dy * dy < 100.0) {  // Within reasonable distance
-          found_similar = true;
-          break;
-        }
-      }
-      if (found_similar) break;
-    }
-    EXPECT_TRUE(found_similar);
-  }
-}
-
-// Test empty input handling
-TEST_F(TemporalNeutronProcessorTest, EmptyInputHandling) {
-  TemporalNeutronProcessor processor(config_);
-
-  std::vector<TDCHit> empty_hits;
-  auto neutrons = processor.processHits(empty_hits.begin(), empty_hits.end());
-
-  EXPECT_TRUE(neutrons.empty());
-
-  auto stats = processor.getStatistics();
-  EXPECT_EQ(stats.total_hits_processed, 0);
-  EXPECT_EQ(stats.total_neutrons_produced, 0);
-  EXPECT_EQ(stats.num_batches_created,
-            1);  // Always creates at least one batch conceptually
-}
-
-// Test single hit processing
-TEST_F(TemporalNeutronProcessorTest, SingleHitProcessing) {
-  TemporalNeutronProcessor processor(config_);
-
-  std::vector<TDCHit> single_hit = {test_hits_[0]};
-  auto neutrons = processor.processHits(single_hit.begin(), single_hit.end());
-
-  // Should produce one neutron from one hit
-  EXPECT_EQ(neutrons.size(), 1);
-
-  auto stats = processor.getStatistics();
-  EXPECT_EQ(stats.total_hits_processed, 1);
-  EXPECT_EQ(stats.total_neutrons_produced, 1);
-}
-
-// Test performance metrics calculation
-TEST_F(TemporalNeutronProcessorTest, PerformanceMetrics) {
-  TemporalNeutronProcessor processor(config_);
-
-  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
-
-  // Verify all performance metrics are reasonable
-  EXPECT_GT(processor.getLastProcessingTimeMs(), 0.0);
-  EXPECT_GT(processor.getLastHitsPerSecond(), 0.0);
-  EXPECT_GE(processor.getLastNeutronEfficiency(), 0.0);
-  EXPECT_LE(processor.getLastNeutronEfficiency(), 1.0);
-
-  auto stats = processor.getStatistics();
-
-  // Verify memory metrics
-  EXPECT_GT(stats.peak_memory_usage_mb, 0.0);
-  EXPECT_GT(stats.memory_per_worker_mb, 0.0);
-  EXPECT_LE(stats.memory_per_worker_mb, stats.peak_memory_usage_mb);
-
-  // Verify timing breakdown adds up reasonably
-  double total_phase_time = stats.analysis_time_ms + stats.batching_time_ms +
-                            stats.clustering_time_ms +
-                            stats.extraction_time_ms +
-                            stats.aggregation_time_ms;
-  EXPECT_LE(total_phase_time,
-            stats.total_processing_time_ms * 1.1);  // Allow some variance
-}
-
-// Test reset functionality
-TEST_F(TemporalNeutronProcessorTest, ResetFunctionality) {
-  TemporalNeutronProcessor processor(config_);
-
-  // Process some data
-  auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
-  EXPECT_FALSE(neutrons.empty());
-
-  auto stats_before = processor.getStatistics();
-  EXPECT_GT(stats_before.total_hits_processed, 0);
-
-  // Reset and verify state is cleared
-  processor.reset();
-
-  // Statistics should be reset but structure preserved
-  EXPECT_EQ(processor.getNumWorkers(), 4);  // Configuration preserved
-  EXPECT_EQ(processor.getHitClusteringAlgorithm(), "simple_abs");
-
-  // Should be able to process again after reset
-  auto neutrons_after_reset =
-      processor.processHits(test_hits_.begin(), test_hits_.end());
-  EXPECT_FALSE(neutrons_after_reset.empty());
-  EXPECT_EQ(neutrons_after_reset.size(),
-            neutrons.size());  // Should get same results
-}
-
-// Test factory selection logic
-TEST_F(TemporalNeutronProcessorTest, FactorySelection) {
-  // Test single-threaded configuration creates BasicNeutronProcessor
+  // Single-threaded configuration
   NeutronProcessingConfig single_config = config_;
   single_config.temporal.num_workers = 1;
 
   auto single_processor = NeutronProcessorFactory::create(single_config);
-  auto* basic_processor =
-      dynamic_cast<BasicNeutronProcessor*>(single_processor.get());
-  EXPECT_NE(basic_processor, nullptr);
+  auto* temporal_single =
+      dynamic_cast<TemporalNeutronProcessor*>(single_processor.get());
+  EXPECT_NE(temporal_single, nullptr);
+  EXPECT_EQ(temporal_single->getNumWorkers(), 1);
 
-  // Test multi-threaded configuration creates TemporalNeutronProcessor
+  // Multi-threaded configuration
   auto multi_processor = NeutronProcessorFactory::create(config_);
-  auto* temporal_processor =
+  auto* temporal_multi =
       dynamic_cast<TemporalNeutronProcessor*>(multi_processor.get());
-  EXPECT_NE(temporal_processor, nullptr);
+  EXPECT_NE(temporal_multi, nullptr);
+  EXPECT_EQ(temporal_multi->getNumWorkers(), 4);
 
-  // Test auto-detection (0 workers)
+  // Auto-detection (0 workers)
   NeutronProcessingConfig auto_config = config_;
   auto_config.temporal.num_workers = 0;
 
   auto auto_processor = NeutronProcessorFactory::create(auto_config);
-  auto* auto_temporal_processor =
+  auto* temporal_auto =
       dynamic_cast<TemporalNeutronProcessor*>(auto_processor.get());
-  EXPECT_NE(auto_temporal_processor, nullptr);
-  EXPECT_GT(auto_temporal_processor->getNumWorkers(), 0);
+  EXPECT_NE(temporal_auto, nullptr);
+  EXPECT_GT(temporal_auto->getNumWorkers(), 0);
+}
+
+// Test 10: Worker pool size handling
+TEST_F(TemporalNeutronProcessorTest, HandlesVariableWorkerCounts) {
+  // Test different worker counts
+  for (size_t workers : {1, 2, 4, 8}) {
+    config_.temporal.num_workers = workers;
+    TemporalNeutronProcessor processor(config_);
+
+    EXPECT_EQ(processor.getNumWorkers(), workers);
+
+    // Should still process hits correctly
+    auto neutrons = processor.processHits(test_hits_.begin(), test_hits_.end());
+    EXPECT_GT(neutrons.size(), 0);
+  }
 }

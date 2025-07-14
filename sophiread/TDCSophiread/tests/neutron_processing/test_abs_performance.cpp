@@ -9,10 +9,10 @@
 #include <random>
 #include <vector>
 
+#include "neutron_processing/abs_clustering.h"
 #include "neutron_processing/basic_neutron_processor.h"
 #include "neutron_processing/neutron_factories.h"
 #include "neutron_processing/neutron_processing.h"
-#include "neutron_processing/simple_abs_clustering.h"
 #include "tdc_hit.h"
 
 using namespace tdcsophiread;
@@ -21,7 +21,7 @@ class ABSPerformanceTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Configure ABS clustering
-    abs_config_.algorithm = "simple_abs";
+    abs_config_.algorithm = "abs";
     abs_config_.abs.radius = 5.0;
     abs_config_.abs.min_cluster_size = 2;
     abs_config_.abs.neutron_correlation_window = 75.0;

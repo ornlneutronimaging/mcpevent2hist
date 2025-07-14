@@ -5,6 +5,8 @@
 
 #include <stdexcept>
 
+#include "neutron_processing/neutron_factories.h"
+
 namespace tdcsophiread {
 
 BasicNeutronProcessor::BasicNeutronProcessor()
@@ -20,11 +22,13 @@ BasicNeutronProcessor::BasicNeutronProcessor(
 }
 
 void BasicNeutronProcessor::initializeAlgorithms() {
-  // Create clustering algorithm instance
-  clusterer_ = std::make_unique<SimpleABSClustering>(config_.clustering);
+  // Create clustering algorithm instance using factory
+  clusterer_ = HitClusteringFactory::create(config_.clustering.algorithm,
+                                            config_.clustering);
 
-  // Create extraction algorithm instance
-  extractor_ = std::make_unique<SimpleCentroidExtraction>(config_.extraction);
+  // Create extraction algorithm instance using factory
+  extractor_ = NeutronExtractionFactory::create(config_.extraction.algorithm,
+                                                config_.extraction);
 }
 
 std::vector<TDCNeutron> BasicNeutronProcessor::processHits(

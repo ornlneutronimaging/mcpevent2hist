@@ -59,15 +59,14 @@ class NeutronInterfacesTest : public ::testing::Test {
 
 // Test 1: Hit Clustering Factory Tests
 TEST_F(NeutronInterfacesTest, HitClusteringFactoryCreation) {
-  // Test creating simple ABS clustering
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  // Test creating ABS clustering
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
   ASSERT_NE(clusterer, nullptr);
-  EXPECT_EQ(clusterer->getName(), "simple_abs");
+  EXPECT_EQ(clusterer->getName(), "abs");
 
   // Test configuration access
   const auto& retrieved_config = clusterer->getConfig();
-  EXPECT_EQ(retrieved_config.algorithm, "simple_abs");
+  EXPECT_EQ(retrieved_config.algorithm, "abs");
 }
 
 TEST_F(NeutronInterfacesTest, HitClusteringFactoryInvalidAlgorithm) {
@@ -104,18 +103,17 @@ TEST_F(NeutronInterfacesTest, NeutronProcessorFactoryCreation) {
   ASSERT_NE(processor, nullptr);
 
   // Test algorithm names are correctly reported
-  EXPECT_EQ(processor->getHitClusteringAlgorithm(), "simple_abs");
+  EXPECT_EQ(processor->getHitClusteringAlgorithm(), "abs");
   EXPECT_EQ(processor->getNeutronExtractionAlgorithm(), "simple_centroid");
 }
 
 // Test 4: Configuration Management Tests
 TEST_F(NeutronInterfacesTest, HitClusteringConfigurationManagement) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
 
   // Test initial configuration
   const auto& initial_config = clusterer->getConfig();
-  EXPECT_EQ(initial_config.algorithm, "simple_abs");
+  EXPECT_EQ(initial_config.algorithm, "abs");
 
   // Test configuration update
   HitClusteringConfig new_config = config_.clustering;
@@ -145,33 +143,42 @@ TEST_F(NeutronInterfacesTest, NeutronExtractionConfigurationManagement) {
 
 // Test 5: Reset Functionality Tests
 TEST_F(NeutronInterfacesTest, HitClusteringReset) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
+
+  // Create state and cluster labels for stateless operation
+  auto state = clusterer->createState();
+  std::vector<int> cluster_labels(test_hits_.size(), -1);
 
   // Process some hits
-  [[maybe_unused]] size_t num_clusters =
-      clusterer->cluster(test_hits_.begin(), test_hits_.end());
+  size_t num_clusters = clusterer->cluster(test_hits_.begin(), test_hits_.end(),
+                                           *state, cluster_labels);
   EXPECT_GT(num_clusters, 0);
-  EXPECT_EQ(clusterer->getLastHitCount(), test_hits_.size());
 
-  // Reset should clear state but preserve configuration
-  clusterer->reset();
-  EXPECT_EQ(clusterer->getLastHitCount(), 0);
+  // Check that some hits were clustered
+  int clustered_count = 0;
+  for (int label : cluster_labels) {
+    if (label >= 0) clustered_count++;
+  }
+  EXPECT_GT(clustered_count, 0);
 
-  // Configuration should be preserved
-  const auto& config_after_reset = clusterer->getConfig();
-  EXPECT_EQ(config_after_reset.algorithm, "simple_abs");
+  // State can be reset for reuse
+  state->reset();
+
+  // Configuration should be accessible
+  const auto& config_after = clusterer->getConfig();
+  EXPECT_EQ(config_after.algorithm, "abs");
 }
 
 TEST_F(NeutronInterfacesTest, NeutronExtractionReset) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
   auto extractor =
       NeutronExtractionFactory::create("simple_centroid", config_.extraction);
 
   // Process hits through clustering first
-  clusterer->cluster(test_hits_.begin(), test_hits_.end());
-  const auto& cluster_labels = clusterer->getClusterLabels();
+  auto state = clusterer->createState();
+  std::vector<int> cluster_labels(test_hits_.size(), -1);
+  clusterer->cluster(test_hits_.begin(), test_hits_.end(), *state,
+                     cluster_labels);
 
   // Extract neutrons
   auto neutrons =
@@ -188,39 +195,48 @@ TEST_F(NeutronInterfacesTest, NeutronExtractionReset) {
 
 // Test 6: Interface Contract Tests
 TEST_F(NeutronInterfacesTest, HitClusteringInterfaceContract) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
+
+  // Create state for testing
+  auto state = clusterer->createState();
 
   // Test empty input
   std::vector<TDCHit> empty_hits;
-  size_t num_clusters =
-      clusterer->cluster(empty_hits.begin(), empty_hits.end());
+  std::vector<int> empty_labels;
+  size_t num_clusters = clusterer->cluster(empty_hits.begin(), empty_hits.end(),
+                                           *state, empty_labels);
   EXPECT_EQ(num_clusters, 0);
-  EXPECT_EQ(clusterer->getClusterLabels().size(), 0);
+  EXPECT_EQ(empty_labels.size(), 0);
 
   // Test single hit
   std::vector<TDCHit> single_hit = {createHit(100, 100, 1000)};
-  num_clusters = clusterer->cluster(single_hit.begin(), single_hit.end());
+  std::vector<int> single_labels(1, -1);
+  state->reset();
+  num_clusters = clusterer->cluster(single_hit.begin(), single_hit.end(),
+                                    *state, single_labels);
   EXPECT_GE(num_clusters,
             0);  // May or may not form cluster depending on min_cluster_size
-  EXPECT_EQ(clusterer->getClusterLabels().size(), 1);
+  EXPECT_EQ(single_labels.size(), 1);
 
   // Test multiple hits
-  num_clusters = clusterer->cluster(test_hits_.begin(), test_hits_.end());
+  std::vector<int> multi_labels(test_hits_.size(), -1);
+  state->reset();
+  num_clusters = clusterer->cluster(test_hits_.begin(), test_hits_.end(),
+                                    *state, multi_labels);
   EXPECT_GT(num_clusters, 0);
-  EXPECT_EQ(clusterer->getClusterLabels().size(), test_hits_.size());
+  EXPECT_EQ(multi_labels.size(), test_hits_.size());
 }
 
 TEST_F(NeutronInterfacesTest, NeutronExtractionInterfaceContract) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
   auto extractor =
       NeutronExtractionFactory::create("simple_centroid", config_.extraction);
 
   // Cluster the hits first
-  [[maybe_unused]] size_t num_clusters =
-      clusterer->cluster(test_hits_.begin(), test_hits_.end());
-  const auto& cluster_labels = clusterer->getClusterLabels();
+  auto state = clusterer->createState();
+  std::vector<int> cluster_labels(test_hits_.size(), -1);
+  size_t num_clusters = clusterer->cluster(test_hits_.begin(), test_hits_.end(),
+                                           *state, cluster_labels);
 
   // Test extraction
   auto neutrons =
@@ -241,12 +257,13 @@ TEST_F(NeutronInterfacesTest, NeutronExtractionInterfaceContract) {
 
 // Test 7: Iterator Safety Tests
 TEST_F(NeutronInterfacesTest, IteratorSafety) {
-  auto clusterer =
-      HitClusteringFactory::create("simple_abs", config_.clustering);
+  auto clusterer = HitClusteringFactory::create("abs", config_.clustering);
 
   // Test const iterator usage (should not modify original hits)
   std::vector<TDCHit> original_hits = test_hits_;
-  clusterer->cluster(test_hits_.begin(), test_hits_.end());
+  auto state2 = clusterer->createState();
+  std::vector<int> labels2(test_hits_.size(), -1);
+  clusterer->cluster(test_hits_.begin(), test_hits_.end(), *state2, labels2);
 
   // Original hits should be unchanged (for const iterator interface)
   EXPECT_EQ(test_hits_.size(), original_hits.size());

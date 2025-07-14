@@ -175,72 +175,66 @@ class TemporalNeutronProcessor : public INeutronProcessor {
   // Configuration
   NeutronProcessingConfig config_;
 
-  // Worker pool structure
-  struct Worker {
-    std::unique_ptr<IHitClustering> clusterer;
-    std::unique_ptr<INeutronExtraction> extractor;
-    std::vector<TDCNeutron> neutron_results;
-    std::vector<int> cluster_label_results;
-    int cluster_id_offset;  ///< Offset for this worker's cluster IDs
-
-    void reset() {
-      clusterer->reset();
-      extractor->reset();
-      neutron_results.clear();
-      cluster_label_results.clear();
-      cluster_id_offset = 0;
-    }
+  // Pre-allocated algorithm pool - STATELESS
+  // Each thread gets dedicated algorithm instances
+  struct AlgorithmSet {
+    std::unique_ptr<IHitClustering>
+        clusterer;  ///< Stateless clustering algorithm
+    std::unique_ptr<INeutronExtraction>
+        extractor;  ///< Stateless extraction algorithm
   };
-  std::vector<Worker> workers_;
+  std::vector<AlgorithmSet> algorithm_pool_;
 
   // Performance tracking
   mutable ProcessingStatistics last_stats_;
 
   /**
-   * @brief Initialize worker pool based on configuration
+   * @brief Initialize algorithm pool based on configuration
    */
-  void initializeWorkers();
+  void initializeAlgorithmPool();
 
   /**
-   * @brief Process a single batch using specified worker
+   * @brief Process batches in parallel using TBB
    */
-  void processBatch(const HitBatch& batch, size_t worker_id, bool track_labels);
+  void processBatchesParallel(std::vector<HitBatch>& batches);
 
   /**
-   * @brief Combine neutron results from all workers with deduplication
+   * @brief Process a single batch using specified algorithms
    */
-  std::vector<TDCNeutron> combineNeutronResults();
+  void processSingleBatch(HitBatch& batch, const AlgorithmSet& algorithms);
 
   /**
-   * @brief Combine cluster label results from all workers
+   * @brief Collect neutron results from all batches
    */
-  std::vector<int> combineClusterLabels(
-      std::vector<TDCHit>::const_iterator begin,
-      std::vector<TDCHit>::const_iterator end,
+  std::vector<TDCNeutron> collectNeutronResults(
       const std::vector<HitBatch>& batches);
 
   /**
-   * @brief Remove duplicate neutrons in overlap regions
+   * @brief Remove duplicate neutrons from overlap regions
    */
-  void deduplicateNeutrons(std::vector<TDCNeutron>& neutrons);
+  std::vector<TDCNeutron> deduplicateNeutrons(std::vector<TDCNeutron> neutrons);
 
   /**
    * @brief Calculate cluster ID offsets for batches
    */
-  void calculateClusterIdOffsets(const std::vector<HitBatch>& batches);
+  void calculateClusterIdOffsets(std::vector<HitBatch>& batches);
 
   /**
    * @brief Update performance statistics after processing
    */
-  void updateStatistics(size_t num_hits, size_t num_neutrons,
-                        double total_time_ms, size_t num_batches,
-                        bool with_labels);
+  void updateStatistics(size_t hits_processed, size_t neutrons_found,
+                        double processing_time_ms, size_t num_batches);
 
  public:
   /**
    * @brief Default constructor with VENUS defaults
    */
   TemporalNeutronProcessor();
+
+  /**
+   * @brief Destructor
+   */
+  ~TemporalNeutronProcessor() override;
 
   /**
    * @brief Constructor with specific configuration
@@ -269,7 +263,7 @@ class TemporalNeutronProcessor : public INeutronProcessor {
   /**
    * @brief Get number of workers in pool
    */
-  size_t getNumWorkers() const { return workers_.size(); }
+  size_t getNumWorkers() const { return algorithm_pool_.size(); }
 };
 
 /**

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "neutron_processing/clustering_state.h"
 #include "neutron_processing/hit_clustering.h"
 
 namespace tdcsophiread {
@@ -81,7 +82,7 @@ std::vector<HitBatch> createStatisticalBatches(
 
     batch.overlap_end = std::min(batch.overlap_end, start_offset + total_hits);
 
-    batches.push_back(batch);
+    batches.push_back(std::move(batch));
     current_start = actual_end;
     if (current_start < total_hits) {
       current_tof_start = (begin + current_start)->tof;
@@ -144,7 +145,7 @@ std::vector<HitBatch> createFixedSizeBatches(
     // Ensure overlap end doesn't exceed bounds
     batch.overlap_end = std::min(batch.overlap_end, start_offset + total_hits);
 
-    batches.push_back(batch);
+    batches.push_back(std::move(batch));
 
     // Move to next batch
     current_start = current_end;

@@ -5,9 +5,8 @@
 
 #include <stdexcept>
 
-#include "neutron_processing/basic_neutron_processor.h"
+#include "neutron_processing/abs_clustering.h"
 #include "neutron_processing/neutron_processing.h"
-#include "neutron_processing/simple_abs_clustering.h"
 #include "neutron_processing/simple_centroid_extraction.h"
 
 namespace tdcsophiread {
@@ -18,8 +17,8 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
   // Validate configuration first
   config.validate();
 
-  if (algorithm_name == "simple_abs" || algorithm_name == "abs") {
-    return std::make_unique<SimpleABSClustering>(config);
+  if (algorithm_name == "abs") {
+    return std::make_unique<ABSClustering>(config);
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -27,13 +26,13 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
 }
 
 std::vector<std::string> HitClusteringFactory::getAvailableAlgorithms() {
-  return {"simple_abs", "abs"};
+  return {"abs"};
 }
 
 std::string HitClusteringFactory::getAlgorithmDescription(
     const std::string& algorithm_name) {
-  if (algorithm_name == "simple_abs" || algorithm_name == "abs") {
-    return "Age-Based Spatial clustering with bucket pool management";
+  if (algorithm_name == "abs") {
+    return "Age-Based Spatial clustering (stateless for parallel processing)";
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -74,13 +73,9 @@ std::unique_ptr<INeutronProcessor> NeutronProcessorFactory::create(
   // Validate configuration first
   config.validate();
 
-  // Create TemporalNeutronProcessor if parallel processing is requested
-  if (config.temporal.num_workers != 1) {
-    return std::make_unique<TemporalNeutronProcessor>(config);
-  }
-
-  // Otherwise use single-threaded BasicNeutronProcessor
-  return std::make_unique<BasicNeutronProcessor>(config);
+  // Always use TemporalNeutronProcessor for stateless processing
+  // Single-threaded operation is just temporal processor with 1 worker
+  return std::make_unique<TemporalNeutronProcessor>(config);
 }
 
 std::vector<std::string> NeutronProcessorFactory::getAvailableProcessorTypes() {

@@ -15,7 +15,7 @@ void HitClusteringConfig::validate() const {
     throw std::invalid_argument("Clustering algorithm name cannot be empty");
   }
 
-  if (algorithm == "simple_abs" || algorithm == "abs") {
+  if (algorithm == "abs") {
     if (abs.radius <= 0.0) {
       throw std::invalid_argument("ABS clustering radius must be positive");
     }
@@ -206,7 +206,7 @@ nlohmann::json PerformanceConfig::toJson() const {
 // NeutronProcessingConfig implementation
 NeutronProcessingConfig NeutronProcessingConfig::venusDefaults() {
   NeutronProcessingConfig config;
-  config.clustering.algorithm = "simple_abs";
+  config.clustering.algorithm = "abs";
   config.extraction.algorithm = "simple_centroid";
   return config;
 }

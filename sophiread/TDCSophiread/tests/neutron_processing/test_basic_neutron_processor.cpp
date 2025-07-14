@@ -211,11 +211,11 @@ TEST_F(BasicNeutronProcessorTest, PerformanceMeasurement) {
 TEST_F(BasicNeutronProcessorTest, ConfigurationManagement) {
   // Verify initial configuration
   const auto& initial_config = processor_->getConfig();
-  EXPECT_EQ(initial_config.clustering.algorithm, "simple_abs");
+  EXPECT_EQ(initial_config.clustering.algorithm, "abs");
   EXPECT_EQ(initial_config.extraction.algorithm, "simple_centroid");
 
   // Test algorithm name reporting
-  EXPECT_EQ(processor_->getHitClusteringAlgorithm(), "simple_abs");
+  EXPECT_EQ(processor_->getHitClusteringAlgorithm(), "abs");
   EXPECT_EQ(processor_->getNeutronExtractionAlgorithm(), "simple_centroid");
 
   // Test configuration update
@@ -374,7 +374,7 @@ TEST_F(BasicNeutronProcessorTest, DirectAlgorithmAccess) {
   ASSERT_NE(clusterer, nullptr);
   ASSERT_NE(extractor, nullptr);
 
-  EXPECT_EQ(clusterer->getName(), "simple_abs");
+  EXPECT_EQ(clusterer->getName(), "abs");
   EXPECT_EQ(extractor->getName(), "simple_centroid");
 }
 

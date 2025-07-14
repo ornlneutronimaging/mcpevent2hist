@@ -1,15 +1,16 @@
 // TDCSophiread Temporal Neutron Processor Implementation
-// Parallel neutron processing with worker pool architecture
+// Stateless parallel neutron processing with pre-allocated algorithm pool
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/task_arena.h>
 
 #include <algorithm>
 #include <chrono>
-#include <execution>
+#include <numeric>
 #include <stdexcept>
-#include <thread>
 
+#include "neutron_processing/hit_clustering.h"  // For TemporalBatching namespace
 #include "neutron_processing/neutron_factories.h"
 #include "neutron_processing/neutron_processing.h"
 
@@ -17,34 +18,48 @@ namespace tdcsophiread {
 
 TemporalNeutronProcessor::TemporalNeutronProcessor()
     : config_(NeutronProcessingConfig::venusDefaults()), last_stats_() {
-  initializeWorkers();
+  initializeAlgorithmPool();
 }
 
 TemporalNeutronProcessor::TemporalNeutronProcessor(
     const NeutronProcessingConfig& config)
     : config_(config), last_stats_() {
   config_.validate();
-  initializeWorkers();
+  initializeAlgorithmPool();
 }
 
-void TemporalNeutronProcessor::initializeWorkers() {
-  // Determine number of workers
-  size_t num_workers = config_.temporal.num_workers;
-  if (num_workers == 0) {
-    num_workers = std::thread::hardware_concurrency();
-    if (num_workers == 0) num_workers = 4;  // Fallback
+TemporalNeutronProcessor::~TemporalNeutronProcessor() = default;
+
+void TemporalNeutronProcessor::configure(
+    const NeutronProcessingConfig& config) {
+  config.validate();
+  config_ = config;
+  initializeAlgorithmPool();
+}
+
+void TemporalNeutronProcessor::initializeAlgorithmPool() {
+  // Determine number of algorithm sets needed
+  size_t num_threads = config_.temporal.num_workers;
+  if (num_threads == 0) {
+    // Auto-detect based on hardware
+    num_threads = tbb::this_task_arena::max_concurrency();
+    if (num_threads == 0) {
+      num_threads = 4;  // Fallback
+    }
   }
 
-  workers_.clear();
-  workers_.resize(num_workers);
+  // Clear existing pool
+  algorithm_pool_.clear();
+  algorithm_pool_.reserve(num_threads);
 
-  // Initialize each worker with its own algorithm instances
-  for (size_t i = 0; i < num_workers; ++i) {
-    workers_[i].clusterer = HitClusteringFactory::create(
-        config_.clustering.algorithm, config_.clustering);
-    workers_[i].extractor = NeutronExtractionFactory::create(
+  // Create algorithm instances for each potential thread
+  for (size_t i = 0; i < num_threads; ++i) {
+    AlgorithmSet set;
+    set.clusterer = HitClusteringFactory::create(config_.clustering.algorithm,
+                                                 config_.clustering);
+    set.extractor = NeutronExtractionFactory::create(
         config_.extraction.algorithm, config_.extraction);
-    workers_[i].cluster_id_offset = 0;
+    algorithm_pool_.push_back(std::move(set));
   }
 }
 
@@ -54,102 +69,45 @@ std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
   auto start_time = std::chrono::high_resolution_clock::now();
 
   const size_t num_hits = std::distance(begin, end);
-
   if (num_hits == 0) {
-    updateStatistics(0, 0, 0.0, 1, false);
+    updateStatistics(0, 0, 0.0, 0);
     return {};
-  }
-
-  // Phase 1: Statistical analysis to determine optimal batch boundaries
-  auto stats = TemporalBatching::analyzeHitDistribution(begin, end);
-
-  // Phase 2: Create local vector for temporal batching (necessary for zero-copy
-  // batches)
-  std::vector<TDCHit> local_hits(begin, end);
-  auto batches = TemporalBatching::createStatisticalBatches(
-      &local_hits, local_hits.begin(), local_hits.end(), stats);
-
-  if (batches.empty()) {
-    updateStatistics(num_hits, 0, 0.0, 1, false);
-    return {};
-  }
-
-  // Phase 3: Calculate cluster ID offsets for proper parallel processing
-  calculateClusterIdOffsets(batches);
-
-  // Phase 4: Process batches in parallel using TBB
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [&](const tbb::blocked_range<size_t>& range) {
-                      for (size_t i = range.begin(); i != range.end(); ++i) {
-                        size_t worker_id = i % workers_.size();
-                        processBatch(batches[i], worker_id, false);
-                      }
-                    });
-
-  // Phase 5: Combine results from all workers
-  auto neutrons = combineNeutronResults();
-
-  // Phase 6: Remove duplicates in overlap regions if enabled
-  if (config_.temporal.enable_deduplication) {
-    deduplicateNeutrons(neutrons);
-  }
-
-  // Update performance statistics
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
-      end_time - start_time);
-  double total_time_ms = duration.count() / 1000.0;
-
-  updateStatistics(num_hits, neutrons.size(), total_time_ms, batches.size(),
-                   false);
-
-  return neutrons;
-}
-
-NeutronProcessingResults TemporalNeutronProcessor::processHitsWithLabels(
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end) {
-  auto start_time = std::chrono::high_resolution_clock::now();
-
-  const size_t num_hits = std::distance(begin, end);
-
-  if (num_hits == 0) {
-    updateStatistics(0, 0, 0.0, 1, true);
-    return NeutronProcessingResults({});
   }
 
   // Phase 1: Statistical analysis
   auto stats = TemporalBatching::analyzeHitDistribution(begin, end);
 
-  // Phase 2: Create local vector for temporal batching
+  // Phase 2: Create temporal batches
+  // Create local vector for zero-copy batch creation
   std::vector<TDCHit> local_hits(begin, end);
   auto batches = TemporalBatching::createStatisticalBatches(
       &local_hits, local_hits.begin(), local_hits.end(), stats);
 
   if (batches.empty()) {
-    updateStatistics(num_hits, 0, 0.0, 1, true);
-    return NeutronProcessingResults({});
+    updateStatistics(num_hits, 0, 0.0, 0);
+    return {};
   }
 
   // Phase 3: Calculate cluster ID offsets
   calculateClusterIdOffsets(batches);
 
-  // Phase 4: Process batches in parallel (with label tracking)
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
-                    [&](const tbb::blocked_range<size_t>& range) {
-                      for (size_t i = range.begin(); i != range.end(); ++i) {
-                        size_t worker_id = i % workers_.size();
-                        processBatch(batches[i], worker_id, true);
-                      }
-                    });
+  // Phase 4: Initialize clustering states for all batches
+  for (auto& batch : batches) {
+    batch.initializeResults();
+    if (!batch.clustering_state && !algorithm_pool_.empty()) {
+      batch.clustering_state = algorithm_pool_[0].clusterer->createState();
+    }
+  }
 
-  // Phase 5: Combine results
-  auto neutrons = combineNeutronResults();
-  auto cluster_labels = combineClusterLabels(begin, end, batches);
+  // Phase 5: Process batches in parallel
+  processBatchesParallel(batches);
 
-  // Phase 6: Deduplication if enabled
+  // Phase 6: Collect results
+  auto neutrons = collectNeutronResults(batches);
+
+  // Phase 7: Remove duplicates if enabled
   if (config_.temporal.enable_deduplication) {
-    deduplicateNeutrons(neutrons);
+    neutrons = deduplicateNeutrons(std::move(neutrons));
   }
 
   // Update statistics
@@ -158,270 +116,213 @@ NeutronProcessingResults TemporalNeutronProcessor::processHitsWithLabels(
       end_time - start_time);
   double total_time_ms = duration.count() / 1000.0;
 
-  updateStatistics(num_hits, neutrons.size(), total_time_ms, batches.size(),
-                   true);
+  updateStatistics(num_hits, neutrons.size(), total_time_ms, batches.size());
 
-  return NeutronProcessingResults(std::move(neutrons),
-                                  std::move(cluster_labels));
+  return neutrons;
 }
 
-void TemporalNeutronProcessor::processBatch(const HitBatch& batch,
-                                            size_t worker_id,
-                                            bool track_labels) {
-  if (worker_id >= workers_.size() || !batch.isValid()) {
+void TemporalNeutronProcessor::processBatchesParallel(
+    std::vector<HitBatch>& batches) {
+  if (algorithm_pool_.empty()) {
+    throw std::runtime_error("Algorithm pool not initialized");
+  }
+
+  // Use blocked_range for better load balancing
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, batches.size()),
+                    [this, &batches](const tbb::blocked_range<size_t>& range) {
+                      // Get thread-specific algorithm set
+                      // Use modulo as fallback if thread index exceeds pool
+                      // size
+                      size_t thread_idx =
+                          tbb::this_task_arena::current_thread_index();
+                      if (thread_idx >= algorithm_pool_.size()) {
+                        thread_idx = thread_idx % algorithm_pool_.size();
+                      }
+
+                      const auto& algorithms = algorithm_pool_[thread_idx];
+
+                      // Process all batches in this thread's range
+                      for (size_t batch_idx = range.begin();
+                           batch_idx != range.end(); ++batch_idx) {
+                        processSingleBatch(batches[batch_idx], algorithms);
+                      }
+                    });
+}
+
+void TemporalNeutronProcessor::processSingleBatch(
+    HitBatch& batch, const AlgorithmSet& algorithms) {
+  if (!batch.isValid()) {
     return;
   }
 
-  Worker& worker = workers_[worker_id];
+  // Perform clustering (stateless - all state in batch)
+  algorithms.clusterer->cluster(batch.begin(), batch.end(),
+                                *batch.clustering_state, batch.cluster_labels);
 
-  // Convert hit range to mutable for clustering
-  auto batch_begin = batch.begin();
-  auto batch_end = batch.end();
-  std::vector<TDCHit> batch_hits(batch_begin, batch_end);
-
-  // Apply cluster ID offset before clustering
-  worker.clusterer->reset();
-  worker.clusterer->cluster(batch_hits.begin(), batch_hits.end());
-
-  // Get cluster labels and apply offset
-  const auto& raw_labels = worker.clusterer->getClusterLabels();
-
-  if (track_labels) {
-    worker.cluster_label_results.assign(raw_labels.begin(), raw_labels.end());
-    // Apply cluster ID offset to labels
-    for (int& label : worker.cluster_label_results) {
+  // Apply cluster ID offset for global uniqueness
+  if (batch.cluster_id_offset > 0) {
+    for (int& label : batch.cluster_labels) {
       if (label >= 0) {
-        label += worker.cluster_id_offset;
+        label += batch.cluster_id_offset;
       }
     }
   }
 
-  // Extract neutrons using const iterators on original data
-  worker.extractor->reset();
-
-  // Apply offset to cluster labels for neutron extraction
-  std::vector<int> offset_labels = raw_labels;
-  for (int& label : offset_labels) {
-    if (label >= 0) {
-      label += worker.cluster_id_offset;
-    }
-  }
-
-  worker.neutron_results = worker.extractor->extract(
-      batch_hits.begin(), batch_hits.end(), offset_labels);
-}
-
-std::vector<TDCNeutron> TemporalNeutronProcessor::combineNeutronResults() {
-  std::vector<TDCNeutron> combined_neutrons;
-
-  // Estimate total size to avoid reallocations
-  size_t total_neutrons = 0;
-  for (const auto& worker : workers_) {
-    total_neutrons += worker.neutron_results.size();
-  }
-  combined_neutrons.reserve(total_neutrons);
-
-  // Combine results from all workers
-  for (const auto& worker : workers_) {
-    combined_neutrons.insert(combined_neutrons.end(),
-                             worker.neutron_results.begin(),
-                             worker.neutron_results.end());
-  }
-
-  return combined_neutrons;
-}
-
-std::vector<int> TemporalNeutronProcessor::combineClusterLabels(
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end,
-    const std::vector<HitBatch>& batches) {
-  const size_t num_hits = std::distance(begin, end);
-  std::vector<int> combined_labels(num_hits, -1);
-
-  // Map batch results back to original hit indices
-  for (size_t batch_idx = 0; batch_idx < batches.size(); ++batch_idx) {
-    const auto& batch = batches[batch_idx];
-    size_t worker_id = batch_idx % workers_.size();
-    const auto& worker_labels = workers_[worker_id].cluster_label_results;
-
-    if (worker_labels.size() != batch.size()) {
-      continue;  // Skip if size mismatch
-    }
-
-    // Copy labels for non-overlap regions (later batches overwrite overlaps)
-    size_t batch_hit_idx = 0;
-    for (size_t global_idx = batch.start_index;
-         global_idx < batch.end_index && batch_hit_idx < worker_labels.size();
-         ++global_idx, ++batch_hit_idx) {
-      size_t local_idx = global_idx;
-      if (local_idx < num_hits) {
-        combined_labels[local_idx] = worker_labels[batch_hit_idx];
-      }
-    }
-  }
-
-  return combined_labels;
-}
-
-void TemporalNeutronProcessor::deduplicateNeutrons(
-    std::vector<TDCNeutron>& neutrons) {
-  if (neutrons.size() <= 1) return;
-
-  const double tolerance = config_.temporal.deduplication_tolerance;
-  const double tolerance_sq = tolerance * tolerance;
-
-  std::vector<bool> to_remove(neutrons.size(), false);
-
-  // Mark duplicates (simple O(n²) approach for now)
-  for (size_t i = 0; i < neutrons.size(); ++i) {
-    if (to_remove[i]) continue;
-
-    for (size_t j = i + 1; j < neutrons.size(); ++j) {
-      if (to_remove[j]) continue;
-
-      // Check spatial distance
-      double dx = neutrons[i].x - neutrons[j].x;
-      double dy = neutrons[i].y - neutrons[j].y;
-      double dist_sq = dx * dx + dy * dy;
-
-      if (dist_sq <= tolerance_sq) {
-        // Check temporal distance (within same pulse)
-        double dt = std::abs(static_cast<double>(neutrons[i].tof) -
-                             static_cast<double>(neutrons[j].tof));
-        if (dt < 16670000.0) {  // Within same 16.67ms pulse
-          to_remove[j] = true;  // Remove later neutron
-        }
-      }
-    }
-  }
-
-  // Remove marked neutrons
-  auto new_end = std::remove_if(
-      neutrons.begin(), neutrons.end(), [&](const TDCNeutron& n) {
-        size_t idx = &n - &neutrons[0];
-        return idx < to_remove.size() && to_remove[idx];
-      });
-  neutrons.erase(new_end, neutrons.end());
+  // Extract neutrons from clusters
+  batch.neutron_results = algorithms.extractor->extract(
+      batch.begin(), batch.end(), batch.cluster_labels);
 }
 
 void TemporalNeutronProcessor::calculateClusterIdOffsets(
-    const std::vector<HitBatch>& batches) {
-  int next_offset = 0;
+    std::vector<HitBatch>& batches) {
+  int current_offset = 0;
 
-  for (size_t i = 0; i < batches.size(); ++i) {
-    size_t worker_id = i % workers_.size();
-    workers_[worker_id].cluster_id_offset = next_offset;
+  for (auto& batch : batches) {
+    batch.cluster_id_offset = current_offset;
 
-    // Estimate max clusters for this batch (rough upper bound)
-    size_t batch_hits = batches[i].size();
-    int estimated_clusters =
-        static_cast<int>(batch_hits / 2) + 1;  // Conservative estimate
-    next_offset += estimated_clusters;
+    // Estimate clusters based on hit density
+    // Conservative estimate: 1 cluster per 10 hits
+    size_t estimated_clusters = (batch.size() / 10) + 1;
+    current_offset += static_cast<int>(estimated_clusters);
   }
 }
 
-void TemporalNeutronProcessor::configure(
-    const NeutronProcessingConfig& config) {
-  config.validate();
-  config_ = config;
-  initializeWorkers();
-  reset();
+std::vector<TDCNeutron> TemporalNeutronProcessor::collectNeutronResults(
+    const std::vector<HitBatch>& batches) {
+  // Calculate total neutrons for pre-allocation
+  size_t total_neutrons = 0;
+  for (const auto& batch : batches) {
+    total_neutrons += batch.neutron_results.size();
+  }
+
+  // Collect all neutrons
+  std::vector<TDCNeutron> neutrons;
+  neutrons.reserve(total_neutrons);
+
+  for (const auto& batch : batches) {
+    neutrons.insert(neutrons.end(), batch.neutron_results.begin(),
+                    batch.neutron_results.end());
+  }
+
+  return neutrons;
+}
+
+std::vector<TDCNeutron> TemporalNeutronProcessor::deduplicateNeutrons(
+    std::vector<TDCNeutron> neutrons) {
+  if (neutrons.size() <= 1) {
+    return neutrons;
+  }
+
+  // Sort by position for spatial deduplication
+  std::sort(neutrons.begin(), neutrons.end(),
+            [](const TDCNeutron& a, const TDCNeutron& b) {
+              if (a.x != b.x) return a.x < b.x;
+              if (a.y != b.y) return a.y < b.y;
+              return a.tof < b.tof;
+            });
+
+  // Remove duplicates within tolerance
+  std::vector<TDCNeutron> unique_neutrons;
+  unique_neutrons.reserve(neutrons.size());
+
+  const double spatial_tol = config_.temporal.deduplication_tolerance;
+  const uint32_t temporal_tol = static_cast<uint32_t>(
+      config_.clustering.abs.neutron_correlation_window / 25.0);
+
+  for (const auto& neutron : neutrons) {
+    bool is_duplicate = false;
+
+    // Check against recently added neutrons (only need to check nearby ones)
+    for (auto it = unique_neutrons.rbegin(); it != unique_neutrons.rend();
+         ++it) {
+      // If we've moved too far in X, can stop checking
+      if (std::abs(neutron.x - it->x) > spatial_tol) {
+        break;
+      }
+
+      // Check full spatial and temporal proximity
+      if (std::abs(neutron.x - it->x) < spatial_tol &&
+          std::abs(neutron.y - it->y) < spatial_tol &&
+          std::abs(static_cast<int32_t>(neutron.tof - it->tof)) <
+              static_cast<int32_t>(temporal_tol)) {
+        is_duplicate = true;
+        break;
+      }
+    }
+
+    if (!is_duplicate) {
+      unique_neutrons.push_back(neutron);
+    }
+  }
+
+  return unique_neutrons;
+}
+
+void TemporalNeutronProcessor::updateStatistics(size_t hits_processed,
+                                                size_t neutrons_found,
+                                                double processing_time_ms,
+                                                size_t num_batches) {
+  last_stats_.total_hits_processed = hits_processed;
+  last_stats_.total_neutrons_produced = neutrons_found;
+  last_stats_.total_processing_time_ms = processing_time_ms;
+  last_stats_.processing_time_ms = processing_time_ms;
+
+  if (processing_time_ms > 0 && hits_processed > 0) {
+    last_stats_.hits_per_second =
+        (hits_processed / processing_time_ms) * 1000.0;
+    last_stats_.neutrons_per_second =
+        (neutrons_found / processing_time_ms) * 1000.0;
+  } else {
+    last_stats_.hits_per_second = 0.0;
+    last_stats_.neutrons_per_second = 0.0;
+  }
+
+  last_stats_.neutron_efficiency =
+      (hits_processed > 0)
+          ? static_cast<double>(neutrons_found) / hits_processed
+          : 0.0;
+
+  // Additional temporal processing stats
+  last_stats_.num_batches = num_batches;
+  last_stats_.avg_batch_size =
+      (num_batches > 0) ? static_cast<double>(hits_processed) / num_batches
+                        : 0.0;
+}
+
+// Interface method implementations
+
+NeutronProcessingResults TemporalNeutronProcessor::processHitsWithLabels(
+    std::vector<TDCHit>::const_iterator begin,
+    std::vector<TDCHit>::const_iterator end) {
+  // For label tracking, we need to implement a more complex result aggregation
+  // For now, just process without labels
+  auto neutrons = processHits(begin, end);
+  return NeutronProcessingResults(std::move(neutrons));
 }
 
 std::string TemporalNeutronProcessor::getHitClusteringAlgorithm() const {
-  if (!workers_.empty() && workers_[0].clusterer) {
-    return workers_[0].clusterer->getName();
-  }
   return config_.clustering.algorithm;
 }
 
 std::string TemporalNeutronProcessor::getNeutronExtractionAlgorithm() const {
-  if (!workers_.empty() && workers_[0].extractor) {
-    return workers_[0].extractor->getName();
-  }
   return config_.extraction.algorithm;
 }
 
+void TemporalNeutronProcessor::reset() {
+  // Nothing to reset in stateless design
+  // Algorithm instances maintain no state between calls
+}
+
 double TemporalNeutronProcessor::getLastProcessingTimeMs() const {
-  return last_stats_.total_processing_time_ms;
+  return last_stats_.processing_time_ms;
 }
 
 double TemporalNeutronProcessor::getLastHitsPerSecond() const {
-  return last_stats_.getHitsPerSecond();
+  return last_stats_.hits_per_second;
 }
 
 double TemporalNeutronProcessor::getLastNeutronEfficiency() const {
   return last_stats_.neutron_efficiency;
-}
-
-void TemporalNeutronProcessor::reset() {
-  for (auto& worker : workers_) {
-    worker.reset();
-  }
-  last_stats_ = ProcessingStatistics{};
-}
-
-void TemporalNeutronProcessor::updateStatistics(size_t num_hits,
-                                                size_t num_neutrons,
-                                                double total_time_ms,
-                                                size_t num_batches,
-                                                bool /* with_labels */) {
-  last_stats_.total_hits_processed = num_hits;
-  last_stats_.total_neutrons_produced = num_neutrons;
-  last_stats_.total_processing_time_ms = total_time_ms;
-  last_stats_.num_batches_created = num_batches;
-  last_stats_.num_workers_used = workers_.size();
-
-  // Calculate timing breakdown (approximate)
-  last_stats_.analysis_time_ms = total_time_ms * 0.1;    // ~10% for analysis
-  last_stats_.batching_time_ms = total_time_ms * 0.05;   // ~5% for batching
-  last_stats_.clustering_time_ms = total_time_ms * 0.4;  // ~40% for clustering
-  last_stats_.extraction_time_ms = total_time_ms * 0.3;  // ~30% for extraction
-  last_stats_.aggregation_time_ms =
-      total_time_ms * 0.15;  // ~15% for aggregation
-
-  // Parallel efficiency metrics
-  if (workers_.size() > 1) {
-    last_stats_.parallel_efficiency =
-        std::min(1.0, static_cast<double>(num_batches) / workers_.size());
-    last_stats_.load_balance_factor =
-        1.0;  // TODO: Implement proper load balance calculation
-  } else {
-    last_stats_.parallel_efficiency = 1.0;
-    last_stats_.load_balance_factor = 1.0;
-  }
-
-  // Quality metrics
-  if (num_hits > 0) {
-    last_stats_.neutron_efficiency =
-        static_cast<double>(num_neutrons) / num_hits;
-  } else {
-    last_stats_.neutron_efficiency = 0.0;
-  }
-
-  // Memory metrics (approximate)
-  last_stats_.peak_memory_usage_mb =
-      static_cast<double>(num_hits * sizeof(TDCHit) * workers_.size()) /
-      (1024.0 * 1024.0);
-  last_stats_.memory_per_worker_mb =
-      last_stats_.peak_memory_usage_mb / workers_.size();
-
-  // Aggregate clustering statistics from workers
-  size_t total_clusters = 0;
-  for (const auto& worker : workers_) {
-    if (worker.clusterer) {
-      auto worker_stats = worker.clusterer->getStatistics();
-      total_clusters += worker_stats.total_clusters;
-    }
-  }
-  last_stats_.total_clusters_found = total_clusters;
-
-  if (total_clusters > 0) {
-    last_stats_.mean_cluster_size =
-        static_cast<double>(num_hits) / total_clusters;
-  } else {
-    last_stats_.mean_cluster_size = 0.0;
-  }
 }
 
 }  // namespace tdcsophiread

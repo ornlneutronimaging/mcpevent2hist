@@ -23,12 +23,15 @@ struct ABSConfig {
   double neutron_correlation_window;  ///< Temporal correlation window in
                                       ///< nanoseconds (default: 75.0)
   size_t scan_interval;  ///< Scan for aged buckets every N hits (default: 100)
+  size_t
+      pre_allocate_buckets;  ///< Pre-allocate bucket pool size (default: 1000)
 
   ABSConfig()
       : radius(5.0),
         min_cluster_size(1),
         neutron_correlation_window(75.0),
-        scan_interval(100) {}
+        scan_interval(100),
+        pre_allocate_buckets(1000) {}
 };
 
 /**
@@ -55,8 +58,7 @@ struct GraphConfig {
  * @brief Configuration for hit clustering algorithms
  */
 struct HitClusteringConfig {
-  std::string
-      algorithm;  ///< Algorithm name ("simple_abs", "abs", "graph", "dbscan")
+  std::string algorithm;  ///< Algorithm name ("abs", "graph", "dbscan")
 
   // Algorithm-specific configurations
   ABSConfig abs;      ///< ABS algorithm configuration
@@ -65,7 +67,18 @@ struct HitClusteringConfig {
   /**
    * @brief Default constructor with VENUS detector defaults
    */
-  HitClusteringConfig() : algorithm("simple_abs"), abs(), graph() {}
+  HitClusteringConfig() : algorithm("abs"), abs(), graph() {}
+
+  /**
+   * @brief Factory method for VENUS detector defaults
+   * @return Configuration with VENUS-specific settings
+   */
+  static HitClusteringConfig venusDefaults() {
+    HitClusteringConfig config;
+    config.algorithm = "abs";
+    config.abs = ABSConfig();  // Already has VENUS defaults
+    return config;
+  }
 
   /**
    * @brief Validate configuration parameters
@@ -323,10 +336,12 @@ struct ProcessingStatistics {
   // Input/output counts
   size_t total_hits_processed = 0;     ///< Total hits processed
   size_t total_neutrons_produced = 0;  ///< Total neutrons produced
+  size_t total_neutrons_found = 0;     ///< Alias for total_neutrons_produced
   size_t total_clusters_found = 0;     ///< Total clusters found
 
   // Timing breakdown
   double total_processing_time_ms = 0.0;  ///< Total processing time
+  double processing_time_ms = 0.0;   ///< Alias for total_processing_time_ms
   double analysis_time_ms = 0.0;     ///< Time for hit distribution analysis
   double batching_time_ms = 0.0;     ///< Time for batch creation
   double clustering_time_ms = 0.0;   ///< Time for clustering
@@ -349,6 +364,13 @@ struct ProcessingStatistics {
   size_t clusters_rejected = 0;     ///< Clusters rejected during extraction
   size_t duplicate_neutrons_removed =
       0;  ///< Duplicates removed during deduplication
+
+  // Additional fields for compatibility
+  double hits_per_second = 0.0;      ///< Hits processed per second
+  double neutrons_per_second = 0.0;  ///< Neutrons produced per second
+  size_t num_batches =
+      0;  ///< Number of batches (alias for num_batches_created)
+  double avg_batch_size = 0.0;  ///< Average batch size
 
   /**
    * @brief Calculate hits per second throughput
