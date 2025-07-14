@@ -84,9 +84,12 @@ TDCNeutron SimpleCentroidExtraction::calculateCentroidFromRange(
   // Single hit case - no centroid calculation needed
   if (cluster_size == 1) {
     const auto& hit = *begin;
-    return TDCNeutron(static_cast<double>(hit.x),  // Native pixel coordinates
-                      static_cast<double>(hit.y),  // Native pixel coordinates
-                      hit.tof, hit.tot, 1, hit.chip_id);
+    return TDCNeutron(
+        static_cast<double>(hit.x) *
+            config_.super_resolution_factor,  // Apply super-resolution scaling
+        static_cast<double>(hit.y) *
+            config_.super_resolution_factor,  // Apply super-resolution scaling
+        hit.tof, hit.tot, 1, hit.chip_id);
   }
 
   // Multi-hit case - calculate TOT-weighted centroid
@@ -129,9 +132,13 @@ TDCNeutron SimpleCentroidExtraction::calculateCentroidFromRange(
       [](const TDCHit& a, const TDCHit& b) { return a.tot < b.tot; });
   representative_tof = max_tot_hit->tof;
 
-  // Return coordinates in native pixel space with sub-pixel precision
+  // Return coordinates in super-resolution space with sub-pixel precision
   return TDCNeutron(
-      weighted_x, weighted_y, representative_tof,
+      weighted_x *
+          config_.super_resolution_factor,  // Apply super-resolution scaling
+      weighted_y *
+          config_.super_resolution_factor,  // Apply super-resolution scaling
+      representative_tof,
       static_cast<uint16_t>(std::min(
           combined_tot, static_cast<uint32_t>(65535))),  // Clamp to uint16_t
       static_cast<uint16_t>(cluster_size), chip_id);

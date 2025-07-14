@@ -109,7 +109,8 @@ struct NeutronExtractionConfig {
   double super_resolution_factor;  ///< Coordinate scaling factor for sub-pixel
                                    ///< precision (default: 8.0)
   bool weighted_by_tot;  ///< Use TOT weighting for calculations (default: true)
-  uint16_t min_tot_threshold;  ///< Minimum TOT for hit inclusion (default: 10)
+  uint16_t min_tot_threshold;  ///< Minimum TOT for hit inclusion (default: 0 =
+                               ///< disabled)
 
   // Algorithm-specific parameters
   double gaussian_sigma_limit;  ///< Gaussian: Maximum sigma for fitting
@@ -126,7 +127,7 @@ struct NeutronExtractionConfig {
       : algorithm("centroid"),
         super_resolution_factor(8.0),
         weighted_by_tot(true),
-        min_tot_threshold(10),
+        min_tot_threshold(0),  // Disabled by default
         gaussian_sigma_limit(3.0),
         max_iterations(100),
         convergence_tolerance(1e-6) {}
@@ -160,7 +161,7 @@ struct TemporalProcessingConfig {
   size_t max_batch_size;  ///< Maximum hits per batch (default: 100000)
   double overlap_factor;  ///< Overlap size multiplier (default: 3.0 for 3σ)
   bool enable_deduplication;  ///< Remove duplicate neutrons in overlap regions
-                              ///< (default: true)
+                              ///< (default: false)
   double deduplication_tolerance;  ///< Spatial tolerance for duplicate
                                    ///< detection in pixels (default: 1.0)
   bool enable_statistics;  ///< Collect detailed processing statistics (default:
@@ -174,7 +175,7 @@ struct TemporalProcessingConfig {
         min_batch_size(1000),
         max_batch_size(100000),
         overlap_factor(3.0),
-        enable_deduplication(true),
+        enable_deduplication(false),  // Disabled by default - poor ROI
         deduplication_tolerance(1.0),
         enable_statistics(true) {}
 

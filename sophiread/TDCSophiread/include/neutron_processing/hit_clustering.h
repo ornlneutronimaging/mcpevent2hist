@@ -188,12 +188,32 @@ struct HitBatch {
   }
 
   /**
+   * @brief Get iterator to first hit in overlap region (includes main batch)
+   */
+  std::vector<TDCHit>::const_iterator overlapBegin() const {
+    return hits_ptr->begin() + overlap_start;
+  }
+
+  /**
+   * @brief Get iterator to one past last hit in overlap region
+   */
+  std::vector<TDCHit>::const_iterator overlapEnd() const {
+    return hits_ptr->begin() + overlap_end;
+  }
+
+  /**
    * @brief Initialize cluster labels vector for this batch
    */
   void initializeResults() {
     cluster_labels.clear();
+    // Resize for the main batch range only
     cluster_labels.resize(size(), -1);  // Initialize all to unclustered
   }
+
+  /**
+   * @brief Get the size of the overlap region
+   */
+  size_t overlapSize() const { return overlap_end - overlap_start; }
 };
 
 /**
@@ -204,31 +224,7 @@ struct HitBatch {
  */
 namespace TemporalBatching {
 
-/**
- * @brief Analyze hit distribution for temporal batching
- * @param begin Iterator to first hit
- * @param end Iterator to one past last hit
- * @param num_pulses Number of pulses to analyze (default: 2)
- * @param correlation_window Correlation window in nanoseconds (default: 75.0)
- * @return Statistical information for batch creation
- */
-BatchStatistics analyzeHitDistribution(
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end, int num_pulses = 2,
-    double correlation_window = 75.0);
-
-/**
- * @brief Create temporal batches from hit range
- * @param hits_ptr Pointer to original hits vector (for zero-copy batches)
- * @param begin Iterator to first hit in range
- * @param end Iterator to one past last hit in range
- * @param stats Statistical information from analysis
- * @return Vector of temporal batches for parallel processing
- */
-std::vector<HitBatch> createStatisticalBatches(
-    const std::vector<TDCHit>* hits_ptr,
-    std::vector<TDCHit>::const_iterator begin,
-    std::vector<TDCHit>::const_iterator end, const BatchStatistics& stats);
+// Statistical analysis functions removed - using simple fixed batching instead
 
 /**
  * @brief Create fixed-size batches (simpler alternative)

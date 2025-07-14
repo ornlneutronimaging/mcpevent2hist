@@ -21,7 +21,6 @@ set(TDC_SOURCES
     src/neutron_processing/neutron_factories.cpp
     src/neutron_processing/simple_centroid_extraction.cpp
     # Temporal processing framework
-    src/neutron_processing/temporal_analysis.cpp
     src/neutron_processing/hit_batching.cpp
     src/neutron_processing/temporal_neutron_processor.cpp
     # Stateless clustering support
@@ -137,11 +136,14 @@ add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
 add_neutron_test(neutron_interfaces) # Interface and factory tests
 add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
 # Temporal processing tests
-add_neutron_test(temporal_batching) # Temporal analysis and batch creation tests
 add_neutron_test(temporal_neutron_processor) # Parallel temporal processor tests
 add_neutron_test(tbb_parallel_verification) # TBB parallel processing
                                             # verification tests
 add_neutron_test(tbb_stress) # TBB stress testing with large datasets
+
+# Performance debugging test
+add_executable(test_ni_powder_clustering tests/test_ni_powder_clustering.cpp)
+target_link_libraries(test_ni_powder_clustering TDCSophiread)
 # Performance benchmarks add_neutron_test(abs_performance) # ABS clustering
 # optimization benchmarks - DISABLED (needs update) Memory optimization tests
 # add_neutron_test(memory_optimization) # Memory usage and zero-copy validation

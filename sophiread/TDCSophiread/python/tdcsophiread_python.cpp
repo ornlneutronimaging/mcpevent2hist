@@ -7,7 +7,9 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
+#include <cstring>
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 // Legacy clustering headers disabled - moved to legacy/
@@ -19,6 +21,11 @@
 #include "tdc_hit.h"
 #include "tdc_neutron.h"
 #include "tdc_processor.h"
+
+// New neutron processing architecture
+#include "neutron_processing/neutron_config.h"
+#include "neutron_processing/neutron_factories.h"
+#include "neutron_processing/neutron_processing.h"
 
 namespace py = pybind11;
 
@@ -88,6 +95,9 @@ class TDCNeutronView {
 
   // Constructor from existing vector (copies data)
   TDCNeutronView(const std::vector<TDCNeutron>& neutrons) : data(neutrons) {}
+
+  // Destructor
+  ~TDCNeutronView() {}
 
   size_t size() const { return data.size(); }
 };
@@ -505,6 +515,211 @@ PYBIND11_MODULE(_core, m) {
            "Get human-readable processing summary");
   */
 
+  // NEW NEUTRON PROCESSING ARCHITECTURE (Zero-Copy Interface)
+
+  // NeutronProcessingConfig - main configuration
+  py::class_<NeutronProcessingConfig>(m, "NeutronProcessingConfig")
+      .def_static(
+          "venus_defaults", &NeutronProcessingConfig::venusDefaults,
+          "Create VENUS detector default neutron processing configuration")
+      .def_readwrite("clustering", &NeutronProcessingConfig::clustering,
+                     "Hit clustering configuration")
+      .def_readwrite("extraction", &NeutronProcessingConfig::extraction,
+                     "Neutron extraction configuration")
+      .def_readwrite("temporal", &NeutronProcessingConfig::temporal,
+                     "Temporal processing configuration")
+      .def("validate", &NeutronProcessingConfig::validate,
+           "Validate configuration parameters");
+
+  // HitClusteringConfig
+  py::class_<HitClusteringConfig>(m, "HitClusteringConfig")
+      .def(py::init<>())
+      .def_readwrite("algorithm", &HitClusteringConfig::algorithm,
+                     "Clustering algorithm name ('abs')")
+      .def_readwrite("abs", &HitClusteringConfig::abs,
+                     "ABS clustering parameters");
+
+  // ABSConfig
+  py::class_<ABSConfig>(m, "ABSConfig")
+      .def(py::init<>())
+      .def_readwrite("radius", &ABSConfig::radius,
+                     "Spatial clustering radius in pixels")
+      .def_readwrite("min_cluster_size", &ABSConfig::min_cluster_size,
+                     "Minimum hits per cluster")
+      .def_readwrite("neutron_correlation_window",
+                     &ABSConfig::neutron_correlation_window,
+                     "Neutron temporal correlation window in nanoseconds");
+
+  // NeutronExtractionConfig
+  py::class_<NeutronExtractionConfig>(m, "NeutronExtractionConfig")
+      .def(py::init<>())
+      .def_readwrite("algorithm", &NeutronExtractionConfig::algorithm,
+                     "Extraction algorithm name ('simple_centroid')")
+      .def_readwrite("super_resolution_factor",
+                     &NeutronExtractionConfig::super_resolution_factor,
+                     "Sub-pixel resolution scaling factor")
+      .def_readwrite("weighted_by_tot",
+                     &NeutronExtractionConfig::weighted_by_tot,
+                     "Use TOT weighting for centroid calculation")
+      .def_readwrite("min_tot_threshold",
+                     &NeutronExtractionConfig::min_tot_threshold,
+                     "Minimum TOT threshold for hit inclusion");
+
+  // TemporalProcessingConfig
+  py::class_<TemporalProcessingConfig>(m, "TemporalProcessingConfig")
+      .def(py::init<>())
+      .def_readwrite("num_workers", &TemporalProcessingConfig::num_workers,
+                     "Number of worker threads (0 = auto-detect)")
+      .def_readwrite("min_batch_size",
+                     &TemporalProcessingConfig::min_batch_size,
+                     "Minimum hits per batch")
+      .def_readwrite("max_batch_size",
+                     &TemporalProcessingConfig::max_batch_size,
+                     "Maximum hits per batch")
+      .def_readwrite("overlap_factor",
+                     &TemporalProcessingConfig::overlap_factor,
+                     "Overlap size multiplier")
+      .def_readwrite("enable_deduplication",
+                     &TemporalProcessingConfig::enable_deduplication,
+                     "Enable neutron deduplication")
+      .def_readwrite("deduplication_tolerance",
+                     &TemporalProcessingConfig::deduplication_tolerance,
+                     "Spatial tolerance for deduplication");
+
+  // ProcessingStatistics
+  py::class_<ProcessingStatistics>(m, "ProcessingStatistics")
+      .def(py::init<>())
+      .def_readonly("total_hits_processed",
+                    &ProcessingStatistics::total_hits_processed,
+                    "Total hits processed")
+      .def_readonly("total_neutrons_produced",
+                    &ProcessingStatistics::total_neutrons_produced,
+                    "Total neutrons produced")
+      .def_readonly("total_processing_time_ms",
+                    &ProcessingStatistics::total_processing_time_ms,
+                    "Total processing time in milliseconds")
+      .def_readonly("hits_per_second", &ProcessingStatistics::hits_per_second,
+                    "Processing rate in hits per second")
+      .def_readonly("neutron_efficiency",
+                    &ProcessingStatistics::neutron_efficiency,
+                    "Neutron efficiency (neutrons/hits ratio)");
+
+  // TemporalNeutronProcessor - main zero-copy interface
+  py::class_<TemporalNeutronProcessor>(m, "TemporalNeutronProcessor")
+      .def(py::init<>(), "Create processor with VENUS defaults")
+      .def(py::init<const NeutronProcessingConfig&>(), py::arg("config"),
+           "Create processor with custom configuration")
+
+      // Main zero-copy processing interface
+      .def(
+          "processHits",
+          [](TemporalNeutronProcessor& self, const std::vector<TDCHit>& hits,
+             size_t start_offset = 0, size_t end_offset = SIZE_MAX) {
+            auto neutrons = self.processHits(hits, start_offset, end_offset);
+            return TDCNeutronView(std::move(neutrons));
+          },
+          py::arg("hits"), py::arg("start_offset") = 0,
+          py::arg("end_offset") = SIZE_MAX,
+          "Process hits using zero-copy temporal batching (high performance)")
+
+      // Configuration management
+      .def("configure", &TemporalNeutronProcessor::configure, py::arg("config"),
+           "Update processor configuration")
+      .def("getConfig", &TemporalNeutronProcessor::getConfig,
+           "Get current configuration",
+           py::return_value_policy::reference_internal)
+
+      // Performance metrics
+      .def("getLastProcessingTimeMs",
+           &TemporalNeutronProcessor::getLastProcessingTimeMs,
+           "Get processing time for last operation")
+      .def("getLastHitsPerSecond",
+           &TemporalNeutronProcessor::getLastHitsPerSecond,
+           "Get processing rate for last operation")
+      .def("getLastNeutronEfficiency",
+           &TemporalNeutronProcessor::getLastNeutronEfficiency,
+           "Get neutron efficiency from last operation")
+      .def("getStatistics", &TemporalNeutronProcessor::getStatistics,
+           "Get detailed processing statistics", py::return_value_policy::copy)
+
+      // Algorithm info
+      .def("getHitClusteringAlgorithm",
+           &TemporalNeutronProcessor::getHitClusteringAlgorithm,
+           "Get clustering algorithm name")
+      .def("getNeutronExtractionAlgorithm",
+           &TemporalNeutronProcessor::getNeutronExtractionAlgorithm,
+           "Get extraction algorithm name")
+      .def("getNumWorkers", &TemporalNeutronProcessor::getNumWorkers,
+           "Get number of worker threads")
+
+      // Utilities
+      .def("reset", &TemporalNeutronProcessor::reset, "Reset processor state");
+
+  // High-level convenience function for hits -> neutrons processing
+  m.def(
+      "process_hits_to_neutrons",
+      [](const py::object& hits_data, py::object config_obj = py::none()) {
+        try {
+          // Get configuration
+          NeutronProcessingConfig config;
+          if (config_obj.is_none()) {
+            config = NeutronProcessingConfig::venusDefaults();
+          } else if (py::isinstance<NeutronProcessingConfig>(config_obj)) {
+            config = config_obj.cast<NeutronProcessingConfig>();
+          } else {
+            throw TDCConfigError(
+                "Invalid neutron processing configuration type");
+          }
+
+          // Convert input hits data (similar to legacy code but simpler)
+          std::vector<TDCHit> hits;
+          if (py::isinstance<std::vector<TDCHit>>(hits_data)) {
+            hits = hits_data.cast<std::vector<TDCHit>>();
+          } else if (py::isinstance<TDCHitView>(hits_data)) {
+            auto hit_view = hits_data.cast<TDCHitView>();
+            hits = hit_view.data;
+          } else if (py::isinstance<py::array>(hits_data)) {
+            // Handle structured numpy array
+            auto arr = hits_data.cast<py::array>();
+            if (arr.dtype().kind() == 'V') {  // Structured array
+              // Get the buffer info to access raw data
+              py::buffer_info buf = arr.request();
+              if (buf.itemsize != sizeof(TDCHit)) {
+                throw TDCProcessingError(
+                    "Numpy array itemsize does not match TDCHit size");
+              }
+
+              // Cast buffer data to TDCHit array
+              TDCHit* hit_ptr = static_cast<TDCHit*>(buf.ptr);
+              size_t n_hits = buf.size;
+
+              // Use direct memory copy instead of loop
+              hits.resize(n_hits);
+              std::memcpy(hits.data(), hit_ptr, n_hits * sizeof(TDCHit));
+            } else {
+              throw TDCProcessingError(
+                  "Hits must be structured numpy array (use process_tpx3 or "
+                  "hits_to_numpy_view)");
+            }
+          } else {
+            throw TDCProcessingError(
+                "Hits must be vector<TDCHit>, TDCHitView, or structured numpy "
+                "array");
+          }
+
+          // Process using zero-copy interface
+          TemporalNeutronProcessor processor(config);
+          auto neutrons = processor.processHits(hits);
+          auto result = TDCNeutronView(std::move(neutrons));
+          return result;
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to process hits to neutrons: " +
+                                   std::string(e.what()));
+        }
+      },
+      py::arg("hits"), py::arg("config") = py::none(),
+      "Process hits to neutrons using zero-copy temporal processor");
+
   // TDCProcessor class - main interface
   py::class_<TDCProcessor>(m, "TDCProcessor")
       .def(py::init<const DetectorConfig&>(), py::arg("config"),
@@ -701,11 +916,9 @@ PYBIND11_MODULE(_core, m) {
               TDCHit* hit_ptr = static_cast<TDCHit*>(buf.ptr);
               size_t n_hits = buf.size;
 
-              // Copy data from numpy array to vector
-              hits.reserve(n_hits);
-              for (size_t i = 0; i < n_hits; ++i) {
-                hits.push_back(hit_ptr[i]);
-              }
+              // Use direct memory copy instead of loop
+              hits.resize(n_hits);
+              std::memcpy(hits.data(), hit_ptr, n_hits * sizeof(TDCHit));
             } else {
               throw TDCProcessingError(
                   "Numpy array must be structured array with TDCHit dtype");

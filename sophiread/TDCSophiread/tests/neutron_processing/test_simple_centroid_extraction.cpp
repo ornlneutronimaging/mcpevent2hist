@@ -71,8 +71,8 @@ TEST_F(SimpleCentroidExtractionTest, SingleHitCluster) {
   ASSERT_EQ(neutrons.size(), 1);
 
   const auto& neutron = neutrons[0];
-  EXPECT_EQ(neutron.x, 100.0);  // Exact pixel coordinates
-  EXPECT_EQ(neutron.y, 150.0);
+  EXPECT_EQ(neutron.x, 100.0 * 8.0);  // Scaled by super-resolution factor
+  EXPECT_EQ(neutron.y, 150.0 * 8.0);
   EXPECT_EQ(neutron.tof, 1000);
   EXPECT_EQ(neutron.tot, 200);
   EXPECT_EQ(neutron.n_hits, 1);
@@ -96,8 +96,9 @@ TEST_F(SimpleCentroidExtractionTest, TwoHitClusterWeighted) {
   // Expected weighted centroid:
   // x = (100*100 + 102*300) / (100 + 300) = (10000 + 30600) / 400 = 101.5
   // y = (100*100 + 102*300) / (100 + 300) = (10000 + 30600) / 400 = 101.5
-  EXPECT_NEAR(neutron.x, 101.5, 1e-6);
-  EXPECT_NEAR(neutron.y, 101.5, 1e-6);
+  // Then scaled by super-resolution factor (8.0)
+  EXPECT_NEAR(neutron.x, 101.5 * 8.0, 1e-6);
+  EXPECT_NEAR(neutron.y, 101.5 * 8.0, 1e-6);
 
   // TOF should be from hit with highest TOT (second hit)
   EXPECT_EQ(neutron.tof, 1001);
@@ -129,9 +130,10 @@ TEST_F(SimpleCentroidExtractionTest, FourHitClusterWeighted) {
   //            = (10000 + 20200 + 15000 + 25250) / 700 = 70450 / 700 ≈ 100.643
   // Weighted y = (100*100 + 100*200 + 101*150 + 101*250) / 700
   //            = (10000 + 20000 + 15150 + 25250) / 700 = 70400 / 700 ≈ 100.571
+  // Then scaled by super-resolution factor (8.0)
 
-  EXPECT_NEAR(neutron.x, 100.643, 0.001);
-  EXPECT_NEAR(neutron.y, 100.571, 0.001);
+  EXPECT_NEAR(neutron.x, 100.643 * 8.0, 0.01);
+  EXPECT_NEAR(neutron.y, 100.571 * 8.0, 0.01);
 
   // TOF from highest TOT hit (4th hit)
   EXPECT_EQ(neutron.tof, 1003);
@@ -160,8 +162,9 @@ TEST_F(SimpleCentroidExtractionTest, UnweightedCentroid) {
   const auto& neutron = neutrons[0];
 
   // Simple arithmetic mean: (100+104)/2 = 102, (100+104)/2 = 102
-  EXPECT_EQ(neutron.x, 102.0);
-  EXPECT_EQ(neutron.y, 102.0);
+  // Then scaled by super-resolution factor (8.0)
+  EXPECT_EQ(neutron.x, 102.0 * 8.0);
+  EXPECT_EQ(neutron.y, 102.0 * 8.0);
 
   // TOF still from highest TOT hit
   EXPECT_EQ(neutron.tof, 1001);
@@ -188,17 +191,17 @@ TEST_F(SimpleCentroidExtractionTest, MultipleClusters) {
 
   ASSERT_EQ(neutrons.size(), 2);  // Only clustered hits become neutrons
 
-  // Verify cluster 0 neutron
+  // Verify cluster 0 neutron (scaled coordinates)
   auto cluster0_neutron =
       std::find_if(neutrons.begin(), neutrons.end(),
-                   [](const TDCNeutron& n) { return n.x < 150.0; });
+                   [](const TDCNeutron& n) { return n.x < 150.0 * 8.0; });
   ASSERT_NE(cluster0_neutron, neutrons.end());
   EXPECT_EQ(cluster0_neutron->n_hits, 2);
 
-  // Verify cluster 1 neutron
+  // Verify cluster 1 neutron (scaled coordinates)
   auto cluster1_neutron =
       std::find_if(neutrons.begin(), neutrons.end(),
-                   [](const TDCNeutron& n) { return n.x > 150.0; });
+                   [](const TDCNeutron& n) { return n.x > 150.0 * 8.0; });
   ASSERT_NE(cluster1_neutron, neutrons.end());
   EXPECT_EQ(cluster1_neutron->n_hits, 2);
 }
@@ -227,9 +230,10 @@ TEST_F(SimpleCentroidExtractionTest, TOTFiltering) {
   // Weighted centroid of (101,101,200) and (103,103,180):
   // x = (101*200 + 103*180) / (200+180) = (20200 + 18540) / 380 = 101.947
   // y = (101*200 + 103*180) / (200+180) = (20200 + 18540) / 380 = 101.947
+  // Then scaled by super-resolution factor (8.0)
 
-  EXPECT_NEAR(neutron.x, 101.947, 0.001);
-  EXPECT_NEAR(neutron.y, 101.947, 0.001);
+  EXPECT_NEAR(neutron.x, 101.947 * 8.0, 0.01);
+  EXPECT_NEAR(neutron.y, 101.947 * 8.0, 0.01);
 
   // Combined TOT only from filtered hits
   EXPECT_EQ(neutron.tot, 380);

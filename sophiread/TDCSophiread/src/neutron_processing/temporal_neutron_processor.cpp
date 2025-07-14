@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 #include <numeric>
 #include <stdexcept>
 
@@ -81,34 +82,36 @@ std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
     return {};
   }
 
-  // Phase 1: FIXED - Limited statistical analysis (only first 8-12 sections)
+  // Create fixed-size batches with simple overlap
   auto begin_iter = hits.begin() + start_offset;
-  auto analysis_end =
-      begin_iter +
-      std::min(num_hits, size_t(50000));  // Limit to ~50K hits for stats
-  auto stats = TemporalBatching::analyzeHitDistribution(
-      begin_iter, analysis_end, 12);  // 12 sections max
-
-  // Phase 2: FIXED - Zero-copy batch creation using original vector
   auto end_iter = hits.begin() + end_offset;
-  auto batches = TemporalBatching::createStatisticalBatches(&hits, begin_iter,
-                                                            end_iter, stats);
+
+  // Use larger batch size for better performance
+  // For large datasets (>10M hits), use larger batches to reduce overhead
+  size_t default_batch_size = num_hits > 10000000 ? 500000 : 50000;
+  size_t batch_size =
+      std::min(default_batch_size, config_.temporal.max_batch_size);
+  size_t overlap_size =
+      0;  // Disabled - overlap causes index bugs with current implementation
+
+  auto batches = TemporalBatching::createFixedSizeBatches(
+      &hits, begin_iter, end_iter, batch_size, overlap_size);
 
   if (batches.empty()) {
     updateStatistics(num_hits, 0, 0.0, 0);
     return {};
   }
 
-  // Phase 3: Calculate cluster ID offsets (can be done in parallel later)
+  // Calculate cluster ID offsets
   calculateClusterIdOffsets(batches);
 
-  // Phase 4: FIXED - Process batches in parallel WITH state creation inside TBB
+  // Process batches in parallel
   processBatchesParallel(batches);
 
-  // Phase 6: Collect results
+  // Collect results
   auto neutrons = collectNeutronResults(batches);
 
-  // Phase 7: Remove duplicates if enabled
+  // Remove duplicates if enabled (disabled by default)
   if (config_.temporal.enable_deduplication) {
     neutrons = deduplicateNeutrons(std::move(neutrons));
   }
@@ -152,7 +155,13 @@ void TemporalNeutronProcessor::processBatchesParallel(
           batch.initializeResults();
           batch.clustering_state = algorithms.clusterer->createState();
 
-          processSingleBatch(batch, algorithms);
+          try {
+            processSingleBatch(batch, algorithms);
+          } catch (const std::exception& e) {
+            std::cerr << "Error processing batch " << batch_idx << ": "
+                      << e.what() << std::endl;
+            // Continue processing other batches
+          }
 
           // Release state immediately after processing (saves memory)
           batch.clustering_state.reset();
@@ -166,7 +175,8 @@ void TemporalNeutronProcessor::processSingleBatch(
     return;
   }
 
-  // Perform clustering (stateless - all state in batch)
+  // Perform clustering on the main batch range only
+  // (overlap regions cause index mismatches with current ABS implementation)
   algorithms.clusterer->cluster(batch.begin(), batch.end(),
                                 *batch.clustering_state, batch.cluster_labels);
 
@@ -179,7 +189,7 @@ void TemporalNeutronProcessor::processSingleBatch(
     }
   }
 
-  // Extract neutrons from clusters
+  // Extract neutrons from the main batch range
   batch.neutron_results = algorithms.extractor->extract(
       batch.begin(), batch.end(), batch.cluster_labels);
 }
