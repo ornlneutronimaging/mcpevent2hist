@@ -66,14 +66,6 @@ std::unique_ptr<IClusteringState> ClusteringStateFactory::create(
     return std::make_unique<ABSClusteringState>();
   }
 
-  // Future algorithms would be added here:
-  // else if (algorithm_name == "graph") {
-  //   return std::make_unique<GraphClusteringState>();
-  // }
-  // else if (algorithm_name == "dbscan") {
-  //   return std::make_unique<DBSCANClusteringState>();
-  // }
-
   throw std::invalid_argument("Unknown clustering algorithm: " +
                               algorithm_name);
 }

@@ -158,9 +158,8 @@ void TemporalNeutronProcessor::processBatchesParallel(
           try {
             processSingleBatch(batch, algorithms);
           } catch (const std::exception& e) {
-            std::cerr << "Error processing batch " << batch_idx << ": "
-                      << e.what() << std::endl;
-            // Continue processing other batches
+            // Silently continue processing other batches
+            // Error handling should be done at a higher level if needed
           }
 
           // Release state immediately after processing (saves memory)
