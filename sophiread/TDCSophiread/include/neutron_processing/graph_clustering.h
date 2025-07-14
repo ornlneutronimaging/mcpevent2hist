@@ -25,8 +25,8 @@ class GraphClusteringState;
  * connected if they are within a spatial radius and temporal window.
  * Uses Union-Find algorithm for efficient connected component detection.
  *
- * This is a NEW implementation designed specifically for the temporal
- * window architecture, NOT a port of the broken legacy implementation.
+ * This is a new implementation designed specifically for the temporal
+ * window architecture with improved performance and thread safety.
  */
 class GraphHitClustering : public IHitClustering {
  private:
