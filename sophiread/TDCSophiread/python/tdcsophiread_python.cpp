@@ -248,6 +248,7 @@ PYBIND11_MODULE(_core, m) {
 
   // NeutronProcessingConfig - main configuration
   py::class_<NeutronProcessingConfig>(m, "NeutronProcessingConfig")
+      .def(py::init<>(), "Create default configuration")
       .def_static(
           "venus_defaults", &NeutronProcessingConfig::venusDefaults,
           "Create VENUS detector default neutron processing configuration")
@@ -264,9 +265,11 @@ PYBIND11_MODULE(_core, m) {
   py::class_<HitClusteringConfig>(m, "HitClusteringConfig")
       .def(py::init<>())
       .def_readwrite("algorithm", &HitClusteringConfig::algorithm,
-                     "Clustering algorithm name ('abs')")
+                     "Clustering algorithm name ('abs' or 'graph')")
       .def_readwrite("abs", &HitClusteringConfig::abs,
-                     "ABS clustering parameters");
+                     "ABS clustering parameters")
+      .def_readwrite("graph", &HitClusteringConfig::graph,
+                     "Graph clustering parameters");
 
   // ABSConfig
   py::class_<ABSConfig>(m, "ABSConfig")
@@ -278,6 +281,20 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("neutron_correlation_window",
                      &ABSConfig::neutron_correlation_window,
                      "Neutron temporal correlation window in nanoseconds");
+
+  // GraphConfig
+  py::class_<GraphConfig>(m, "GraphConfig")
+      .def(py::init<>())
+      .def_readwrite("radius", &GraphConfig::radius,
+                     "Spatial clustering radius in pixels")
+      .def_readwrite("min_cluster_size", &GraphConfig::min_cluster_size,
+                     "Minimum hits per cluster")
+      .def_readwrite("grid_size", &GraphConfig::grid_size,
+                     "Spatial grid size for hashing")
+      .def_readwrite("enable_spatial_hash", &GraphConfig::enable_spatial_hash,
+                     "Enable spatial hash optimization")
+      .def_readwrite("parallel_threshold", &GraphConfig::parallel_threshold,
+                     "Minimum hits for parallel processing");
 
   // NeutronExtractionConfig
   py::class_<NeutronExtractionConfig>(m, "NeutronExtractionConfig")

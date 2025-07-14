@@ -25,7 +25,8 @@ set(TDC_SOURCES
     src/neutron_processing/temporal_neutron_processor.cpp
     # Stateless clustering support
     src/neutron_processing/clustering_state.cpp
-    src/neutron_processing/abs_clustering.cpp)
+    src/neutron_processing/abs_clustering.cpp
+    src/neutron_processing/graph_clustering.cpp)
 
 # Legacy clustering sources moved to legacy/ and disabled
 # src/legacy/tdc_clustering_config.cpp src/legacy/tdc_abs_clustering.cpp
@@ -135,6 +136,7 @@ add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
 # New neutron processing architecture tests
 add_neutron_test(neutron_interfaces) # Interface and factory tests
 add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
+add_neutron_test(graph_clustering) # Graph clustering algorithm tests
 # Temporal processing tests
 add_neutron_test(temporal_neutron_processor) # Parallel temporal processor tests
 add_neutron_test(tbb_parallel_verification) # TBB parallel processing
@@ -144,6 +146,11 @@ add_neutron_test(tbb_stress) # TBB stress testing with large datasets
 # Performance debugging test
 add_executable(test_ni_powder_clustering tests/test_ni_powder_clustering.cpp)
 target_link_libraries(test_ni_powder_clustering TDCSophiread)
+
+# Graph clustering benchmark
+add_executable(graph_clustering_benchmark
+               tests/neutron_processing/test_graph_clustering_benchmark.cpp)
+target_link_libraries(graph_clustering_benchmark TDCSophiread TBB::tbb)
 # Performance benchmarks add_neutron_test(abs_performance) # ABS clustering
 # optimization benchmarks - DISABLED (needs update) Memory optimization tests
 # add_neutron_test(memory_optimization) # Memory usage and zero-copy validation

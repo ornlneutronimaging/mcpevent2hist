@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "neutron_processing/abs_clustering.h"
+#include "neutron_processing/graph_clustering.h"
 #include "neutron_processing/neutron_processing.h"
 #include "neutron_processing/simple_centroid_extraction.h"
 
@@ -19,6 +20,8 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
 
   if (algorithm_name == "abs") {
     return std::make_unique<ABSClustering>(config);
+  } else if (algorithm_name == "graph") {
+    return std::make_unique<GraphHitClustering>(config);
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -26,13 +29,16 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
 }
 
 std::vector<std::string> HitClusteringFactory::getAvailableAlgorithms() {
-  return {"abs"};
+  return {"abs", "graph"};
 }
 
 std::string HitClusteringFactory::getAlgorithmDescription(
     const std::string& algorithm_name) {
   if (algorithm_name == "abs") {
     return "Age-Based Spatial clustering (stateless for parallel processing)";
+  } else if (algorithm_name == "graph") {
+    return "Graph-based clustering with spatial-temporal constraints "
+           "(stateless)";
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
