@@ -106,6 +106,28 @@ wheel.py-api = "cp312"
 # CMake install targets to include
 install.components = ["python_bindings"]
 
+# Control what goes into the source distribution (sdist)
+sdist.reproducible = true
+sdist.exclude = [
+    ".pixi/",
+    ".git/",
+    ".github/",
+    ".claude/",
+    "notebooks/",
+    "legacy/",
+    "resources/",
+    "docs/archive/",
+    "build*/",
+    "dist/",
+    "*.tpx3",
+    "**/__pycache__/",
+    "*.egg-info",
+    ".DS_Store",
+    "wheelhouse/",
+    "temp*/",
+    "*.whl",
+]
+
 # Development tools configuration
 [tool.black]
 line-length = 88

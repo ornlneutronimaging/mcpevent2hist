@@ -44,7 +44,7 @@ publish-pypi = { cmd = "python -m twine upload dist/*", depends-on = [
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
 
 # Utilities
-clean = "rm -rf build build-debug dist"
+clean = "rm -rf build build-debug build-legacy dist Testing *.egg-info .pytest_cache __pycache__ **/__pycache__ .coverage coverage.xml htmlcov .mypy_cache .ruff_cache"
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
 
 [dependencies]
