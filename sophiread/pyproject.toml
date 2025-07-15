@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-    "scikit-build-core>=0.8.0",
-    "pybind11>=2.13.6",
-]
+requires = ["scikit-build-core>=0.8.0", "pybind11>=2.13.6"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -10,14 +7,12 @@ name = "tdcsophiread"
 version = "3.0.0"
 description = "High-performance TDC-only TPX3 neutron imaging data processor"
 readme = "README.md"
-license = {text = "GPL-3.0-or-later"}
+license = { text = "GPL-3.0-or-later" }
 authors = [
-    {name = "Chen Zhang", email = "zhangc@ornl.gov"},
-    {name = "ORNL Neutron Imaging Team", email = "neutronimaging@ornl.gov"},
+    { name = "Chen Zhang", email = "zhangc@ornl.gov" },
+    { name = "ORNL Neutron Imaging Team", email = "neutronimaging@ornl.gov" },
 ]
-maintainers = [
-    {name = "Chen Zhang", email = "zhangc@ornl.gov"},
-]
+maintainers = [{ name = "Chen Zhang", email = "zhangc@ornl.gov" }]
 keywords = [
     "neutron imaging",
     "timepix3",
@@ -49,13 +44,11 @@ dependencies = [
     "numpy>=2.3.0",
     "h5py>=3.12.0",
     "pydantic>=2.11.7",
+    "matplotlib>=3.10.3",
+    "tifffile>=2024.1.18", # For TIFF file handling
 ]
 
 [project.optional-dependencies]
-imaging = [
-    "pillow>=9.0.0",  # Used by auto_reducer for TIFF output
-    "matplotlib>=3.10.3",  # For scientific plotting
-]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov",
@@ -68,9 +61,7 @@ dev = [
     "sphinx-rtd-theme",
     "myst-parser",
 ]
-all = [
-    "tdcsophiread[imaging,dev]",
-]
+all = ["tdcsophiread[dev]"]
 
 [project.urls]
 Homepage = "https://github.com/ornlneutronimaging/mcpevent2hist"
@@ -91,7 +82,7 @@ cmake.source-dir = "."
 build-dir = "build"
 cmake.args = [
     "-DBUILD_PYTHON_BINDINGS=ON",
-    "-DBUILD_LEGACY=OFF",  # Only build TDC implementation
+    "-DBUILD_LEGACY=OFF",         # Only build TDC implementation
     "-DCMAKE_BUILD_TYPE=Release",
 ]
 build.verbose = true
@@ -154,7 +145,7 @@ addopts = [
     "--strict-config",
     "--cov=tdcsophiread",
     "--cov-report=term-missing",
-    "--benchmark-skip",  # Skip benchmarks by default
+    "--benchmark-skip",          # Skip benchmarks by default
 ]
 
 [tool.coverage.run]
@@ -196,7 +187,7 @@ before-all = [
     "export PATH=$HOME/.pixi/bin:$PATH",
     "pixi install",
 ]
-environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+environment = { PATH = "$HOME/.pixi/bin:$PATH" }
 # Ensure dependencies are bundled (auditwheel is default)
 
 [tool.cibuildwheel.macos]
@@ -205,7 +196,7 @@ before-all = [
     "export PATH=$HOME/.pixi/bin:$PATH",
     "pixi install",
 ]
-environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+environment = { PATH = "$HOME/.pixi/bin:$PATH" }
 # Ensure dependencies are bundled (delocate is default)
 
 # Windows support removed - only supporting linux-64 and osx-arm64

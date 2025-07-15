@@ -10,14 +10,8 @@ High-level analysis functions for processed TPX3 hit data including:
 
 import numpy as np
 from typing import Dict, Tuple, Optional, Union, List
-import warnings
-
-try:
-    import matplotlib.pyplot as plt
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
-    warnings.warn("Matplotlib not available - plotting functions disabled")
+import matplotlib.pyplot as plt
+import matplotlib.figure
 
 
 def create_tof_spectrum(hits: Dict[str, np.ndarray],
@@ -179,7 +173,7 @@ def plot_tof_spectrum(hits: Dict[str, np.ndarray],
                      num_bins: int = 1000,
                      title: str = "TOF Spectrum",
                      figsize: Tuple[float, float] = (10, 6),
-                     show_stats: bool = True) -> Optional[plt.Figure]:
+                     show_stats: bool = True) -> Optional[matplotlib.figure.Figure]:
     """
     Plot time-of-flight spectrum
 
@@ -194,9 +188,6 @@ def plot_tof_spectrum(hits: Dict[str, np.ndarray],
     Returns:
         matplotlib Figure object if matplotlib available, None otherwise
     """
-    if not HAS_MATPLOTLIB:
-        print("Matplotlib not available - cannot create plot")
-        return None
 
     # Create spectrum
     bin_centers, counts = create_tof_spectrum(hits, tof_range_ms, num_bins)
@@ -230,7 +221,7 @@ def plot_hit_map(hits: Dict[str, np.ndarray],
                 bins: Union[int, Tuple[int, int]] = 256,
                 title: str = "Hit Position Map",
                 figsize: Tuple[float, float] = (8, 8),
-                cmap: str = 'viridis') -> Optional[plt.Figure]:
+                cmap: str = 'viridis') -> Optional[matplotlib.figure.Figure]:
     """
     Plot 2D histogram of hit positions
 
@@ -244,9 +235,6 @@ def plot_hit_map(hits: Dict[str, np.ndarray],
     Returns:
         matplotlib Figure object if matplotlib available, None otherwise
     """
-    if not HAS_MATPLOTLIB:
-        print("Matplotlib not available - cannot create plot")
-        return None
 
     if 'x' not in hits or 'y' not in hits:
         raise ValueError("Hit data must contain 'x' and 'y' fields")

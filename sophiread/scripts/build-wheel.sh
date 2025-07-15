@@ -10,8 +10,14 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     delocate-wheel -w dist -v dist/*.whl
 else
     echo "Running auditwheel for Linux..."
-    # Use manylinux2014 (glibc 2.17) for better compatibility
-    auditwheel repair dist/*.whl -w dist --plat manylinux2014_x86_64
+    # First check what platform the wheel is compatible with
+    echo "Checking wheel compatibility..."
+    auditwheel show dist/*.whl
+
+    # Repair to manylinux_2_34 which matches our build environment
+    echo "Repairing to manylinux_2_34_x86_64..."
+    auditwheel repair dist/*.whl -w dist --plat manylinux_2_34_x86_64
+
     # Remove the original unrepaired wheel
     rm -f dist/*-linux_x86_64.whl
 fi
