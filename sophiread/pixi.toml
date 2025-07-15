@@ -25,14 +25,7 @@ notebooks = "jupyter lab notebooks/"
 
 # Publishing
 sync-version = "python scripts/sync-version.py"
-build-wheel = { cmd = """
-    python -m build --wheel && \
-    if [[ "$OSTYPE" == "darwin"* ]]; then \
-        delocate-wheel -w dist -v dist/*.whl; \
-    else \
-        auditwheel repair dist/*.whl -w dist && rm dist/*-linux_x86_64.whl; \
-    fi
-""", depends-on = [
+build-wheel = { cmd = "bash scripts/build-wheel.sh", depends-on = [
     "sync-version",
     "build",
 ] }
