@@ -72,20 +72,41 @@ struct DBSCANConfig {
 };
 
 /**
+ * @brief Configuration for grid-based clustering algorithm
+ */
+struct GridConfig {
+  uint16_t grid_cols;          ///< Number of grid columns (default: 32)
+  uint16_t grid_rows;          ///< Number of grid rows (default: 32)
+  double connection_distance;  ///< Max distance to connect hits (default: 4.0)
+  double neutron_correlation_window;  ///< Temporal correlation window in
+                                      ///< nanoseconds (default: 75.0)
+  bool merge_adjacent_cells;          ///< Merge clusters across cell boundaries
+                                      ///< (default: true)
+
+  GridConfig()
+      : grid_cols(32),
+        grid_rows(32),
+        connection_distance(4.0),
+        neutron_correlation_window(75.0),
+        merge_adjacent_cells(true) {}
+};
+
+/**
  * @brief Configuration for hit clustering algorithms
  */
 struct HitClusteringConfig {
-  std::string algorithm;  ///< Algorithm name ("abs", "graph", "dbscan")
+  std::string algorithm;  ///< Algorithm name ("abs", "graph", "dbscan", "grid")
 
   // Algorithm-specific configurations
   ABSConfig abs;        ///< ABS algorithm configuration
   GraphConfig graph;    ///< Graph algorithm configuration
   DBSCANConfig dbscan;  ///< DBSCAN algorithm configuration
+  GridConfig grid;      ///< Grid algorithm configuration
 
   /**
    * @brief Default constructor with VENUS detector defaults
    */
-  HitClusteringConfig() : algorithm("abs"), abs(), graph(), dbscan() {}
+  HitClusteringConfig() : algorithm("abs"), abs(), graph(), dbscan(), grid() {}
 
   /**
    * @brief Factory method for VENUS detector defaults

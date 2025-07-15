@@ -8,6 +8,7 @@
 #include "neutron_processing/abs_clustering.h"
 #include "neutron_processing/dbscan_clustering.h"
 #include "neutron_processing/graph_clustering.h"
+#include "neutron_processing/grid_clustering.h"
 #include "neutron_processing/neutron_processing.h"
 #include "neutron_processing/simple_centroid_extraction.h"
 
@@ -25,6 +26,8 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
     return std::make_unique<GraphHitClustering>(config);
   } else if (algorithm_name == "dbscan") {
     return std::make_unique<DBSCANHitClustering>(config);
+  } else if (algorithm_name == "grid") {
+    return std::make_unique<GridHitClustering>(config);
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -32,7 +35,7 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
 }
 
 std::vector<std::string> HitClusteringFactory::getAvailableAlgorithms() {
-  return {"abs", "graph", "dbscan"};
+  return {"abs", "graph", "dbscan", "grid"};
 }
 
 std::string HitClusteringFactory::getAlgorithmDescription(
@@ -46,6 +49,9 @@ std::string HitClusteringFactory::getAlgorithmDescription(
     return "Density-Based Spatial Clustering (DBSCAN) with temporal "
            "constraints "
            "(stateless)";
+  } else if (algorithm_name == "grid") {
+    return "Grid-based clustering with O(n) complexity using detector grid "
+           "structure (stateless)";
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +

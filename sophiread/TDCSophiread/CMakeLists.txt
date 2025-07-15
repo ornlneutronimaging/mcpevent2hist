@@ -27,7 +27,8 @@ set(TDC_SOURCES
     src/neutron_processing/clustering_state.cpp
     src/neutron_processing/abs_clustering.cpp
     src/neutron_processing/graph_clustering.cpp
-    src/neutron_processing/dbscan_clustering.cpp)
+    src/neutron_processing/dbscan_clustering.cpp
+    src/neutron_processing/grid_clustering.cpp)
 
 # Legacy clustering sources moved to legacy/ and disabled
 # src/legacy/tdc_clustering_config.cpp src/legacy/tdc_abs_clustering.cpp
@@ -141,6 +142,7 @@ add_neutron_test(graph_clustering) # Graph clustering algorithm tests
 add_neutron_test(dbscan_clustering) # DBSCAN clustering algorithm tests
 add_neutron_test(dbscan_parallel_safety) # DBSCAN parallel safety and memory
                                          # tests
+add_neutron_test(grid_clustering) # Grid clustering algorithm tests
 # Temporal processing tests
 add_neutron_test(temporal_neutron_processor) # Parallel temporal processor tests
 add_neutron_test(tbb_parallel_verification) # TBB parallel processing

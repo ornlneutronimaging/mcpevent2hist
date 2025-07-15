@@ -264,14 +264,17 @@ PYBIND11_MODULE(_core, m) {
   // HitClusteringConfig
   py::class_<HitClusteringConfig>(m, "HitClusteringConfig")
       .def(py::init<>())
-      .def_readwrite("algorithm", &HitClusteringConfig::algorithm,
-                     "Clustering algorithm name ('abs', 'graph', or 'dbscan')")
+      .def_readwrite(
+          "algorithm", &HitClusteringConfig::algorithm,
+          "Clustering algorithm name ('abs', 'graph', 'dbscan', or 'grid')")
       .def_readwrite("abs", &HitClusteringConfig::abs,
                      "ABS clustering parameters")
       .def_readwrite("graph", &HitClusteringConfig::graph,
                      "Graph clustering parameters")
       .def_readwrite("dbscan", &HitClusteringConfig::dbscan,
-                     "DBSCAN clustering parameters");
+                     "DBSCAN clustering parameters")
+      .def_readwrite("grid", &HitClusteringConfig::grid,
+                     "Grid clustering parameters");
 
   // ABSConfig
   py::class_<ABSConfig>(m, "ABSConfig")
@@ -310,6 +313,20 @@ PYBIND11_MODULE(_core, m) {
                      "Temporal correlation window in nanoseconds")
       .def_readwrite("grid_size", &DBSCANConfig::grid_size,
                      "Spatial grid size for neighbor search");
+
+  // GridConfig
+  py::class_<GridConfig>(m, "GridConfig")
+      .def(py::init<>())
+      .def_readwrite("grid_cols", &GridConfig::grid_cols,
+                     "Number of grid columns")
+      .def_readwrite("grid_rows", &GridConfig::grid_rows, "Number of grid rows")
+      .def_readwrite("connection_distance", &GridConfig::connection_distance,
+                     "Maximum distance to connect hits")
+      .def_readwrite("neutron_correlation_window",
+                     &GridConfig::neutron_correlation_window,
+                     "Temporal correlation window in nanoseconds")
+      .def_readwrite("merge_adjacent_cells", &GridConfig::merge_adjacent_cells,
+                     "Merge clusters across cell boundaries");
 
   // NeutronExtractionConfig
   py::class_<NeutronExtractionConfig>(m, "NeutronExtractionConfig")
