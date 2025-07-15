@@ -97,6 +97,8 @@ cmake.args = [
 build.verbose = true
 wheel.expand-macos-universal-tags = true
 
+# Version is managed by CMake via PROJECT_VERSION - no special provider needed
+
 # Specify which files to include in the wheel
 wheel.packages = ["src/tdcsophiread"]
 wheel.py-api = "cp312"

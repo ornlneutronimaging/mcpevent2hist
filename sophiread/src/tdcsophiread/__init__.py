@@ -6,7 +6,9 @@ providing 150x performance improvement over pure Python implementations
 while maintaining scientific accuracy.
 """
 
-__version__ = "2.0.0"
+# Version is set by C++ extension from CMake PROJECT_VERSION
+# This will be overridden by the compiled extension's __version__
+__version__ = "unknown"
 __author__ = "ORNL Neutron Imaging Team"
 __email__ = "neutronimaging@ornl.gov"
 
@@ -14,6 +16,8 @@ __email__ = "neutronimaging@ornl.gov"
 try:
     # Try to import the compiled extension
     from ._core import *  # noqa: F403, F401
+    # Override version with the one from C++ extension
+    from ._core import __version__
 except ImportError as e:
     raise ImportError(
         "Failed to import TDCSophiread C++ extension. "

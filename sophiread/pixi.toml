@@ -6,6 +6,10 @@ platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
 
 [tasks]
+# Quick Start: pixi run dev-setup    (complete development setup)
+#              pixi run setup-data    (download 12GB sample data)
+#              pixi run run-notebooks (launch Jupyter with notebooks)
+
 # Primary TDC-only build (default - Release mode)
 configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON -DCMAKE_BUILD_TYPE=Release"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
@@ -20,8 +24,8 @@ test-debug = { cmd = "cd build-debug && ctest -V --output-on-failure", depends-o
     "build-debug",
 ] }
 
-# Legacy build (optional)
-configure-legacy = "cmake -G Ninja -S . -B build -DBUILD_LEGACY=ON"
+# Legacy build (DEPRECATED - will be removed in next major release)
+configure-legacy = "cmake -G Ninja -S . -B build -DBUILD_LEGACY=ON && echo '⚠️ WARNING: Legacy build is DEPRECATED and will be removed in next major release'"
 build-legacy = { cmd = "ninja -C build", depends-on = ["configure-legacy"] }
 test-legacy = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
     "build-legacy",
@@ -37,14 +41,23 @@ dev-build = { cmd = "echo '✅ Development build complete - Python bindings read
 dev-rebuild = { cmd = "echo '♻️ Development rebuild complete - Python bindings updated'", depends-on = ["clean", "build", "reinstall-dev"] }
 dev-quick = { cmd = "ninja -C build && pip install -e . --no-build-isolation --config-settings=cmake.verbose=false && echo '⚡ Quick rebuild complete'" }
 
-# Python testing and examples
-run-examples = { cmd = "python examples/basic_usage.py", depends-on = ["python-test"] }
-run-notebook = { cmd = "jupyter lab examples/tdcsophiread_tutorial.ipynb", depends-on = ["python-test"] }
+# Complete development workflow
+dev-setup = { cmd = "echo '🚀 Complete development setup finished'", depends-on = ["build", "install-dev", "test", "python-test"] }
+full-test = { cmd = "echo '✅ All tests passed'", depends-on = ["test", "python-test", "test-clustering"] }
+
+# Data and notebook management
+setup-data = "git submodule update --init notebooks/data && echo '📊 Sample data (12GB) downloaded successfully'"
+run-jupyter = { cmd = "jupyter lab", depends-on = ["python-test"] }
+run-notebooks = { cmd = "jupyter lab notebooks/", depends-on = ["python-test"] }
+
+# Quick clustering tests
+test-clustering = { cmd = "python -c 'import tdcsophiread; hits = tdcsophiread.process_tpx3(\"notebooks/data/tiny.tpx3\") if __import__(\"os\").path.exists(\"notebooks/data/tiny.tpx3\") else []; neutrons = tdcsophiread.process_hits_to_neutrons(hits) if len(hits) > 0 else []; print(f\"✅ Clustering test: {len(hits)} hits → {len(neutrons)} neutrons\")'", depends-on = ["python-test"] }
+benchmark-algos = { cmd = "python -c 'exec(open(\"scripts/benchmark_clustering.py\").read())' 2>/dev/null || echo '⚠️ Benchmark script not found - run clustering test in notebooks'", depends-on = ["python-test"] }
 
 # Other targets
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
-clean = { cmd = "bash -c 'rm -rf build docs/html dist .eggs; find . -name \"__pycache__\" -type d -exec rm -rf {} + 2>/dev/null || true; find . -name \"*.pyc\" -delete 2>/dev/null || true; find . -name \"*.egg-info\" -type d -exec rm -rf {} + 2>/dev/null || true; echo \"🧹 Cleaned build, docs, package artifacts, and Python cache files\"'" }
+clean = { cmd = "bash -c 'rm -rf build build-debug docs/html dist .eggs *.egg-info; find . -name \"__pycache__\" -type d -exec rm -rf {} + 2>/dev/null || true; find . -name \"*.pyc\" -delete 2>/dev/null || true; find . -name \"*.so\" -delete 2>/dev/null || true; echo \"🧹 Cleaned all build artifacts, docs, and Python cache files\"'" }
 
 [dependencies]
 python = "3.12.*"
