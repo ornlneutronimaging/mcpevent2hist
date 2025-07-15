@@ -9,10 +9,14 @@ version = "0.1.0"
 # Core build tasks
 configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON -DCMAKE_BUILD_TYPE=Release"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
-test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = ["build"] }
+test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
+    "build",
+] }
 
 # Python development
-install = { cmd = "pip install -e . --no-build-isolation", depends-on = ["build"] }
+dev-install = { cmd = "pip install -e . --no-build-isolation", depends-on = [
+    "build",
+] }
 python-test = { cmd = "python -c 'import tdcsophiread; print(tdcsophiread.__version__)'" }
 
 # Data setup
@@ -21,10 +25,20 @@ notebooks = "jupyter lab notebooks/"
 
 # Publishing
 sync-version = "python scripts/sync-version.py"
-build-wheel = { cmd = "python -m build --wheel && delocate-wheel -w dist -v dist/*.whl", depends-on = ["sync-version", "build"] }
-build-sdist = { cmd = "python -m build --sdist --outdir dist", depends-on = ["sync-version"] }
-test-wheel = { cmd = "pip install dist/*.whl --force-reinstall && python -c 'import tdcsophiread'", depends-on = ["build-wheel"] }
-publish-pypi = { cmd = "python -m twine upload dist/*", depends-on = ["build-wheel", "build-sdist"] }
+build-wheel = { cmd = "python -m build --wheel && delocate-wheel -w dist -v dist/*.whl", depends-on = [
+    "sync-version",
+    "build",
+] }
+build-sdist = { cmd = "python -m build --sdist --outdir dist", depends-on = [
+    "sync-version",
+] }
+test-wheel = { cmd = "pip install dist/*.whl --force-reinstall && python -c 'import tdcsophiread'", depends-on = [
+    "build-wheel",
+] }
+publish-pypi = { cmd = "python -m twine upload dist/*", depends-on = [
+    "build-wheel",
+    "build-sdist",
+] }
 
 # C++ package for DAQ
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
