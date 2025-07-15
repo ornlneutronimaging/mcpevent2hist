@@ -75,19 +75,29 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # Build options
-option(BUILD_LEGACY "Build legacy FastSophiread implementation" OFF)
+option(
+  BUILD_LEGACY
+  "Build legacy components (DEPRECATED - will be removed in next major release)"
+  OFF)
 
 # Add TDCSophiread library (default)
 add_subdirectory(TDCSophiread)
 
-# Add legacy implementation (optional)
+# Add legacy implementation (optional, DEPRECATED)
 if(BUILD_LEGACY)
-  message(STATUS "Building legacy FastSophiread implementation")
-  add_subdirectory(FastSophiread)
-  add_subdirectory(SophireadCLI)
-else()
   message(
-    STATUS "Skipping legacy FastSophiread (use -DBUILD_LEGACY=ON to enable)")
+    WARNING
+      "
+================================================================================
+WARNING: Legacy build is DEPRECATED and will be removed in the next major release.
+Legacy components (FastSophiread, GUIs) use unreliable GDC-based TOF calculation.
+Please migrate to TDCSophiread which uses detector-expert-approved TDC-only approach.
+Performance: TDCSophiread achieves 96M+ hits/sec vs legacy <10M hits/sec
+================================================================================"
+  )
+  add_subdirectory(legacy)
+else()
+  message(STATUS "Skipping legacy components (use -DBUILD_LEGACY=ON to enable)")
 endif()
 
 # ----------------- PACKAGE CONFIGURATION ----------------- #
