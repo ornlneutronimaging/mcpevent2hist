@@ -2,29 +2,34 @@
 
 ## Overview
 
-TDCSophiread is a high-performance Python package for processing TPX3 neutron imaging data with TDC timing. It provides a clean Python interface to a C++ core that achieves 120x speedup over pure Python implementations.
+TDCSophiread is a high-performance Python package for processing TPX3 neutron imaging data using TDC-only timing. It achieves **96M+ hits/sec** throughput with parallel processing and provides both hit extraction and neutron clustering capabilities.
+
+**Key Features:**
+- TDC-only processing (detector-expert approved)
+- 4 clustering algorithms: ABS, Graph, DBSCAN, Grid
+- Parallel processing with Intel TBB
+- Zero-copy temporal batching
+- 96M+ hits/sec performance
 
 ## Quick Start
 
 ```python
 import tdcsophiread
 
-# Simple processing
+# 1. Extract hits from TPX3 file
 hits = tdcsophiread.process_tpx3("data.tpx3")
-print(f"Processed {len(hits['x']):,} hits")
+print(f"Extracted {len(hits):,} hits")
 
-# With progress tracking
-def progress(p, msg):
-    print(f"{p:.1%} - {msg}")
-
-hits = tdcsophiread.process_tpx3("data.tpx3", progress_callback=progress)
+# 2. Process hits to neutrons with clustering
+neutrons = tdcsophiread.process_hits_to_neutrons(hits)
+print(f"Found {len(neutrons):,} neutrons")
 ```
 
 ## Core Classes
 
 ### DetectorConfig
 
-Manages detector configuration parameters including chip layout, timing settings, and coordinate transformations.
+Manages detector configuration for TPX3 chip layout and TDC timing.
 
 ```python
 # Use VENUS detector defaults
@@ -35,42 +40,32 @@ config = tdcsophiread.DetectorConfig.from_file("config.json")
 
 # Load from dictionary
 config_dict = {
-    "detector": {
-        "chip_layout": {"chip_size_x": 512, "chip_size_y": 512},
-        "timing": {"tdc_frequency_hz": 60.0}
-    }
+    "timing": {"tdc_frequency_hz": 60.0},
+    "detector": {"chip_size_x": 256, "chip_size_y": 256}
 }
 config = tdcsophiread.DetectorConfig.from_json(config_dict)
 
 # Access configuration
 freq = config.get_tdc_frequency()  # 60.0 Hz
-chip_x = config.get_chip_size_x()  # 512 pixels
+size_x = config.get_chip_size_x()  # 256 pixels
 
-# Coordinate mapping
-global_x, global_y = config.map_chip_to_global(chip_id=1, local_x=100, local_y=100)
+# Coordinate transformations
+global_x, global_y = config.map_chip_to_global(chip_id=1, local_x=100, local_y=200)
 ```
 
 ### TDCProcessor
 
-Main processing class for TPX3 files.
+Main processor for extracting hits from TPX3 files.
 
 ```python
 config = tdcsophiread.DetectorConfig.venus_defaults()
 processor = tdcsophiread.TDCProcessor(config)
 
-# Single-threaded processing
-hits = processor.process_file("data.tpx3")
-
-# Parallel processing with TBB
-hits = processor.process_file_parallel("data.tpx3", num_threads=12)
-
-# Chunk processing for large files
-hits, bytes_processed = processor.process_chunk("data.tpx3",
-                                                start_offset=0,
-                                                requested_size=1024*1024*1024)
-
-# Configuration
-processor.set_missing_tdc_correction_enabled(True)
+# Process file with chunk-based memory mapping
+hits = processor.process_file("data.tpx3",
+                             chunk_size_mb=512,  # Memory-efficient processing
+                             parallel=True,      # Use parallel processing
+                             num_threads=0)      # Auto-detect cores
 
 # Performance metrics
 print(f"Processing time: {processor.get_last_processing_time_ms():.1f} ms")
@@ -78,169 +73,243 @@ print(f"Hit count: {processor.get_last_hit_count():,}")
 print(f"Rate: {processor.get_last_hits_per_second()/1e6:.1f} M hits/sec")
 ```
 
-### TDCStreamProcessor
+### NeutronProcessingConfig
 
-Memory-efficient processor for large files with progress tracking.
+Configuration for hit clustering and neutron extraction.
 
 ```python
-config = tdcsophiread.DetectorConfig.venus_defaults()
+# Create VENUS defaults
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
 
-# Using context manager
-with tdcsophiread.TDCStreamProcessor(config) as processor:
-    chunks = processor.process_file_stream("large_file.tpx3",
-                                         chunk_size_mb=512,
-                                         progress_callback=progress)
+# Configure clustering algorithm
+config.clustering.algorithm = "abs"  # or "graph", "dbscan", "grid"
+config.clustering.abs.radius = 5.0
+config.clustering.abs.neutron_correlation_window = 75.0  # nanoseconds
 
-    # Combine chunks
-    all_hits = tdcsophiread.analysis.combine_hit_chunks(chunks)
+# Configure neutron extraction
+config.extraction.algorithm = "simple_centroid"
+config.extraction.super_resolution_factor = 8.0
+config.extraction.weighted_by_tot = True
+
+# Configure parallel processing
+config.temporal.num_workers = 0        # Auto-detect
+config.temporal.max_batch_size = 100000
 ```
+
+### TemporalNeutronProcessor
+
+High-performance neutron processing with parallel temporal batching.
+
+```python
+# Create processor with configuration
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+processor = tdcsophiread.TemporalNeutronProcessor(config)
+
+# Process hits to neutrons (zero-copy)
+neutrons = processor.processHits(hits)
+
+# Performance metrics
+print(f"Processing time: {processor.getLastProcessingTimeMs():.1f} ms")
+print(f"Rate: {processor.getLastHitsPerSecond()/1e6:.1f} M hits/sec")
+print(f"Efficiency: {processor.getLastNeutronEfficiency():.3f}")
+
+# Get detailed statistics
+stats = processor.getStatistics()
+print(f"Total hits: {stats.total_hits_processed:,}")
+print(f"Total neutrons: {stats.total_neutrons_produced:,}")
+print(f"Parallel efficiency: {stats.parallel_efficiency:.2f}")
+```
+
+## Data Structures
 
 ### TDCHit
 
 Individual hit data structure.
 
 ```python
-# Access hit fields
-hit = tdcsophiread.TDCHit()
-hit.x = 256          # Global X coordinate
-hit.y = 256          # Global Y coordinate  
-hit.tof = 400000     # Time-of-flight (25ns units)
-hit.tot = 100        # Time-over-threshold
-hit.chip_id = 0      # Chip identifier (0-3)
-hit.timestamp = 1000 # Hit timestamp (25ns units)
+# Hit fields (structured numpy array)
+hit_array = hits  # From process_tpx3()
+print(f"Fields: {hit_array.dtype.names}")
+# ('tof', 'x', 'y', 'timestamp', 'tot', 'chip_id', 'cluster_id')
+
+# Access hit data
+x_coords = hit_array['x']          # Global X coordinates (uint16)
+y_coords = hit_array['y']          # Global Y coordinates (uint16)  
+tof_values = hit_array['tof']      # Time-of-flight (uint32, 25ns units)
+tot_values = hit_array['tot']      # Time-over-threshold (uint16)
+chip_ids = hit_array['chip_id']    # Chip ID 0-3 (uint8)
+timestamps = hit_array['timestamp'] # Hit timestamps (uint32, 25ns units)
 ```
 
-## Convenience Functions
+### TDCNeutron
+
+Neutron event data structure.
+
+```python
+# Neutron fields (structured numpy array)
+neutron_array = neutrons  # From process_hits_to_neutrons()
+print(f"Fields: {neutron_array.dtype.names}")
+# ('x', 'y', 'tof', 'tot', 'n_hits', 'chip_id', 'reserved')
+
+# Access neutron data
+x_coords = neutron_array['x']       # Sub-pixel X coordinates (float64)
+y_coords = neutron_array['y']       # Sub-pixel Y coordinates (float64)
+tof_values = neutron_array['tof']   # Time-of-flight (uint32, 25ns units)
+tot_values = neutron_array['tot']   # Combined TOT (uint16)
+n_hits = neutron_array['n_hits']    # Number of hits in cluster (uint16)
+chip_ids = neutron_array['chip_id'] # Chip ID (uint8)
+```
+
+## High-Level Functions
 
 ### process_tpx3()
 
-High-level function for simple TPX3 file processing.
+Extract hits from TPX3 files.
 
 ```python
 # Basic usage
 hits = tdcsophiread.process_tpx3("data.tpx3")
 
-# All parameters
+# With progress tracking
+def progress_callback(progress, message):
+    print(f"{progress:.1%} - {message}")
+
 hits = tdcsophiread.process_tpx3(
     file_path="data.tpx3",
     parallel=True,              # Use parallel processing
-    num_threads=0,              # 0 = auto-detect
-    progress_callback=progress  # Progress tracking function
+    num_threads=0,              # 0 = auto-detect cores
+    progress_callback=progress_callback
 )
 
-# Returns dictionary of numpy arrays
-print(hits.keys())  # ['x', 'y', 'tof', 'tot', 'chip_id', 'timestamp']
+# Returns structured numpy array
+print(f"Extracted {len(hits):,} hits")
+print(f"Data type: {hits.dtype}")
+```
+
+### process_hits_to_neutrons()
+
+Process hits to neutrons using clustering and extraction.
+
+```python
+# Basic usage with default configuration
+neutrons = tdcsophiread.process_hits_to_neutrons(hits)
+
+# With custom configuration
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+config.clustering.algorithm = "dbscan"
+config.clustering.dbscan.epsilon = 4.0
+config.clustering.dbscan.min_points = 3
+
+neutrons = tdcsophiread.process_hits_to_neutrons(hits, config)
+
+print(f"Found {len(neutrons):,} neutrons")
 ```
 
 ### process_tpx3_stream()
 
-Stream processing for large files.
+Memory-efficient streaming for large files.
 
 ```python
-chunks = tdcsophiread.process_tpx3_stream(
+hits = tdcsophiread.process_tpx3_stream(
     file_path="large_file.tpx3",
-    chunk_size_mb=512,
-    progress_callback=progress
+    chunk_size_mb=512,           # Process in 512MB chunks
+    progress_callback=progress_callback
 )
 
-# Process chunks individually or combine
-for chunk in chunks:
-    print(f"Chunk has {len(chunk['x'])} hits")
+print(f"Streamed {len(hits):,} hits")
 ```
 
-### hits_to_numpy()
+## Clustering Algorithms
 
-Convert C++ hit vector to numpy arrays.
+### ABS (Adaptive Bucket Sort)
+
+Fast O(n) clustering with temporal buckets.
 
 ```python
-processor = tdcsophiread.TDCProcessor(config)
-hit_vector = processor.process_file("data.tpx3")
-hits = tdcsophiread.hits_to_numpy(hit_vector)
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+config.clustering.algorithm = "abs"
+config.clustering.abs.radius = 5.0                      # Spatial radius (pixels)
+config.clustering.abs.neutron_correlation_window = 75.0 # Temporal window (ns)
+config.clustering.abs.min_cluster_size = 1              # Minimum hits per cluster
+
+processor = tdcsophiread.TemporalNeutronProcessor(config)
+neutrons = processor.processHits(hits)
 ```
 
-## Analysis Module
+### Graph Clustering
 
-The `analysis` module provides data analysis utilities.
-
-### create_tof_spectrum()
-
-Generate time-of-flight spectrum.
+Connected components with spatial hashing.
 
 ```python
-bin_centers, counts = tdcsophiread.analysis.create_tof_spectrum(
-    hits,
-    tof_range_ms=(0, 20),   # TOF range in milliseconds
-    num_bins=1000,          # Number of histogram bins
-    chip_filter=[0, 1]      # Optional: only include specific chips
-)
+config.clustering.algorithm = "graph"
+config.clustering.graph.radius = 5.0              # Connection radius (pixels)
+config.clustering.graph.min_cluster_size = 1      # Minimum cluster size
+config.clustering.graph.enable_spatial_hash = True # Use spatial optimization
+config.clustering.graph.parallel_threshold = 100000 # Parallel processing threshold
 ```
 
-### select_roi()
+### DBSCAN
 
-Select hits within a region of interest.
+Density-based clustering for complex patterns.
 
 ```python
-roi_hits = tdcsophiread.analysis.select_roi(
-    hits,
-    x_range=(100, 400),  # X coordinate range
-    y_range=(100, 400)   # Y coordinate range
-)
+config.clustering.algorithm = "dbscan"
+config.clustering.dbscan.epsilon = 5.0            # Neighborhood radius (pixels)
+config.clustering.dbscan.min_points = 4           # Minimum points for core
+config.clustering.dbscan.neutron_correlation_window = 75.0 # Temporal window (ns)
 ```
 
-### filter_hits_by_tof()
+### Grid Clustering
 
-Filter hits by time-of-flight range.
+O(n) clustering using detector grid structure.
 
 ```python
-filtered = tdcsophiread.analysis.filter_hits_by_tof(
-    hits,
-    tof_range_ms=(5.0, 15.0)  # TOF range in milliseconds
-)
+config.clustering.algorithm = "grid"
+config.clustering.grid.grid_cols = 32             # Grid columns
+config.clustering.grid.grid_rows = 32             # Grid rows
+config.clustering.grid.connection_distance = 4.0   # Max connection distance
+config.clustering.grid.merge_adjacent_cells = True # Merge across boundaries
 ```
 
-### calculate_hit_statistics()
+## Performance Monitoring
 
-Calculate comprehensive statistics.
+### Processing Statistics
 
 ```python
-stats = tdcsophiread.analysis.calculate_hit_statistics(hits)
+processor = tdcsophiread.TemporalNeutronProcessor(config)
+neutrons = processor.processHits(hits)
 
-print(f"Total hits: {stats['total_hits']:,}")
-print(f"X range: {stats['coordinate_ranges']['x_range']}")
-print(f"TOF mean: {stats['timing_stats']['tof_mean_ms']:.2f} ms")
-print(f"Active chips: {stats['chip_breakdown']['active_chips']}")
+# Get detailed statistics
+stats = processor.getStatistics()
+print(f"""
+Processing Statistics:
+  Total hits: {stats.total_hits_processed:,}
+  Total neutrons: {stats.total_neutrons_produced:,}
+  Processing time: {stats.total_processing_time_ms:.1f} ms
+  Hit rate: {stats.hits_per_second/1e6:.1f} M hits/sec
+  Neutron efficiency: {stats.neutron_efficiency:.3f}
+  Parallel efficiency: {stats.parallel_efficiency:.2f}
+  Workers used: {stats.num_workers_used}
+  Batches created: {stats.num_batches_created}
+""")
 ```
 
-### Plotting Functions
-
-If matplotlib is available:
+### Algorithm Information
 
 ```python
-# TOF spectrum plot
-fig = tdcsophiread.analysis.plot_tof_spectrum(
-    hits,
-    tof_range_ms=(0, 20),
-    num_bins=1000,
-    title="TOF Spectrum",
-    show_stats=True
-)
-
-# 2D hit position map
-fig = tdcsophiread.analysis.plot_hit_map(
-    hits,
-    bins=256,
-    title="Hit Position Map",
-    cmap='viridis'
-)
+print(f"Clustering algorithm: {processor.getHitClusteringAlgorithm()}")
+print(f"Extraction algorithm: {processor.getNeutronExtractionAlgorithm()}")
+print(f"Number of workers: {processor.getNumWorkers()}")
 ```
 
 ## Exception Handling
 
-TDCSophiread defines custom exceptions for better error handling:
+TDCSophiread defines custom exceptions:
 
 ```python
 try:
     hits = tdcsophiread.process_tpx3("data.tpx3")
+    neutrons = tdcsophiread.process_hits_to_neutrons(hits)
 except tdcsophiread.TDCFileError as e:
     print(f"File error: {e}")
 except tdcsophiread.TDCConfigError as e:
@@ -251,65 +320,128 @@ except tdcsophiread.TDCProcessingError as e:
 
 ## Performance Tips
 
-1. **Use parallel processing** for files > 100MB:
-   ```python
-   hits = tdcsophiread.process_tpx3("large.tpx3", parallel=True)
-   ```
-
-2. **Stream large files** to manage memory:
-   ```python
-   chunks = tdcsophiread.process_tpx3_stream("huge.tpx3", chunk_size_mb=512)
-   ```
-
-3. **Pre-filter data** to reduce memory usage:
-   ```python
-   for chunk in chunks:
-       filtered = tdcsophiread.analysis.filter_hits_by_tof(chunk, (5, 15))
-       # Process filtered chunk
-   ```
-
-4. **Use context managers** for resource cleanup:
-   ```python
-   with tdcsophiread.TDCStreamProcessor(config) as proc:
-       # Processing happens here
-       pass
-   ```
-
-## Data Format
-
-Hit data is returned as a dictionary of numpy arrays:
+### 1. Optimize for Your Data Size
 
 ```python
-hits = {
-    'x': np.array([...], dtype=np.uint16),      # Global X coordinates
-    'y': np.array([...], dtype=np.uint16),      # Global Y coordinates
-    'tof': np.array([...], dtype=np.uint32),    # Time-of-flight (25ns units)
-    'tot': np.array([...], dtype=np.uint16),    # Time-over-threshold
-    'chip_id': np.array([...], dtype=np.uint8), # Chip ID (0-3)
-    'timestamp': np.array([...], dtype=np.uint32) # Hit timestamp (25ns units)
-}
+# Small files (<100MB): Default settings
+hits = tdcsophiread.process_tpx3("small.tpx3")
+
+# Large files (>1GB): Parallel processing
+hits = tdcsophiread.process_tpx3("large.tpx3", parallel=True, num_threads=0)
+
+# Very large files (>10GB): Streaming
+hits = tdcsophiread.process_tpx3_stream("huge.tpx3", chunk_size_mb=512)
 ```
 
-Convert TOF to milliseconds: `tof_ms = hits['tof'] * 25 / 1e6`
+### 2. Choose the Right Clustering Algorithm
 
-## Configuration Files
+```python
+# For speed: ABS (fastest, O(n))
+config.clustering.algorithm = "abs"
 
-Example JSON configuration:
+# For accuracy: DBSCAN (handles noise well)
+config.clustering.algorithm = "dbscan"
 
-```json
-{
-  "detector": {
-    "chip_layout": {
-      "chip_size_x": 512,
-      "chip_size_y": 512
-    },
-    "timing": {
-      "tdc_frequency_hz": 60.0,
-      "enable_missing_tdc_correction": true
-    },
-    "super_resolution": {
-      "factor": 8
-    }
-  }
-}
+# For detector geometry: Grid (leverages natural structure)
+config.clustering.algorithm = "grid"
+
+# For general use: Graph (good balance)
+config.clustering.algorithm = "graph"
 ```
+
+### 3. Optimize Batch Sizes
+
+```python
+config.temporal.min_batch_size = 1000    # Smaller for low-latency
+config.temporal.max_batch_size = 50000   # Smaller for memory-constrained systems
+config.temporal.max_batch_size = 200000  # Larger for high-performance systems
+```
+
+### 4. Monitor Performance
+
+```python
+import time
+
+start_time = time.time()
+neutrons = processor.processHits(hits)
+python_overhead = (time.time() - start_time) * 1000 - processor.getLastProcessingTimeMs()
+
+print(f"C++ processing: {processor.getLastProcessingTimeMs():.1f} ms")
+print(f"Python overhead: {python_overhead:.1f} ms")
+```
+
+## Data Format Details
+
+### Time Conversions
+
+```python
+# Convert TOF to milliseconds
+tof_ms = hits['tof'] * 25 / 1e6  # 25ns units to milliseconds
+
+# Convert timestamps to seconds
+timestamps_s = hits['timestamp'] * 25 / 1e9  # 25ns units to seconds
+```
+
+### Coordinate Systems
+
+```python
+# Chip coordinates: 0-255 (local to each chip)
+# Global coordinates: Mapped to detector space
+# Sub-pixel coordinates: Scaled by super_resolution_factor (default 8.0)
+
+# Example: Convert neutron coordinates back to pixels
+pixel_x = neutrons['x'] / 8.0  # Assuming super_resolution_factor = 8.0
+pixel_y = neutrons['y'] / 8.0
+```
+
+### Zero-Copy Access
+
+```python
+# TDCSophiread uses zero-copy numpy arrays for efficiency
+hits_view = tdcsophiread.hits_to_numpy_view(hits)      # Zero-copy hit view
+neutron_view = tdcsophiread.neutrons_to_numpy_view(neutrons)  # Zero-copy neutron view
+
+# Access underlying data without copying
+data_ptr = hits_view.data.data  # Direct memory access
+```
+
+## Configuration Examples
+
+### High-Performance Configuration
+
+```python
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+
+# Optimize for speed
+config.clustering.algorithm = "abs"
+config.temporal.num_workers = 0  # Use all cores
+config.temporal.max_batch_size = 200000  # Large batches
+config.performance.enable_memory_pools = True
+config.performance.enable_vectorization = True
+```
+
+### Memory-Constrained Configuration
+
+```python
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+
+# Optimize for memory
+config.temporal.max_batch_size = 50000   # Smaller batches
+config.temporal.num_workers = 4          # Fewer workers
+config.performance.enable_memory_pools = False
+```
+
+### High-Accuracy Configuration
+
+```python
+config = tdcsophiread.NeutronProcessingConfig.venus_defaults()
+
+# Optimize for accuracy
+config.clustering.algorithm = "dbscan"
+config.clustering.dbscan.epsilon = 3.0
+config.clustering.dbscan.min_points = 3
+config.extraction.weighted_by_tot = True
+config.extraction.min_tot_threshold = 10  # Filter low-quality hits
+```
+
+For complete examples, see the Jupyter notebooks in the `notebooks/` directory.
