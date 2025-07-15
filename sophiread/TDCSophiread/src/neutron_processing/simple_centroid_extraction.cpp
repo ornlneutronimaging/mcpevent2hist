@@ -111,14 +111,17 @@ std::vector<TDCNeutron> SimpleCentroidExtraction::extract(
 
   // Update statistics
   auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+  auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
       end_time - start_time);
 
   last_stats_.total_hits_processed = total_hits_processed;
   last_stats_.total_clusters_processed = cluster_map.size();
   last_stats_.total_neutrons_extracted = neutrons.size();
   last_stats_.rejected_clusters = cluster_map.size() - neutrons.size();
-  last_stats_.processing_time_ms = duration.count() / 1000.0;
+  // Convert nanoseconds to milliseconds with higher precision
+  // Use minimum of 0.001ms (1 microsecond) to avoid exactly 0.0
+  last_stats_.processing_time_ms =
+      std::max(0.001, duration.count() / 1000000.0);
   last_stats_.single_hit_neutrons = single_hit_neutrons;
   last_stats_.multi_hit_neutrons = multi_hit_neutrons;
 
