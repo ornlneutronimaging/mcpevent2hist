@@ -199,23 +199,24 @@ neutrons = tdcsophiread.process_hits_to_neutrons(hits, config)
 ### Development Workflow
 
 ```bash
-# Full development setup
-pixi run cmake -B build        # Configure
-pixi run cmake --build build   # Build C++
-pip install -e .               # Install Python bindings
+# Core workflow
+pixi run build        # Configure and build C++
+pixi run test         # Run C++ tests
+pixi run install      # Install Python bindings (editable)
+pixi run python-test  # Test Python import
 
-# Testing
-pixi run ctest --test-dir build                    # C++ tests
-python -c "import tdcsophiread; print('✓ Import works')"  # Python test
+# Data setup (12GB sample data)
+pixi run setup-data   # Download sample TPX3 files
+pixi run notebooks    # Launch Jupyter with notebooks
 ```
 
 ### Build Options
 
 ```bash
-# Default: TDCSophiread only (recommended)
-cmake -B build
+# Debug build (if needed)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
-# Legacy: Include deprecated components (not recommended)
+# Legacy components (not recommended)
 cmake -B build -DBUILD_LEGACY=ON
 ```
 
@@ -226,8 +227,8 @@ cmake -B build -DBUILD_LEGACY=ON
 ### Jupyter Notebooks (Real Data)
 
 ```bash
-# Start Jupyter with sample data
-pixi run jupyter lab
+# Start Jupyter with sample notebooks
+pixi run notebooks
 ```
 
 **Available Notebooks:**

@@ -13,12 +13,11 @@ cd mcpevent2hist/sophiread
 
 # Set up pixi environment (recommended)
 pixi install
-pixi shell
 
 # Build and install
-pixi run cmake -B build
-pixi run cmake --build build
-pip install -e .
+pixi run build        # Configure and build C++
+pixi run install      # Install Python bindings
+pixi run python-test  # Verify installation
 ```
 
 ### Option 2: PyPI Installation (when available)
@@ -32,12 +31,8 @@ pip install tdcsophiread
 The repository includes Jupyter notebooks with real TPX3 data examples. To access the 12GB sample dataset:
 
 ```bash
-# Initialize and download the data submodule (12GB)
-git submodule init
-git submodule update notebooks/data
-
-# Or do both in one step
-git submodule update --init notebooks/data
+# Download the data submodule (12GB)
+pixi run setup-data
 ```
 
 **Note**: The data download is **~12GB** and may take several minutes depending on your connection.
