@@ -417,7 +417,7 @@ print(f"Found {len(neutrons):,} neutrons from {len(hits):,} hits")
 
 - **🐛 Bugs**: [GitHub Issues](https://github.com/ornlneutronimaging/mcpevent2hist/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/ornlneutronimaging/mcpevent2hist/discussions)
-- **📧 Contact**: zhangc@ornl.gov
+- **📧 Contact**: neutronimaging@ornl.gov
 
 ## 📄 License
 

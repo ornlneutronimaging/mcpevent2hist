@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "tdcsophiread"
-dynamic = ["version"]
+version = "3.0.0"
 description = "High-performance TDC-only TPX3 neutron imaging data processor"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
@@ -97,7 +97,7 @@ cmake.args = [
 build.verbose = true
 wheel.expand-macos-universal-tags = true
 
-# Version is managed by CMake via PROJECT_VERSION - no special provider needed
+# Version is hardcoded above and synced manually
 
 # Specify which files to include in the wheel
 wheel.packages = ["src/tdcsophiread"]
@@ -116,7 +116,7 @@ profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.0.0"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -149,15 +149,16 @@ exclude_lines = [
 
 # Configuration for building wheels with cibuildwheel
 [tool.cibuildwheel]
-# Build wheels for these Python versions
+# Build wheels for these Python versions on target platforms only
 build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
 
-# Skip 32-bit builds and unsupported platforms
+# Only build for linux-64 and osx-arm64 as requested
 skip = [
-    "*-win32",
-    "*-manylinux_i686",
-    "*-musllinux*",  # Skip musl for now due to complexity
-    "pp*",  # Skip PyPy
+    "*-win*",           # Skip all Windows
+    "*-manylinux_i686", # Skip 32-bit Linux
+    "*-musllinux*",     # Skip musl Linux
+    "*-macosx_x86_64",  # Skip Intel macOS (only want ARM64)
+    "pp*",              # Skip PyPy
 ]
 
 # Use our pixi environment for dependencies
@@ -174,6 +175,7 @@ before-all = [
     "pixi install",
 ]
 environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+# Ensure dependencies are bundled (auditwheel is default)
 
 [tool.cibuildwheel.macos]
 before-all = [
@@ -182,10 +184,6 @@ before-all = [
     "pixi install",
 ]
 environment = {PATH = "$HOME/.pixi/bin:$PATH"}
+# Ensure dependencies are bundled (delocate is default)
 
-[tool.cibuildwheel.windows]
-# Windows is more complex due to MSVC requirements
-before-all = [
-    "powershell -Command \"Invoke-WebRequest -Uri https://pixi.sh/install.ps1 -OutFile install.ps1; .\\install.ps1\"",
-    "pixi install",
-]
+# Windows support removed - only supporting linux-64 and osx-arm64

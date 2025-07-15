@@ -54,10 +54,26 @@ run-notebooks = { cmd = "jupyter lab notebooks/", depends-on = ["python-test"] }
 test-clustering = { cmd = "python -c 'import tdcsophiread; hits = tdcsophiread.process_tpx3(\"notebooks/data/tiny.tpx3\") if __import__(\"os\").path.exists(\"notebooks/data/tiny.tpx3\") else []; neutrons = tdcsophiread.process_hits_to_neutrons(hits) if len(hits) > 0 else []; print(f\"✅ Clustering test: {len(hits)} hits → {len(neutrons)} neutrons\")'", depends-on = ["python-test"] }
 benchmark-algos = { cmd = "python -c 'exec(open(\"scripts/benchmark_clustering.py\").read())' 2>/dev/null || echo '⚠️ Benchmark script not found - run clustering test in notebooks'", depends-on = ["python-test"] }
 
+# Publishing and packaging
+sync-version = "python scripts/sync-version.py && echo '🔄 Version synchronized between C++ and Python'"
+build-wheel = { cmd = "python -m build --wheel", depends-on = ["sync-version", "build"] }
+build-wheel-bundled = { cmd = "python -m build --wheel && delocate-wheel -w . -v dist/*.whl && echo '📦 Dependencies bundled with delocate'", depends-on = ["sync-version", "build"] }
+build-sdist = { cmd = "python -m build --sdist", depends-on = ["sync-version"] }
+build-dist = { cmd = "python -m build", depends-on = ["sync-version", "build"] }
+build-dist-bundled = { cmd = "python -m build && delocate-wheel -w . -v dist/*.whl && echo '📦 Complete distribution with bundled dependencies'", depends-on = ["sync-version", "build"] }
+test-wheel = { cmd = "python -m pip install dist/*.whl --force-reinstall && python -c 'import tdcsophiread; print(f\"✅ Wheel test passed: {tdcsophiread.__version__}\")'", depends-on = ["build-wheel"] }
+
+# PyPI publishing (requires API tokens)
+publish-test = { cmd = "python -m twine upload --repository testpypi dist/* && echo '🚀 Published to Test PyPI'", depends-on = ["build-dist"] }
+publish-pypi = { cmd = "python -m twine upload dist/* && echo '🚀 Published to PyPI'", depends-on = ["build-dist"] }
+
+# Cross-platform wheel building (local)
+build-wheels-local = "python -m cibuildwheel --output-dir wheelhouse && echo '🏗️ Cross-platform wheels built in wheelhouse/'"
+
 # Other targets
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
-clean = { cmd = "bash -c 'rm -rf build build-debug docs/html dist .eggs *.egg-info; find . -name \"__pycache__\" -type d -exec rm -rf {} + 2>/dev/null || true; find . -name \"*.pyc\" -delete 2>/dev/null || true; find . -name \"*.so\" -delete 2>/dev/null || true; echo \"🧹 Cleaned all build artifacts, docs, and Python cache files\"'" }
+clean = { cmd = "bash -c 'rm -rf build build-debug docs/html dist .eggs *.egg-info wheelhouse; find . -name \"__pycache__\" -type d -exec rm -rf {} + 2>/dev/null || true; find . -name \"*.pyc\" -delete 2>/dev/null || true; find . -name \"*.so\" -delete 2>/dev/null || true; echo \"🧹 Cleaned all build artifacts, docs, wheels, and Python cache files\"'" }
 
 [dependencies]
 python = "3.12.*"
@@ -81,10 +97,13 @@ pydantic = ">=2.11.7,<3"
 h5py = ">=3.12.0,<4"
 scikit-build-core = ">=0.11.4,<0.12"
 pip = ">=25.1.1,<26"
-python-build = ">=1.2.2.post1,<2"
 jupyterlab = ">=4.4.3,<5"
 scipy = ">=1.16.0,<2"
 pandas = ">=2.3.1,<3"
+python-build = ">=1.2.2.post1,<2"
+twine = ">=6.0.1,<7"
+cibuildwheel = ">=2.22.0,<3"
+delocate = ">=0.13.0,<1"
 
 [target.linux-64.dependencies]
 gxx_linux-64 = ">=14.2.0,<15"
