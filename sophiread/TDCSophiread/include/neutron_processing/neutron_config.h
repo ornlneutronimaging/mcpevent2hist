@@ -55,19 +55,37 @@ struct GraphConfig {
 };
 
 /**
+ * @brief Algorithm-specific configuration for DBSCAN clustering
+ */
+struct DBSCANConfig {
+  double epsilon;  ///< Maximum distance between neighbor points (default: 5.0)
+  uint16_t min_points;  ///< Minimum points to form dense region (default: 4)
+  double neutron_correlation_window;  ///< Temporal correlation window in
+                                      ///< nanoseconds (default: 75.0)
+  double grid_size;  ///< Spatial grid size for neighbor search (default: 5.0)
+
+  DBSCANConfig()
+      : epsilon(5.0),
+        min_points(4),
+        neutron_correlation_window(75.0),
+        grid_size(5.0) {}
+};
+
+/**
  * @brief Configuration for hit clustering algorithms
  */
 struct HitClusteringConfig {
   std::string algorithm;  ///< Algorithm name ("abs", "graph", "dbscan")
 
   // Algorithm-specific configurations
-  ABSConfig abs;      ///< ABS algorithm configuration
-  GraphConfig graph;  ///< Graph algorithm configuration
+  ABSConfig abs;        ///< ABS algorithm configuration
+  GraphConfig graph;    ///< Graph algorithm configuration
+  DBSCANConfig dbscan;  ///< DBSCAN algorithm configuration
 
   /**
    * @brief Default constructor with VENUS detector defaults
    */
-  HitClusteringConfig() : algorithm("abs"), abs(), graph() {}
+  HitClusteringConfig() : algorithm("abs"), abs(), graph(), dbscan() {}
 
   /**
    * @brief Factory method for VENUS detector defaults

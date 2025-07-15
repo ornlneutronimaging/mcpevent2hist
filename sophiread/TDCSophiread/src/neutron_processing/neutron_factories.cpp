@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "neutron_processing/abs_clustering.h"
+#include "neutron_processing/dbscan_clustering.h"
 #include "neutron_processing/graph_clustering.h"
 #include "neutron_processing/neutron_processing.h"
 #include "neutron_processing/simple_centroid_extraction.h"
@@ -22,6 +23,8 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
     return std::make_unique<ABSClustering>(config);
   } else if (algorithm_name == "graph") {
     return std::make_unique<GraphHitClustering>(config);
+  } else if (algorithm_name == "dbscan") {
+    return std::make_unique<DBSCANHitClustering>(config);
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -29,7 +32,7 @@ std::unique_ptr<IHitClustering> HitClusteringFactory::create(
 }
 
 std::vector<std::string> HitClusteringFactory::getAvailableAlgorithms() {
-  return {"abs", "graph"};
+  return {"abs", "graph", "dbscan"};
 }
 
 std::string HitClusteringFactory::getAlgorithmDescription(
@@ -38,6 +41,10 @@ std::string HitClusteringFactory::getAlgorithmDescription(
     return "Age-Based Spatial clustering (stateless for parallel processing)";
   } else if (algorithm_name == "graph") {
     return "Graph-based clustering with spatial-temporal constraints "
+           "(stateless)";
+  } else if (algorithm_name == "dbscan") {
+    return "Density-Based Spatial Clustering (DBSCAN) with temporal "
+           "constraints "
            "(stateless)";
   }
 

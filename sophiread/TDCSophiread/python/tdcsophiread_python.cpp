@@ -265,11 +265,13 @@ PYBIND11_MODULE(_core, m) {
   py::class_<HitClusteringConfig>(m, "HitClusteringConfig")
       .def(py::init<>())
       .def_readwrite("algorithm", &HitClusteringConfig::algorithm,
-                     "Clustering algorithm name ('abs' or 'graph')")
+                     "Clustering algorithm name ('abs', 'graph', or 'dbscan')")
       .def_readwrite("abs", &HitClusteringConfig::abs,
                      "ABS clustering parameters")
       .def_readwrite("graph", &HitClusteringConfig::graph,
-                     "Graph clustering parameters");
+                     "Graph clustering parameters")
+      .def_readwrite("dbscan", &HitClusteringConfig::dbscan,
+                     "DBSCAN clustering parameters");
 
   // ABSConfig
   py::class_<ABSConfig>(m, "ABSConfig")
@@ -295,6 +297,19 @@ PYBIND11_MODULE(_core, m) {
                      "Enable spatial hash optimization")
       .def_readwrite("parallel_threshold", &GraphConfig::parallel_threshold,
                      "Minimum hits for parallel processing");
+
+  // DBSCANConfig
+  py::class_<DBSCANConfig>(m, "DBSCANConfig")
+      .def(py::init<>())
+      .def_readwrite("epsilon", &DBSCANConfig::epsilon,
+                     "Maximum distance between neighbor points")
+      .def_readwrite("min_points", &DBSCANConfig::min_points,
+                     "Minimum points to form dense region")
+      .def_readwrite("neutron_correlation_window",
+                     &DBSCANConfig::neutron_correlation_window,
+                     "Temporal correlation window in nanoseconds")
+      .def_readwrite("grid_size", &DBSCANConfig::grid_size,
+                     "Spatial grid size for neighbor search");
 
   // NeutronExtractionConfig
   py::class_<NeutronExtractionConfig>(m, "NeutronExtractionConfig")

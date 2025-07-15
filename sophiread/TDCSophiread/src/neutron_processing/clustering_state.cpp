@@ -5,7 +5,8 @@
 
 #include <stdexcept>
 
-#include "neutron_processing/graph_clustering.h"  // For GraphClusteringState
+#include "neutron_processing/dbscan_clustering.h"  // For DBSCANClusteringState
+#include "neutron_processing/graph_clustering.h"   // For GraphClusteringState
 
 namespace tdcsophiread {
 
@@ -68,6 +69,8 @@ std::unique_ptr<IClusteringState> ClusteringStateFactory::create(
     return std::make_unique<ABSClusteringState>();
   } else if (algorithm_name == "graph") {
     return std::make_unique<GraphClusteringState>();
+  } else if (algorithm_name == "dbscan") {
+    return std::make_unique<DBSCANClusteringState>();
   }
 
   throw std::invalid_argument("Unknown clustering algorithm: " +
@@ -75,7 +78,8 @@ std::unique_ptr<IClusteringState> ClusteringStateFactory::create(
 }
 
 bool ClusteringStateFactory::isSupported(const std::string& algorithm_name) {
-  return algorithm_name == "abs" || algorithm_name == "graph";
+  return algorithm_name == "abs" || algorithm_name == "graph" ||
+         algorithm_name == "dbscan";
 }
 
 }  // namespace tdcsophiread
