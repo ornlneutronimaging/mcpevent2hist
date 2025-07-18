@@ -15,8 +15,13 @@ cd mcpevent2hist/sophiread
 pixi install
 
 # Build and install
+# One stop-shop
+pixi run dev-install
+
+# Alternatively, run each step manually
+pixi run configure  # Configure the build
 pixi run build        # Configure and build C++
-pixi run install      # Install Python bindings
+pixi run pip install -e . --no-build-isolation  # Install Python bindings
 pixi run python-test  # Verify installation
 ```
 
