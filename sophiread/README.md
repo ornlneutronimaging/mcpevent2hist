@@ -21,17 +21,34 @@ git clone https://github.com/ornlneutronimaging/mcpevent2hist.git
 cd mcpevent2hist/sophiread
 
 # Set up environment (pixi recommended)
-pixi install && pixi shell
+pixi install
 
 # Build and install
-pixi run cmake -B build && pixi run cmake --build build && pip install -e .
+pixi run dev-build
+```
+
+> Note: if you prefer to do build in a staged manner, you can issue the following commands:
+
+```bash
+# configure with CMake
+pixi run configure
+# build with CMake
+pixi run build
+# run tests with CMake
+pixi run test
+# install Python bindings
+pixi run pip install -e . --no-build-isolation
 ```
 
 ### Get Sample Data (12GB)
 
 ```bash
+# Make sure you have git lfs installed, then run:
+git lfs install
+# Initialize the git submodule
+git submodule init
 # Download real TPX3 datasets for testing
-git submodule update --init notebooks/data
+git submodule update --init resources/sophiread_data
 ```
 
 ### Python Usage
@@ -133,18 +150,21 @@ flowchart TD
 ```
 
 ### Phase 1: Hit Extraction
+
 - **Memory-mapped I/O**: Efficient processing of large TPX3 files
 - **Section-aware processing**: Respects TPX3 data structure constraints
 - **TDC state propagation**: Sequential processing for reliable timing
 - **Parallel chunk processing**: Intel TBB for maximum throughput
 
 ### Phase 2: Temporal Neutron Processing
+
 - **Statistical analysis**: Optimal batching based on hit distribution
 - **Parallel worker pool**: Each worker has dedicated algorithm instances
 - **4 clustering algorithms**: ABS, Graph, DBSCAN, Grid with different performance characteristics
 - **Zero-copy processing**: Iterator-based interfaces minimize memory overhead
 
 ### Phase 3: Result Aggregation
+
 - **Parallel result combination**: Efficient merging from multiple workers
 - **Overlap deduplication**: Remove duplicate neutrons from batch boundaries
 - **Performance statistics**: Detailed metrics for optimization
@@ -213,6 +233,9 @@ pixi run notebooks    # Launch Jupyter with notebooks
 ### Build Options
 
 ```bash
+# Start the subprocess with pixi
+pixi shell
+
 # Debug build (if needed)
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
@@ -232,6 +255,7 @@ pixi run notebooks
 ```
 
 **Available Notebooks:**
+
 - `notebooks/hits_extraction_from_tpx3_Ni.ipynb` - Hit extraction (96M+ hits/sec)
 - `notebooks/neutrons_extraction_from_tpx3_Ni.ipynb` - Complete neutron processing
 - `notebooks/clustering_abs_ni.ipynb` - ABS clustering demo
