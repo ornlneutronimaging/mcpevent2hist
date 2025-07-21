@@ -3,8 +3,11 @@ exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
-Name: Sophiread
-Description: A library for processing TPX3 raw data
+Name: TDCSophiread
+Description: High-performance TDC-only TPX3 neutron imaging data processor
+URL: https://github.com/ornlneutronimaging/mcpevent2hist
 Version: @PROJECT_VERSION@
-Cflags: -I${includedir}
-Libs: -L${libdir} -lFastSophiread
+Requires: tbb >= 2020.0
+Cflags: -I${includedir} -std=c++20
+Libs: -L${libdir} -lTDCSophiread
+Libs.private: -ltbb

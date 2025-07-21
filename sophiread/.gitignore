@@ -2,3 +2,16 @@
 # pixi environments
 .pixi
 *.egg-info
+
+# python
+*.pyc
+__pycache__
+*.pyo
+*.pyd
+*.pdb
+
+# ignore historical docs
+docs/historical
+
+# doxygen
+docs/html
