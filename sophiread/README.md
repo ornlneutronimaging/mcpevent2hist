@@ -24,7 +24,7 @@ cd mcpevent2hist/sophiread
 pixi install
 
 # Build and install
-pixi run dev-build
+pixi run dev-install
 ```
 
 > Note: if you prefer to do build in a staged manner, you can issue the following commands:
