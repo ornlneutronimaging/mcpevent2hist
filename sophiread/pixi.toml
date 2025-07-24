@@ -6,15 +6,49 @@ platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
 
 [tasks]
-configure = "cmake -G Ninja -S . -B build"
+# Core build tasks
+configure = "cmake -G Ninja -S . -B build -DBUILD_PYTHON_BINDINGS=ON -DCMAKE_BUILD_TYPE=Release"
 build = { cmd = "ninja -C build", depends-on = ["configure"] }
-test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = ["build"] }
+test = { cmd = "cd build && ctest -V --output-on-failure", depends-on = [
+    "build",
+] }
+
+# Python development
+dev-install = { cmd = "pip install -e . --no-build-isolation", depends-on = [
+    "build",
+] }
+python-test = { cmd = "python -c 'import tdcsophiread; print(tdcsophiread.__version__)'" }
+
+# Data setup
+setup-data = "git submodule update --init resources/sophiread_data"
+notebooks = "jupyter lab notebooks/"
+
+# Publishing
+sync-version = "python scripts/sync-version.py"
+build-wheel = { cmd = "bash scripts/build-wheel.sh", depends-on = [
+    "sync-version",
+    "build",
+] }
+build-sdist = { cmd = "python -m build --sdist --outdir dist", depends-on = [
+    "sync-version",
+] }
+test-wheel = { cmd = "pip install dist/*.whl --force-reinstall && python -c 'import tdcsophiread'", depends-on = [
+    "build-wheel",
+] }
+publish-pypi = { cmd = "python -m twine upload dist/*", depends-on = [
+    "build-wheel",
+    "build-sdist",
+] }
+
+# C++ package for DAQ
 package = { cmd = "ninja -C build package", depends-on = ["build"] }
+
+# Utilities
+clean = "rm -rf build build-debug build-legacy dist Testing .pytest_cache .coverage htmlcov .mypy_cache .ruff_cache coverage.xml && find . -type d -name '__pycache__' -o -name '*.egg-info' | xargs rm -rf 2>/dev/null || true"
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
-clean = "rm -rf build"
 
 [dependencies]
-python = ">=3.13.2,<3.14"
+python = "3.12.*"
 cmake = ">=3.31.5,<4"
 ninja = ">=1.12.1,<2"
 clang-format = ">=19.1.7,<20"
@@ -27,7 +61,24 @@ nlohmann_json = ">=3.11.3,<4"
 doxygen = ">=1.13.2,<2"
 graphviz = ">=12.2.1,<13"
 pre-commit = ">=4.2.0,<5"
+pybind11 = ">=2.13.6,<3"
+numpy = ">=2.3.0,<3"
+libgfortran = ">=5.0.0,<16"
+matplotlib = ">=3.10.3,<4"
+pydantic = ">=2.11.7,<3"
+h5py = ">=3.12.0,<4"
+scikit-build-core = ">=0.11.4,<0.12"
+pip = ">=25.1.1,<26"
+jupyterlab = ">=4.4.3,<5"
+scipy = ">=1.16.0,<2"
+pandas = ">=2.3.1,<3"
+python-build = ">=1.2.2.post1,<2"
+twine = ">=6.0.1,<7"
+cibuildwheel = ">=3.0.1,<4"
+delocate = ">=0.13.0,<1"
 
 [target.linux-64.dependencies]
-gxx_linux-64 = ">=14.2.0,<15"
+gxx_linux-64 = "11.2.*"   # Use older GCC for better compatibility
 libglu = ">=9.0.3,<10"
+auditwheel = ">=6.0.0,<7"
+patchelf = ">=0.17.0,<1"

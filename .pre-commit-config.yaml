@@ -21,6 +21,7 @@ repos:
     rev: v2.4.1
     hooks:
     - id: codespell
+      exclude: '.*\.ipynb$|.*pixi\.lock$'
 
   - repo: https://github.com/mantidproject/pre-commit-hooks.git
     rev: 2f8a4f22629d0d23332f621df9de93751331161b

@@ -14,9 +14,14 @@ endif()
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
 
 # This is to avoid accidentally using Homebrew header/lib instead of the one
-# from micromamba
+# from micromamba or pixi
 if(DEFINED ENV{CONDA_PREFIX})
   set(CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX} ${CMAKE_PREFIX_PATH})
+endif()
+
+# For scikit-build-core: respect Python installation prefix
+if(DEFINED ENV{PYTHONPATH})
+  list(PREPEND CMAKE_PREFIX_PATH $ENV{Python_ROOT_DIR})
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -29,6 +34,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
@@ -62,11 +68,38 @@ add_custom_target(copy_resources ALL DEPENDS ${CMAKE_BINARY_DIR}/data)
 # Add compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-march=native -ffast-math -pthread -Wall -Wextra)
+
+  # Ensure maximum optimization for performance-critical code
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3 -DNDEBUG)
+  endif()
 endif()
 
-# Add FastSophiread library
-add_subdirectory(FastSophiread)
-add_subdirectory(SophireadCLI)
+# Build options
+option(
+  BUILD_LEGACY
+  "Build legacy components (DEPRECATED - will be removed in next major release)"
+  OFF)
+
+# Add TDCSophiread library (default)
+add_subdirectory(TDCSophiread)
+
+# Add legacy implementation (optional, DEPRECATED)
+if(BUILD_LEGACY)
+  message(
+    WARNING
+      "
+================================================================================
+WARNING: Legacy build is DEPRECATED and will be removed in the next major release.
+Legacy components (FastSophiread, GUIs) use unreliable GDC-based TOF calculation.
+Please migrate to TDCSophiread which uses detector-expert-approved TDC-only approach.
+Performance: TDCSophiread achieves 96M+ hits/sec vs legacy <10M hits/sec
+================================================================================"
+  )
+  add_subdirectory(legacy)
+else()
+  message(STATUS "Skipping legacy components (use -DBUILD_LEGACY=ON to enable)")
+endif()
 
 # ----------------- PACKAGE CONFIGURATION ----------------- #
 
@@ -94,18 +127,37 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/sophireadConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sophiread)
 
-# For package config
+# Package config for TDCSophiread (default) and backward compatibility
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sophiread.pc.in
-               ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc @ONLY)
+               ${CMAKE_CURRENT_BINARY_DIR}/tdcsophiread.pc @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sophiread.pc
+# Install with both names for compatibility
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tdcsophiread.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+# Create backward-compatible symlink for existing DAQ systems
+install(
+  CODE "
+  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    tdcsophiread.pc
+    \${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig/sophiread.pc)
+")
 
 # ----------------- DOXYGEN ----------------- #
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
-       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  # Configure Doxyfile with correct paths for build directory
+  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile DOXYFILE_CONTENTS)
+  string(REPLACE "README.md" "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  string(REPLACE "TDCSophiread/include"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/TDCSophiread/include"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  string(REPLACE "TDCSophiread/src"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/TDCSophiread/src"
+                 DOXYFILE_CONTENTS "${DOXYFILE_CONTENTS}")
+  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile "${DOXYFILE_CONTENTS}")
+
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/docs")
   add_custom_target(
     docs
