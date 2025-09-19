@@ -113,7 +113,8 @@ class TDCProcessor {
     m_MissingTdcCorrectionEnabled = enable;
   }
 
-  // ==================== PHASE 2: HIT PROCESSING (PUBLIC FOR DAQ) ====================
+  // ==================== PHASE 2: HIT PROCESSING (PUBLIC FOR DAQ)
+  // ====================
 
   /**
    * @brief Process a single section to extract hits
@@ -155,7 +156,8 @@ class TDCProcessor {
                          std::array<uint32_t, 4>& chip_tdc_state,
                          std::array<bool, 4>& chip_has_tdc);
 
-  // ==================== PHASE 2: HIT PROCESSING (moved to public) ====================
+  // ==================== PHASE 2: HIT PROCESSING (moved to public)
+  // ====================
 
   /**
    * @brief Process single packet within a section
