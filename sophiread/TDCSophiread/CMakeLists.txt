@@ -3,8 +3,17 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+# Include GNUInstallDirs for standard installation directories
+include(GNUInstallDirs)
+
 # Project will inherit version from parent project
 message(STATUS "Configuring TDCSophiread (TDC-only implementation)")
+
+# Find required dependencies
+find_package(TBB REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(HDF5 COMPONENTS CXX)
 
 # Core TDC processing sources (clustering disabled for clean implementation)
 set(TDC_SOURCES
@@ -66,101 +75,109 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Enable testing for this directory
-enable_testing()
-include(GoogleTest)
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+  find_package(GTest REQUIRED)
+  enable_testing()
+  include(GoogleTest)
+endif()
 
-# ----------------- TDD TEST INFRASTRUCTURE -----------------
-# Function to add TDC tests following TDD approach
-function(add_tdc_test test_name)
-  add_executable(${test_name} tests/test_${test_name}.cpp)
-  target_link_libraries(
-    ${test_name}
-    PRIVATE TDCSophiread TBB::tbb nlohmann_json::nlohmann_json GTest::GTest
-            GTest::Main ${ARGN} # Additional libraries can be passed as
-                                # arguments
-  )
-  gtest_discover_tests(${test_name})
+if(BUILD_TESTS)
+  # ----------------- TDD TEST INFRASTRUCTURE -----------------
+  # Function to add TDC tests following TDD approach
+  function(add_tdc_test test_name)
+    add_executable(${test_name} tests/test_${test_name}.cpp)
+    target_link_libraries(
+      ${test_name}
+      PRIVATE TDCSophiread TBB::tbb nlohmann_json::nlohmann_json GTest::GTest
+              GTest::Main ${ARGN} # Additional libraries can be passed as
+                                  # arguments
+    )
+    gtest_discover_tests(${test_name})
 
-  # Set test properties for better output
-  set_target_properties(${test_name} PROPERTIES CXX_STANDARD 20
-                                                CXX_STANDARD_REQUIRED ON)
-endfunction()
+    # Set test properties for better output
+    set_target_properties(${test_name} PROPERTIES CXX_STANDARD 20
+                                                  CXX_STANDARD_REQUIRED ON)
+  endfunction()
 
-# Function to add neutron processing tests
-function(add_neutron_test test_name)
-  add_executable(${test_name} tests/neutron_processing/test_${test_name}.cpp)
-  target_link_libraries(
-    ${test_name} PRIVATE TDCSophiread TBB::tbb nlohmann_json::nlohmann_json
-                         GTest::GTest GTest::Main ${ARGN})
-  gtest_discover_tests(${test_name})
+  # Function to add neutron processing tests
+  function(add_neutron_test test_name)
+    add_executable(${test_name} tests/neutron_processing/test_${test_name}.cpp)
+    target_link_libraries(
+      ${test_name} PRIVATE TDCSophiread TBB::tbb nlohmann_json::nlohmann_json
+                           GTest::GTest GTest::Main ${ARGN})
+    gtest_discover_tests(${test_name})
 
-  # Set test properties for better output
-  set_target_properties(${test_name} PROPERTIES CXX_STANDARD 20
-                                                CXX_STANDARD_REQUIRED ON)
-endfunction()
+    # Set test properties for better output
+    set_target_properties(${test_name} PROPERTIES CXX_STANDARD 20
+                                                  CXX_STANDARD_REQUIRED ON)
+  endfunction()
 
-# TDD Test 1: DetectorConfig (tests written FIRST)
-add_tdc_test(detector_config)
+  # TDD Test 1: DetectorConfig (tests written FIRST)
+  add_tdc_test(detector_config)
 
-# TDD Test 2: Memory-mapped I/O (tests written FIRST)
-add_tdc_test(io)
+  # TDD Test 2: Memory-mapped I/O (tests written FIRST)
+  add_tdc_test(io)
 
-# TDD Test 3: TPX3 Packet parsing (tests written FIRST)
-add_tdc_test(packet)
+  # TDD Test 3: TPX3 Packet parsing (tests written FIRST)
+  add_tdc_test(packet)
 
-# TDD Test 4: Hit conversion and TDC correction (tests written FIRST)
-add_tdc_test(hit)
+  # TDD Test 4: Hit conversion and TDC correction (tests written FIRST)
+  add_tdc_test(hit)
 
-# TDD Test 5: Basic single-threaded processor (tests written FIRST)
-add_tdc_test(processor)
+  # TDD Test 5: Basic single-threaded processor (tests written FIRST)
+  add_tdc_test(processor)
 
-# TDD Test 6: Neutron data structure and utilities (tests written FIRST)
-add_tdc_test(neutron)
+  # TDD Test 6: Neutron data structure and utilities (tests written FIRST)
+  add_tdc_test(neutron)
 
-# Legacy clustering tests disabled - moved to legacy/
-# add_tdc_test(clustering_config) add_tdc_test(abs_clustering)
-# add_tdc_test(graph_clustering) add_tdc_test(centroid_fitting)
-# add_tdc_test(cluster_processor)
+  # Legacy clustering tests disabled - moved to legacy/
+  # add_tdc_test(clustering_config) add_tdc_test(abs_clustering)
+  # add_tdc_test(graph_clustering) add_tdc_test(centroid_fitting)
+  # add_tdc_test(cluster_processor)
 
-# Legacy performance and integration tests disabled
-# option(BUILD_PERFORMANCE_TESTS "Build performance benchmark tests" OFF)
-# if(BUILD_PERFORMANCE_TESTS) add_tdc_test(clustering_performance) endif()
-# add_tdc_test(clustering_integration)
+  # Legacy performance and integration tests disabled
+  # option(BUILD_PERFORMANCE_TESTS "Build performance benchmark tests" OFF)
+  # if(BUILD_PERFORMANCE_TESTS) add_tdc_test(clustering_performance) endif()
+  # add_tdc_test(clustering_integration)
 
-# Streaming Tests: Memory-efficient streaming components (to be implemented with
-# TDD)
-add_tdc_test(streaming_config)
-# add_tdc_test(memory_monitor)
-add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
-# add_tdc_test(async_hdf5_writer) add_tdc_test(streaming_processor)
+  # Streaming Tests: Memory-efficient streaming components (to be implemented
+  # with TDD)
+  add_tdc_test(streaming_config)
+  # add_tdc_test(memory_monitor)
+  add_tdc_test(temporal_window) # TDD Complete: 100% tests passing
+  # add_tdc_test(async_hdf5_writer) add_tdc_test(streaming_processor)
 
-# ----------------- NEUTRON PROCESSING TESTS -----------------
-# New neutron processing architecture tests
-add_neutron_test(neutron_interfaces) # Interface and factory tests
-add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
-add_neutron_test(graph_clustering) # Graph clustering algorithm tests
-add_neutron_test(dbscan_clustering) # DBSCAN clustering algorithm tests
-add_neutron_test(dbscan_parallel_safety) # DBSCAN parallel safety and memory
-                                         # tests
-add_neutron_test(grid_clustering) # Grid clustering algorithm tests
-# Temporal processing tests
-add_neutron_test(temporal_neutron_processor) # Parallel temporal processor tests
-add_neutron_test(tbb_parallel_verification) # TBB parallel processing
-                                            # verification tests
-add_neutron_test(tbb_stress) # TBB stress testing with large datasets
+  # ----------------- NEUTRON PROCESSING TESTS -----------------
+  # New neutron processing architecture tests
+  add_neutron_test(neutron_interfaces) # Interface and factory tests
+  add_neutron_test(simple_centroid_extraction) # Centroid extraction tests
+  add_neutron_test(graph_clustering) # Graph clustering algorithm tests
+  add_neutron_test(dbscan_clustering) # DBSCAN clustering algorithm tests
+  add_neutron_test(dbscan_parallel_safety) # DBSCAN parallel safety and memory
+                                           # tests
+  add_neutron_test(grid_clustering) # Grid clustering algorithm tests
+  # Temporal processing tests
+  add_neutron_test(temporal_neutron_processor) # Parallel temporal processor
+                                               # tests
+  add_neutron_test(tbb_parallel_verification) # TBB parallel processing
+                                              # verification tests
+  add_neutron_test(tbb_stress) # TBB stress testing with large datasets
 
-# Performance debugging test
-add_executable(test_ni_powder_clustering tests/test_ni_powder_clustering.cpp)
-target_link_libraries(test_ni_powder_clustering TDCSophiread)
+  # Performance debugging test
+  add_executable(test_ni_powder_clustering tests/test_ni_powder_clustering.cpp)
+  target_link_libraries(test_ni_powder_clustering TDCSophiread)
 
-# Graph clustering benchmark
-add_executable(graph_clustering_benchmark
-               tests/neutron_processing/test_graph_clustering_benchmark.cpp)
-target_link_libraries(graph_clustering_benchmark TDCSophiread TBB::tbb)
-# Performance benchmarks add_neutron_test(abs_performance) # ABS clustering
-# optimization benchmarks - DISABLED (needs update) Memory optimization tests
-# add_neutron_test(memory_optimization) # Memory usage and zero-copy validation
-# - DISABLED (needs update)
+  # Graph clustering benchmark
+  add_executable(graph_clustering_benchmark
+                 tests/neutron_processing/test_graph_clustering_benchmark.cpp)
+  target_link_libraries(graph_clustering_benchmark TDCSophiread TBB::tbb)
+  # Performance benchmarks add_neutron_test(abs_performance) # ABS clustering
+  # optimization benchmarks - DISABLED (needs update) Memory optimization tests
+  # add_neutron_test(memory_optimization) # Memory usage and zero-copy
+  # validation - DISABLED (needs update)
+
+endif() # BUILD_TESTS
 
 # ----------------- PYTHON BINDINGS -----------------
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)

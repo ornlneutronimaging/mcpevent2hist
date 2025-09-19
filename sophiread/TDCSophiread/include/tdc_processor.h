@@ -113,19 +113,6 @@ class TDCProcessor {
     m_MissingTdcCorrectionEnabled = enable;
   }
 
- private:
-  // ==================== PHASE 1: TDC PROPAGATION ====================
-
-  /**
-   * @brief Scan section for TDC packets and update timestamps
-   * @param data Memory-mapped file data
-   * @param section Section to scan
-   * @param chip_tdc_state Per-chip TDC state to update
-   */
-  void scanSectionForTdc(const uint8_t* data, TDCSection& section,
-                         std::array<uint32_t, 4>& chip_tdc_state,
-                         std::array<bool, 4>& chip_has_tdc);
-
   // ==================== PHASE 2: HIT PROCESSING ====================
 
   /**
@@ -152,6 +139,19 @@ class TDCProcessor {
   std::vector<TDCHit> processSectionsParallel(
       const uint8_t* data, const std::vector<TDCSection>& sections,
       size_t num_threads = 0);
+
+ private:
+  // ==================== PHASE 1: TDC PROPAGATION ====================
+
+  /**
+   * @brief Scan section for TDC packets and update timestamps
+   * @param data Memory-mapped file data
+   * @param section Section to scan
+   * @param chip_tdc_state Per-chip TDC state to update
+   */
+  void scanSectionForTdc(const uint8_t* data, TDCSection& section,
+                         std::array<uint32_t, 4>& chip_tdc_state,
+                         std::array<bool, 4>& chip_has_tdc);
 
   /**
    * @brief Process single packet within a section
