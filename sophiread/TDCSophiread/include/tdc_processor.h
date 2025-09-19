@@ -113,6 +113,35 @@ class TDCProcessor {
     m_MissingTdcCorrectionEnabled = enable;
   }
 
+  // ==================== PHASE 2: HIT PROCESSING (PUBLIC FOR DAQ) ====================
+
+  /**
+   * @brief Process a single section to extract hits
+   * @param data Memory buffer with TPX3 data
+   * @param section Section to process
+   * @return Vector of hits from this section
+   *
+   * This method can be parallelized as each section has complete TDC state.
+   * Made public to support streaming DAQ integration.
+   */
+  std::vector<TDCHit> processSection(const uint8_t* data,
+                                     const TDCSection& section);
+
+  /**
+   * @brief Process multiple sections in parallel using TBB
+   * @param data Memory buffer with TPX3 data
+   * @param sections Vector of sections to process
+   * @param num_threads Number of TBB threads (0 = auto-detect)
+   * @return Vector of all hits from all sections
+   *
+   * Uses TBB parallel_for with thread-local hit vectors to avoid
+   * synchronization overhead during hit collection.
+   * Made public to support streaming DAQ integration.
+   */
+  std::vector<TDCHit> processSectionsParallel(
+      const uint8_t* data, const std::vector<TDCSection>& sections,
+      size_t num_threads = 0);
+
  private:
   // ==================== PHASE 1: TDC PROPAGATION ====================
 
@@ -126,32 +155,7 @@ class TDCProcessor {
                          std::array<uint32_t, 4>& chip_tdc_state,
                          std::array<bool, 4>& chip_has_tdc);
 
-  // ==================== PHASE 2: HIT PROCESSING ====================
-
-  /**
-   * @brief Process a single section to extract hits
-   * @param data Memory-mapped file data
-   * @param section Section to process
-   * @return Vector of hits from this section
-   *
-   * This method can be parallelized as each section has complete TDC state
-   */
-  std::vector<TDCHit> processSection(const uint8_t* data,
-                                     const TDCSection& section);
-
-  /**
-   * @brief Process multiple sections in parallel using TBB
-   * @param data Memory-mapped file data
-   * @param sections Vector of sections to process
-   * @param num_threads Number of TBB threads (0 = auto-detect)
-   * @return Vector of all hits from all sections
-   *
-   * Uses TBB parallel_for with thread-local hit vectors to avoid
-   * synchronization overhead during hit collection.
-   */
-  std::vector<TDCHit> processSectionsParallel(
-      const uint8_t* data, const std::vector<TDCSection>& sections,
-      size_t num_threads = 0);
+  // ==================== PHASE 2: HIT PROCESSING (moved to public) ====================
 
   /**
    * @brief Process single packet within a section

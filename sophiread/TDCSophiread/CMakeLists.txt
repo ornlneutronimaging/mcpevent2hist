@@ -3,8 +3,17 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+# Include GNUInstallDirs for standard installation directories
+include(GNUInstallDirs)
+
 # Project will inherit version from parent project
 message(STATUS "Configuring TDCSophiread (TDC-only implementation)")
+
+# Find required dependencies
+find_package(TBB REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(HDF5 COMPONENTS CXX)
 
 # Core TDC processing sources (clustering disabled for clean implementation)
 set(TDC_SOURCES
@@ -66,9 +75,14 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Enable testing for this directory
-enable_testing()
-include(GoogleTest)
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+  find_package(GTest REQUIRED)
+  enable_testing()
+  include(GoogleTest)
+endif()
 
+if(BUILD_TESTS)
 # ----------------- TDD TEST INFRASTRUCTURE -----------------
 # Function to add TDC tests following TDD approach
 function(add_tdc_test test_name)
@@ -161,6 +175,8 @@ target_link_libraries(graph_clustering_benchmark TDCSophiread TBB::tbb)
 # optimization benchmarks - DISABLED (needs update) Memory optimization tests
 # add_neutron_test(memory_optimization) # Memory usage and zero-copy validation
 # - DISABLED (needs update)
+
+endif() # BUILD_TESTS
 
 # ----------------- PYTHON BINDINGS -----------------
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
