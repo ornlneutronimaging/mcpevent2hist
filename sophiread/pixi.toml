@@ -55,7 +55,9 @@ ninja = ">=1.12.1,<2"
 hdf5 = ">=1.14.4,<2"
 gtest = ">=1.16.0,<2"
 eigen = ">=3.4.0,<4"
-tbb-devel = ">=2022.0.0,<2023"
+# TBB 2021.4.* uses gcc 9.4 (CXXABI_1.3.13), compatible with RHEL 9 (gcc 11)
+# TBB 2021.5+ requires gcc 12+ (CXXABI_1.3.15), incompatible with manylinux_2_28
+tbb-devel = "2021.4.*"
 spdlog = ">=1.15.1,<2"
 nlohmann_json = ">=3.11.3,<4"
 pybind11 = ">=2.13.6,<3"
