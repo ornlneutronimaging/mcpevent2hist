@@ -49,8 +49,10 @@ add_library(TDCSophiread ${TDC_SOURCES})
 
 # Set up include directories
 target_include_directories(
-  TDCSophiread PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                      $<INSTALL_INTERFACE:include> ${HDF5_INCLUDE_DIRS})
+  TDCSophiread
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include>
+  PRIVATE ${HDF5_INCLUDE_DIRS})
 
 # Set C++20 standard
 target_compile_features(TDCSophiread PUBLIC cxx_std_20)
@@ -74,8 +76,8 @@ install(
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-# Enable testing for this directory
-option(BUILD_TESTS "Build tests" ON)
+# Enable testing for this directory BUILD_TESTS is inherited from parent
+# CMakeLists.txt
 if(BUILD_TESTS)
   find_package(GTest REQUIRED)
   enable_testing()
