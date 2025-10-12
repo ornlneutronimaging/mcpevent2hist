@@ -15,6 +15,24 @@ High-performance Python and C++ library for processing TPX3 neutron imaging data
 
 ### Installation
 
+#### Option 1: Install from PyPI (Recommended)
+
+For most users, install the pre-built wheels:
+
+```bash
+# Using pip
+pip install tdcsophiread
+
+# Using pixi (recommended for scientific computing)
+pixi add --pypi tdcsophiread
+```
+
+> **⚠️ Important for Source Builds**: If no pre-built wheel is available for your platform, pip/pixi will attempt to build from source. This requires additional C++ libraries (see "Building from Source" below).
+
+#### Option 2: Development Installation
+
+For development or if you need the latest features:
+
 ```bash
 # Clone repository
 git clone https://github.com/ornlneutronimaging/mcpevent2hist.git
@@ -39,6 +57,34 @@ pixi run test
 # install Python bindings
 pixi run pip install -e . --no-build-isolation
 ```
+
+#### Building from Source
+
+If building from source (e.g., when no pre-built wheel is available), you need these C++ libraries:
+
+**Using pixi (recommended):**
+```bash
+# Install build dependencies first
+pixi add nlohmann_json spdlog eigen hdf5 tbb-devel libtiff fmt pybind11
+
+# Then install tdcsophiread
+pixi add --pypi tdcsophiread
+```
+
+**Using system packages:**
+```bash
+# RHEL/Rocky/AlmaLinux/Fedora
+sudo dnf install nlohmann-json-devel spdlog-devel eigen3-devel \
+                 hdf5-devel tbb-devel libtiff-devel fmt-devel \
+                 pybind11-devel cmake gcc-c++
+
+# Ubuntu/Debian
+sudo apt install nlohmann-json3-dev libspdlog-dev libeigen3-dev \
+                 libhdf5-dev libtbb-dev libtiff-dev libfmt-dev \
+                 pybind11-dev cmake g++
+```
+
+> **Note**: These libraries are NOT available on PyPI. They must be installed through pixi/conda or your system package manager before building tdcsophiread from source.
 
 ### Get Sample Data (12GB)
 

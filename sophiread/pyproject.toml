@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "tdcsophiread"
-version = "3.1.1"
+version = "3.1.2"
 description = "High-performance TDC-only TPX3 neutron imaging data processor"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -109,7 +109,7 @@ sdist.exclude = [
     "resources/",
     "docs/archive/",
     "build*/",
-    "dist/",
+    "dist*/",
     "*.tpx3",
     "**/__pycache__/",
     "*.egg-info",
@@ -117,6 +117,10 @@ sdist.exclude = [
     "wheelhouse/",
     "temp*/",
     "*.whl",
+    "pixi.lock",
+    "*.csv",
+    "*.ipynb",
+    ".pre-commit-config.yaml",
 ]
 
 # Development tools configuration
@@ -129,7 +133,7 @@ profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.1.1"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
