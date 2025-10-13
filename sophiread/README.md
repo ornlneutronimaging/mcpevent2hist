@@ -15,6 +15,42 @@ High-performance Python and C++ library for processing TPX3 neutron imaging data
 
 ### Installation
 
+#### Option 1: Install from PyPI (Recommended)
+
+For most users, install the pre-built wheels:
+
+```bash
+# Using pip (works with any environment)
+pip install tdcsophiread
+
+# Using uv (modern package manager)
+uv pip install tdcsophiread
+
+# Using pixi (recommended for scientific computing)
+pixi add pip
+pixi run pip install tdcsophiread
+```
+
+> **⚠️ Known Issue with `pixi add --pypi`**
+>
+> When installing tdcsophiread with `pixi add --pypi`, pixi's embedded uv incorrectly attempts to build from source instead of using the available pre-built wheel. This causes installation failure due to missing C++ build dependencies.
+>
+> **Workaround:** Use `pixi run pip install tdcsophiread` (recommended) or native `uv pip install` - both correctly use the wheel.
+>
+> **Testing shows:**
+> - `pip install tdcsophiread` ✅ Uses wheel
+> - `uv pip install tdcsophiread` ✅ Uses wheel
+> - `pixi run pip install tdcsophiread` ✅ Uses wheel
+> - `pixi add --pypi tdcsophiread` ❌ Builds from source (fails)
+>
+> **Status:** This is a pixi-specific issue. The wheel works correctly with pip and uv natively. The root cause is unknown and may be specific to tdcsophiread's package configuration.
+
+> **💡 Building from Source with pixi**: If you need to build from source using `pixi add --pypi` (not recommended), see the "Building from Source" section below for required dependencies.
+
+#### Option 2: Development Installation
+
+For development or if you need the latest features:
+
 ```bash
 # Clone repository
 git clone https://github.com/ornlneutronimaging/mcpevent2hist.git
@@ -38,6 +74,42 @@ pixi run build
 pixi run test
 # install Python bindings
 pixi run pip install -e . --no-build-isolation
+```
+
+#### Building from Source
+
+If building from source (e.g., when no pre-built wheel is available for your platform), you need these C++ libraries:
+
+> **Note**: These C++ libraries are NOT available on PyPI. They must be installed through pixi/conda or your system package manager before building from source.
+
+**Using pixi (recommended):**
+```bash
+# Install build dependencies first
+pixi add nlohmann_json spdlog eigen hdf5 tbb-devel libtiff fmt pybind11
+
+# Option A: Build from source with pip (recommended)
+pixi add pip
+pixi run pip install tdcsophiread --no-binary tdcsophiread
+
+# Option B: Build from source with pixi add --pypi (if needed)
+# Note: This triggers build automatically due to the pixi bug
+pixi add --pypi tdcsophiread
+```
+
+**Using system packages:**
+```bash
+# RHEL/Rocky/AlmaLinux/Fedora
+sudo dnf install nlohmann-json-devel spdlog-devel eigen3-devel \
+                 hdf5-devel tbb-devel libtiff-devel fmt-devel \
+                 pybind11-devel cmake gcc-c++
+
+# Ubuntu/Debian
+sudo apt install nlohmann-json3-dev libspdlog-dev libeigen3-dev \
+                 libhdf5-dev libtbb-dev libtiff-dev libfmt-dev \
+                 pybind11-dev cmake g++
+
+# Then install with pip
+pip install tdcsophiread --no-binary tdcsophiread
 ```
 
 ### Get Sample Data (12GB)

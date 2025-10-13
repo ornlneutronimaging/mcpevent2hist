@@ -48,40 +48,72 @@ clean = "rm -rf build build-debug build-legacy dist Testing .pytest_cache .cover
 docs = { cmd = "ninja -C build docs", depends-on = ["build"] }
 
 [dependencies]
-python = "3.12.*"
+# Core build dependencies (required for all environments)
+python = ">=3.10,<3.15"
 cmake = ">=3.31.5,<4"
 ninja = ">=1.12.1,<2"
-clang-format = ">=19.1.7,<20"
 hdf5 = ">=1.14.4,<2"
 gtest = ">=1.16.0,<2"
 eigen = ">=3.4.0,<4"
-tbb-devel = ">=2022.0.0,<2023"
+# TBB 2021.4.* uses gcc 9.4 (CXXABI_1.3.13), compatible with RHEL 9 (gcc 11)
+# TBB 2021.5+ requires gcc 12+ (CXXABI_1.3.15), incompatible with manylinux_2_28
+tbb-devel = "2021.4.*"
 spdlog = ">=1.15.1,<2"
 nlohmann_json = ">=3.11.3,<4"
+pybind11 = ">=2.13.6,<3"
+# Runtime dependencies (go into the wheel)
+numpy = ">=2.1.0,<3"
+h5py = ">=3.12.0,<4"
+pydantic = ">=2.11.7,<3"
+matplotlib = ">=3.10.3,<4"
+# Build tools
+libgfortran = ">=5.0.0,<16"
+scikit-build-core = ">=0.11.4,<0.12"
+pip = ">=25.1.1,<26"
+python-build = ">=1.2.2.post1,<2"
+
+# Development dependencies (optional, for full dev environment)
+[feature.dev.dependencies]
+clang-format = ">=19.1.7,<20"
 doxygen = ">=1.13.2,<2"
 graphviz = ">=12.2.1,<13"
 pre-commit = ">=4.2.0,<5"
-pybind11 = ">=2.13.6,<3"
-numpy = ">=2.3.0,<3"
-libgfortran = ">=5.0.0,<16"
-matplotlib = ">=3.10.3,<4"
-pydantic = ">=2.11.7,<3"
-h5py = ">=3.12.0,<4"
-scikit-build-core = ">=0.11.4,<0.12"
-pip = ">=25.1.1,<26"
 jupyterlab = ">=4.4.3,<5"
 scipy = ">=1.16.0,<2"
 pandas = ">=2.3.1,<3"
-python-build = ">=1.2.2.post1,<2"
-twine = ">=6.0.1,<7"
 cibuildwheel = ">=3.0.1,<4"
 delocate = ">=0.13.0,<1"
 ipywidgets = ">=8.1.7,<9"
 ipympl = ">=0.9.7,<0.10"
 tqdm = ">=4.67.1,<5"
+twine = ">=6.0.1,<7"
 
 [target.linux-64.dependencies]
 gxx_linux-64 = "11.2.*"   # Works with modern TBB, requires newer glibc
 libglu = ">=9.0.3,<10"
 auditwheel = ">=6.0.0,<7"
 patchelf = ">=0.17.0,<1"
+
+# Multi-environment configuration for building wheels with different Python versions
+[feature.py310.dependencies]
+python = "3.10.*"
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.py314.dependencies]
+python = "3.14.*"
+
+[environments]
+default = ["dev"]  # For normal development work with all dev tools
+py310 = ["py310"]  # For building Python 3.10 wheel
+py311 = ["py311"]  # For building Python 3.11 wheel
+py312 = ["py312"]  # For building Python 3.12 wheel
+py313 = ["py313"]  # For building Python 3.13 wheel
+py314 = ["py314"]  # For building Python 3.14 wheel

@@ -1,14 +1,44 @@
 # Sophiread CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
 
-execute_process(
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  OUTPUT_VARIABLE SOPHIREAD_VERSION
-  RESULT_VARIABLE VERSION_RESULT
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(NOT VERSION_RESULT EQUAL 0)
-  message(FATAL_ERROR "Failed to determine version")
+# Version detection - handle both regular builds and PyPI/scikit-build-core
+if(SKBUILD)
+  # For scikit-build-core, version is passed from pyproject.toml
+  if(DEFINED SKBUILD_PROJECT_VERSION)
+    set(SOPHIREAD_VERSION ${SKBUILD_PROJECT_VERSION})
+  else()
+    # Fallback to default version for scikit-build-core
+    set(SOPHIREAD_VERSION "3.1.1")
+  endif()
+  message(STATUS "Using version from scikit-build-core: ${SOPHIREAD_VERSION}")
+elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh)
+  # Use version.sh if it exists
+  execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/version.sh -s print
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE SOPHIREAD_VERSION
+    RESULT_VARIABLE VERSION_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to determine version from version.sh")
+  endif()
+else()
+  # Fallback: read version from include/version.h if scripts/version.sh doesn't
+  # exist
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/version.h)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/include/version.h VERSION_HEADER)
+    string(REGEX MATCH "#define VERSION_MAJOR ([0-9]+)" _ ${VERSION_HEADER})
+    set(VERSION_MAJOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "#define VERSION_MINOR ([0-9]+)" _ ${VERSION_HEADER})
+    set(VERSION_MINOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "#define VERSION_PATCH ([0-9]+)" _ ${VERSION_HEADER})
+    set(VERSION_PATCH ${CMAKE_MATCH_1})
+    set(SOPHIREAD_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+    message(STATUS "Using version from include/version.h: ${SOPHIREAD_VERSION}")
+  else()
+    message(
+      FATAL_ERROR "Cannot determine version - no version.sh or version.h found")
+  endif()
 endif()
 
 project("Sophiread" VERSION ${SOPHIREAD_VERSION})
@@ -36,15 +66,30 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Build options - define early so they can be used throughout
+option(BUILD_TESTS "Build unit tests (requires GTest)" ON)
+
+# For scikit-build-core (PyPI builds), default to not building tests
+if(SKBUILD)
+  set(BUILD_TESTS
+      OFF
+      CACHE BOOL "Build unit tests" FORCE)
+  message(STATUS "Building via scikit-build-core, disabling tests by default")
+endif()
+
 # Dependencies
 find_package(Eigen3 REQUIRED)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
-find_package(GTest REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(TBB REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(spdlog 1.8.0 REQUIRED)
 find_package(fmt 7.0.0 REQUIRED)
+
+# Test dependencies (only when BUILD_TESTS is ON)
+if(BUILD_TESTS)
+  find_package(GTest REQUIRED)
+endif()
 
 # Set SPDLOG level
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -53,17 +98,19 @@ else()
   add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
 endif()
 
-# Testing setup
-enable_testing()
-include(GoogleTest)
+# Testing setup (only when BUILD_TESTS is ON)
+if(BUILD_TESTS)
+  enable_testing()
+  include(GoogleTest)
 
-# Copy resources
-add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/data
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources/data
-          ${CMAKE_BINARY_DIR}/data
-  DEPENDS ${CMAKE_SOURCE_DIR}/resources/data)
-add_custom_target(copy_resources ALL DEPENDS ${CMAKE_BINARY_DIR}/data)
+  # Copy test resources
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/data
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/resources/data ${CMAKE_BINARY_DIR}/data
+    DEPENDS ${CMAKE_SOURCE_DIR}/resources/data)
+  add_custom_target(copy_resources ALL DEPENDS ${CMAKE_BINARY_DIR}/data)
+endif()
 
 # Add compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -75,7 +122,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   endif()
 endif()
 
-# Build options
+# Legacy build option
 option(
   BUILD_LEGACY
   "Build legacy components (DEPRECATED - will be removed in next major release)"
