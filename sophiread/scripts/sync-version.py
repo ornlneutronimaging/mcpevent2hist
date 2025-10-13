@@ -45,7 +45,7 @@ def update_pyproject_version(version):
 
     # Update version line
     updated_content = re.sub(
-        r'version\s*=\s*"[^"]*"',
+        r'\bversion\s*=\s*"[^"]*"',
         f'version = "{version}"',
         content
     )

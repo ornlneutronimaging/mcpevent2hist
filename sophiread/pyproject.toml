@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "tdcsophiread"
-version = "3.1.2"
+version = "3.1.3"
 description = "High-performance TDC-only TPX3 neutron imaging data processor"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
