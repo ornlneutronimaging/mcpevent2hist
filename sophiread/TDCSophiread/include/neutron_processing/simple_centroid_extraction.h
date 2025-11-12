@@ -108,6 +108,11 @@ TDCNeutron SimpleCentroidExtraction::calculateCentroidFromRange(
       weighted_y += static_cast<double>(it->y) * weight;
       total_weight += weight;
       combined_tot += it->tot;
+            // Take first hit's TOF (matching old code behavior)
+      if (representative_tof == 0) {
+        representative_tof = it->tof;
+      }
+      
     }
 
     if (total_weight > 0.0) {
@@ -120,17 +125,22 @@ TDCNeutron SimpleCentroidExtraction::calculateCentroidFromRange(
       weighted_x += static_cast<double>(it->x);
       weighted_y += static_cast<double>(it->y);
       combined_tot += it->tot;
+            // Take first hit's TOF (matching old code behavior)
+      if (representative_tof == 0) {
+        representative_tof = it->tof;
+      }
     }
 
     weighted_x /= static_cast<double>(cluster_size);
     weighted_y /= static_cast<double>(cluster_size);
   }
 
-  // Use the TOF from the hit with highest TOT as representative
-  auto max_tot_hit = std::max_element(
-      begin, end,
-      [](const TDCHit& a, const TDCHit& b) { return a.tot < b.tot; });
-  representative_tof = max_tot_hit->tof;
+ 
+  // REMOVED: Use the TOF from the hit with highest TOT as representative
+  // auto max_tot_hit = std::max_element(
+  //     begin, end,
+  //     [](const TDCHit& a, const TDCHit& b) { return a.tot < b.tot; });
+  // representative_tof = max_tot_hit->tof;
 
   // Return coordinates in super-resolution space with sub-pixel precision
   return TDCNeutron(
