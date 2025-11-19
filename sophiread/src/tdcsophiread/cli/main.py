@@ -250,6 +250,8 @@ Examples:
         print(f"📁 Input: {args.input}")
         if not args.benchmark:
             print(f"💾 Output: {args.output}")
+        print(f"⚙️  TDC Frequency: {config.get_tdc_frequency()} Hz")
+        print(f"⚙️  TDC Period: {1000.0 / config.get_tdc_frequency():.2f} ms (TOF measurement range)")
         print(f"⚡ Parallel processing: {args.parallel}")
         if args.parallel and args.threads > 0:
             print(f"🧵 Threads: {args.threads}")
@@ -268,12 +270,13 @@ Examples:
             if args.benchmark:
                 print("⚠️  Warning: Streaming mode requires HDF5 output, ignoring --benchmark flag")
 
-            result = tdcsophiread.process_tpx3_to_hdf5(
+            # Use processor instance to respect custom configuration (e.g., TDC frequency)
+            result = processor.process_file_to_hdf5(
                 args.input,
                 args.output,
+                chunk_size_mb=512,
                 parallel=args.parallel,
-                num_threads=args.threads,
-                chunk_size_mb=512
+                num_threads=args.threads
             )
 
             if not result.success:
