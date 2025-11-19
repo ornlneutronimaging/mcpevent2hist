@@ -642,7 +642,9 @@ TEST_F(TDCProcessorTest, StreamingModeWritesCorrectMetadata) {
   std::string processor_name;
   processor_name.resize(64);
   processor_attr.read(str_type, &processor_name[0]);
-  EXPECT_EQ(processor_name.substr(0, 13), "TDCSophiread");
+  // Trim null terminators and compare
+  processor_name = processor_name.c_str();  // Truncate at first null
+  EXPECT_EQ(processor_name, "TDCSophiread");
 
   // Check TDC frequency attribute
   H5::Attribute freq_attr = root.openAttribute("tdc_frequency_hz");
