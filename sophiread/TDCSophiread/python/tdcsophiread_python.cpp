@@ -686,14 +686,13 @@ PYBIND11_MODULE(_core, m) {
 
           return result;
         } catch (const std::exception& e) {
-          throw TDCProcessingError(
-              "Failed to process TPX3 file to HDF5: " + std::string(e.what()));
+          throw TDCProcessingError("Failed to process TPX3 file to HDF5: " +
+                                   std::string(e.what()));
         }
       },
       py::arg("file_path"), py::arg("output_h5_path"),
       py::arg("parallel") = true, py::arg("num_threads") = 0,
-      py::arg("chunk_size_mb") = 512,
-      py::arg("progress_callback") = py::none(),
+      py::arg("chunk_size_mb") = 512, py::arg("progress_callback") = py::none(),
       "Process large TPX3 files directly to HDF5 with bounded memory usage. "
       "Memory usage: ~chunk_size_mb (default 512MB) regardless of file size. "
       "Ideal for processing arbitrarily large files (500GB+).");

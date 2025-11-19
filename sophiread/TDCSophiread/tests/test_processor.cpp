@@ -1,8 +1,8 @@
 // TDCSophiread Processor Tests - TDD Approach
 // These tests define the expected behavior for section-aware TPX3 processing
 
-#include <gtest/gtest.h>
 #include <H5Cpp.h>
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <filesystem>
@@ -666,9 +666,9 @@ TEST_F(TDCProcessorTest, StreamingModeWritesCorrectMetadata) {
 TEST_F(TDCProcessorTest, StreamingModeProducesSameDataAsTraditionalMode) {
   // Test that streaming mode produces identical data to traditional mode
   std::vector<uint64_t> packets = {
-      createTPX3HeaderPacket(0), createTDCPacket(1000),
+      createTPX3HeaderPacket(0),         createTDCPacket(1000),
       createHitPacket(0x0408, 100, 200), createHitPacket(0x0409, 101, 201),
-      createTPX3HeaderPacket(1), createTDCPacket(2000),
+      createTPX3HeaderPacket(1),         createTDCPacket(2000),
       createHitPacket(0x040A, 102, 202)};
 
   createTestTPX3File("streaming_comparison.tpx3", packets);
@@ -765,8 +765,7 @@ TEST_F(TDCProcessorTest, StreamingModeHandlesMultipleChunksCorrectly) {
     packets.push_back(createTDCPacket(1000 + section * 100));
 
     for (int hit = 0; hit < 100; ++hit) {
-      packets.push_back(
-          createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
+      packets.push_back(createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
     }
   }
 
@@ -817,8 +816,7 @@ TEST_F(TDCProcessorTest, StreamingModeWorksWithParallelProcessing) {
     packets.push_back(createTDCPacket(1000 + section * 100));
 
     for (int hit = 0; hit < 100; ++hit) {
-      packets.push_back(
-          createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
+      packets.push_back(createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
     }
   }
 
