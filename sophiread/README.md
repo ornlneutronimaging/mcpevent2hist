@@ -468,7 +468,20 @@ pixel_y = neutrons['y'] / 8.0
 
 ### Detector Configuration
 
+#### TDC Frequency and TOF Range
+
+The TDC (Time-to-Digital Converter) frequency determines the TOF measurement range. SNS can operate at different frequencies via chopper control:
+
+| TDC Frequency | TOF Range | Use Case |
+|---------------|-----------|----------|
+| **60 Hz** (default) | 0-16.67 ms | Standard SNS operation |
+| **45 Hz** | 0-22.22 ms | Extended TOF range |
+| **30 Hz** | 0-33.33 ms | Maximum TOF range |
+
+**Configuration Examples:**
+
 ```json
+// Standard 60 Hz operation (default)
 {
   "detector": {
     "timing": {
@@ -481,7 +494,52 @@ pixel_y = neutrons['y'] / 8.0
     }
   }
 }
+
+// Extended range 30 Hz operation
+{
+  "detector": {
+    "timing": {
+      "tdc_frequency_hz": 30.0,
+      "enable_missing_tdc_correction": true
+    },
+    "chip_layout": {
+      "chip_size_x": 256,
+      "chip_size_y": 256
+    }
+  }
+}
 ```
+
+**Usage:**
+
+```python
+# Load custom TDC frequency configuration
+config = tdcsophiread.DetectorConfig.from_file("config_30hz.json")
+processor = tdcsophiread.TDCProcessor(config)
+
+# Verify frequency
+print(f"TDC Frequency: {config.get_tdc_frequency()} Hz")
+print(f"TOF Range: 0-{1000/config.get_tdc_frequency():.2f} ms")
+
+# Process with custom configuration
+result = processor.process_file_to_hdf5(
+    "data.tpx3",
+    "output.h5",
+    parallel=True
+)
+```
+
+**CLI Usage:**
+
+```bash
+# Use configuration file
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming -v
+
+# Or override frequency directly
+tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
+```
+
+**⚠️ Important:** Always use the correct TDC frequency matching your SNS chopper setting. Using the wrong frequency will result in incorrect TOF calculations and values > the period will be wrongly corrected.
 
 ## 🔬 Scientific Context
 
