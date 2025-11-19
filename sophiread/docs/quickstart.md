@@ -168,33 +168,79 @@ Performance Results:
 
 ## Working with Large Files
 
-### Memory-Efficient Streaming
+### Bounded-Memory Streaming (Recommended for >10GB files)
 
 ```python
-# For very large files (>10GB), use streaming
-hits = tdcsophiread.process_tpx3_stream(
-    "large_file.tpx3",
-    chunk_size_mb=512,  # Process in 512MB chunks
+# TRUE bounded-memory streaming with constant ~512MB memory
+result = tdcsophiread.process_tpx3_to_hdf5(
+    "500GB_file.tpx3",
+    "output.h5",
+    parallel=True,
+    num_threads=0,              # Auto-detect cores
+    chunk_size_mb=512,          # Constant memory: ~512MB
     progress_callback=progress_callback
 )
 
-print(f"Streamed {len(hits):,} hits efficiently")
+print(f"Success: {result.success}")
+print(f"Processed {result.total_hits:,} hits with constant memory")
+print(f"Hit rate: {result.hits_per_second/1e6:.1f} M hits/sec")
+
+# Read data from HDF5
+import h5py
+with h5py.File("output.h5", "r") as f:
+    tof = f["tof"][:]
+    x = f["x"][:]
+    y = f["y"][:]
 ```
 
-### Chunked Processing
+**CLI equivalent:**
+```bash
+# Process large files with constant memory
+tdcsophiread -i 500GB_file.tpx3 -o output.h5 --streaming --parallel -v
+```
+
+### Traditional In-Memory Processing
+
+⚠️ **Use only for files < 10GB**
 
 ```python
-# Custom chunk processing for maximum control
-config = tdcsophiread.DetectorConfig.venus_defaults()
+# Loads ALL hits into memory (not suitable for large files)
+hits = tdcsophiread.process_tpx3(
+    "small_file.tpx3",
+    parallel=True,
+    num_threads=0
+)
+
+# Memory usage: ~40-60 bytes per hit
+print(f"Loaded {len(hits):,} hits into memory")
+```
+
+**CLI equivalent:**
+```bash
+# Traditional mode (loads all hits in memory)
+tdcsophiread -i small_file.tpx3 -o output.h5 --parallel
+```
+
+### Custom Configuration with Streaming
+
+```python
+# Process with custom TDC frequency
+config = tdcsophiread.DetectorConfig.from_file("config_30hz.json")
 processor = tdcsophiread.TDCProcessor(config)
 
-# Process file in chunks
-hits = processor.process_file("huge_file.tpx3",
-                             chunk_size_mb=1024,  # 1GB chunks
-                             parallel=True,       # Use all cores
-                             num_threads=0)       # Auto-detect
+result = processor.process_file_to_hdf5(
+    "data.tpx3",
+    "output.h5",
+    chunk_size_mb=512,
+    parallel=True,
+    num_threads=0
+)
+```
 
-print(f"Performance: {processor.get_last_hits_per_second()/1e6:.1f} M hits/sec")
+**CLI equivalent:**
+```bash
+# Use custom config for 30Hz SNS operation
+tdcsophiread -i data.tpx3 -o output.h5 -c config_30hz.json --streaming -v
 ```
 
 ## Custom Configuration
