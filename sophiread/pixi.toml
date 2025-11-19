@@ -1,4 +1,4 @@
-[project]
+[workspace]
 authors = ["Chen Zhang <zhangc@ornl.gov>"]
 channels = ["conda-forge"]
 name = "sophiread"
