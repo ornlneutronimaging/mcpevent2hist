@@ -120,7 +120,7 @@ class TDCProcessor {
   /**
    * @brief Process TPX3 file directly to HDF5 with bounded memory usage
    * @param file_path Path to TPX3 file to process
-   * @param output_h5_path Path to output HDF5 file
+   * @param output_h5_path Path to output HDF5 file (will be overwritten if exists)
    * @param chunk_size_mb Chunk size in megabytes (default: 512MB)
    * @param parallel Enable TBB parallelization for chunk processing (default:
    * false)
@@ -136,6 +136,12 @@ class TDCProcessor {
    *
    * Memory usage: ~chunk_size_mb (typically 512MB) regardless of file size
    * Enables processing of arbitrarily large files (tested with 500GB+)
+   *
+   * @warning The output file will be deleted if it exists before processing starts.
+   *          This ensures a clean output file but means previous data will be lost.
+   * @warning This method is NOT thread-safe for concurrent writes to the same output file.
+   *          Do not call this method simultaneously from multiple threads/processes with
+   *          the same output_h5_path. HDF5 file locking is not used.
    */
   StreamingResult processFileToHDF5(const std::string& file_path,
                                     const std::string& output_h5_path,

@@ -659,30 +659,13 @@ PYBIND11_MODULE(_core, m) {
       "process_tpx3_to_hdf5",
       [](const std::string& file_path, const std::string& output_h5_path,
          bool parallel = true, size_t num_threads = 0,
-         size_t chunk_size_mb = 512,
-         py::object progress_callback = py::none()) {
+         size_t chunk_size_mb = 512) {
         try {
           auto config = DetectorConfig::venusDefaults();
           TDCProcessor processor(config);
 
-          ProgressCallback callback;
-          if (!progress_callback.is_none()) {
-            callback = ProgressCallback(progress_callback.cast<py::function>());
-          }
-          if (callback.is_valid()) {
-            callback(0.0, "Starting bounded-memory TPX3 processing...");
-          }
-
           auto result = processor.processFileToHDF5(
               file_path, output_h5_path, chunk_size_mb, parallel, num_threads);
-
-          if (callback.is_valid()) {
-            if (result.success) {
-              callback(1.0, "Processing complete");
-            } else {
-              callback(1.0, "Processing failed: " + result.error_message);
-            }
-          }
 
           return result;
         } catch (const std::exception& e) {
@@ -692,7 +675,7 @@ PYBIND11_MODULE(_core, m) {
       },
       py::arg("file_path"), py::arg("output_h5_path"),
       py::arg("parallel") = true, py::arg("num_threads") = 0,
-      py::arg("chunk_size_mb") = 512, py::arg("progress_callback") = py::none(),
+      py::arg("chunk_size_mb") = 512,
       "Process large TPX3 files directly to HDF5 with bounded memory usage. "
       "Memory usage: ~chunk_size_mb (default 512MB) regardless of file size. "
       "Ideal for processing arbitrarily large files (500GB+).");
