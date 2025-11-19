@@ -103,6 +103,45 @@ class TDCProcessor {
    */
   size_t getLastPacketCount() const { return m_LastPacketCount; }
 
+  // ==================== STREAMING PROCESSOR ====================
+
+  /**
+   * @brief Result structure for streaming HDF5 processing
+   */
+  struct StreamingResult {
+    size_t total_hits = 0;           // Total number of hits processed
+    size_t total_packets = 0;        // Total number of packets processed
+    double processing_time_ms = 0.0; // Processing time in milliseconds
+    double hits_per_second = 0.0;    // Processing rate
+    std::string error_message;       // Error message if processing failed
+    bool success = true;             // Whether processing succeeded
+  };
+
+  /**
+   * @brief Process TPX3 file directly to HDF5 with bounded memory usage
+   * @param file_path Path to TPX3 file to process
+   * @param output_h5_path Path to output HDF5 file
+   * @param chunk_size_mb Chunk size in megabytes (default: 512MB)
+   * @param parallel Enable TBB parallelization for chunk processing (default: false)
+   * @param num_threads Number of TBB threads (0 = auto-detect, default: 0)
+   * @return StreamingResult with processing statistics
+   * @throws std::runtime_error if file cannot be read or HDF5 operations fail
+   *
+   * This method processes large TPX3 files with constant memory usage by:
+   * 1. Processing file in chunks (just like processFile)
+   * 2. Writing each chunk's hits directly to HDF5
+   * 3. Never accumulating all hits in memory
+   * 4. Returning only statistics
+   *
+   * Memory usage: ~chunk_size_mb (typically 512MB) regardless of file size
+   * Enables processing of arbitrarily large files (tested with 500GB+)
+   */
+  StreamingResult processFileToHDF5(const std::string& file_path,
+                                    const std::string& output_h5_path,
+                                    size_t chunk_size_mb = 512,
+                                    bool parallel = false,
+                                    size_t num_threads = 0);
+
   // ==================== CONFIGURATION ====================
 
   /**
@@ -213,6 +252,20 @@ class TDCProcessor {
    */
   void updateMetrics(std::chrono::microseconds processing_time,
                      size_t hit_count, size_t packet_count);
+
+  /**
+   * @brief Write hits to HDF5 file (append mode)
+   * @param h5_path Path to HDF5 file
+   * @param hits Vector of hits to write
+   * @param current_offset Current offset in the dataset
+   * @return New offset after writing
+   * @throws std::runtime_error if HDF5 operations fail
+   *
+   * Creates HDF5 datasets on first call, appends on subsequent calls
+   */
+  size_t writeHitsToHDF5(const std::string& h5_path,
+                         const std::vector<TDCHit>& hits,
+                         size_t current_offset);
 
   // ==================== MEMBER VARIABLES ====================
 

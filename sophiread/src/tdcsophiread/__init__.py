@@ -38,6 +38,7 @@ __all__ = [
     "TDCStreamProcessor",
     "TDCHit",
     "ChipTransform",
+    "StreamingResult",
     # Exception classes
     "TDCProcessingError",
     "TDCFileError",
@@ -45,6 +46,7 @@ __all__ = [
     # Utility functions
     "process_tpx3",
     "process_tpx3_stream",
+    "process_tpx3_to_hdf5",  # New bounded-memory streaming function
     # Python modules
     "config",
     "cli",

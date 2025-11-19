@@ -185,6 +185,10 @@ Examples:
                        help='Disable parallel processing')
     parser.add_argument('--threads', type=int, default=0,
                        help='Number of threads (0 = auto-detect)')
+    parser.add_argument('--streaming', action='store_true',
+                       help='Use bounded-memory streaming mode (recommended for large files >50GB). '
+                            'Writes directly to HDF5 without loading all hits into memory. '
+                            'Memory usage: ~512MB regardless of file size.')
 
     # Output arguments
     parser.add_argument('--tof-spectrum',
@@ -249,6 +253,8 @@ Examples:
         print(f"⚡ Parallel processing: {args.parallel}")
         if args.parallel and args.threads > 0:
             print(f"🧵 Threads: {args.threads}")
+        if args.streaming:
+            print(f"🌊 Streaming mode: ON (bounded memory usage)")
         if args.benchmark:
             print(f"🏁 Benchmark mode: Skipping file I/O for pure processing performance")
 
@@ -257,14 +263,51 @@ Examples:
     start_time = time.time()
 
     try:
-        if args.parallel:
-            hits_vec = processor.process_file_parallel(args.input, args.threads)
-        else:
-            hits_vec = processor.process_file(args.input)
+        if args.streaming:
+            # Use bounded-memory streaming mode
+            if args.benchmark:
+                print("⚠️  Warning: Streaming mode requires HDF5 output, ignoring --benchmark flag")
 
-        # Convert to numpy arrays
-        hits = tdcsophiread.hits_to_numpy(hits_vec)
-        processing_time = time.time() - start_time
+            result = tdcsophiread.process_tpx3_to_hdf5(
+                args.input,
+                args.output,
+                parallel=args.parallel,
+                num_threads=args.threads,
+                chunk_size_mb=512
+            )
+
+            if not result.success:
+                print(f"❌ Processing failed: {result.error_message}")
+                sys.exit(1)
+
+            processing_time = result.processing_time_ms / 1000.0
+
+            # For streaming mode, we don't have hits in memory
+            # Print summary and exit
+            print(f"✅ Processed {result.total_hits:,} hits in {processing_time:.3f}s "
+                  f"({result.hits_per_second / 1e6:.1f} M hits/sec)")
+            print(f"💾 Output written to {args.output}")
+
+            if args.tof_spectrum:
+                print("⚠️  TOF spectrum generation not supported in streaming mode")
+                print("    Load the HDF5 file and generate spectrum from that instead")
+
+            print("🎉 Processing completed successfully!")
+            return
+
+        else:
+            # Traditional mode: load all hits into memory
+            hits_vec = processor.process_file(
+                args.input,
+                chunk_size_mb=512,
+                parallel=args.parallel,
+                num_threads=args.threads
+            )
+
+            # Convert to numpy structured array
+            hit_view = tdcsophiread.hits_to_numpy_view(hits_vec)
+            hits = np.array(hit_view, copy=False)
+            processing_time = time.time() - start_time
 
     except Exception as e:
         print(f"❌ Processing failed: {e}")
