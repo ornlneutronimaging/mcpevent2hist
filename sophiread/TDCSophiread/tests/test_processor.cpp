@@ -643,7 +643,7 @@ TEST_F(TDCProcessorTest, StreamingModeWritesCorrectMetadata) {
   processor_name.resize(64);
   processor_attr.read(str_type, &processor_name[0]);
   // Trim null terminators and compare
-  processor_name = processor_name.c_str();  // Truncate at first null
+  processor_name.resize(processor_name.find('\0'));  // Truncate at first null
   EXPECT_EQ(processor_name, "TDCSophiread");
 
   // Check TDC frequency attribute
