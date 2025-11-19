@@ -471,9 +471,8 @@ size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
     }
 
     // Dataset names for each field
-    const std::vector<std::string> field_names = {"tof", "x",     "y",
-                                                   "timestamp", "tot", "chip_id",
-                                                   "cluster_id"};
+    const std::vector<std::string> field_names = {
+        "tof", "x", "y", "timestamp", "tot", "chip_id", "cluster_id"};
 
     // Check if this is the first write (need to create datasets)
     if (current_offset == 0) {
@@ -519,9 +518,9 @@ size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
       freq_attr.write(H5::PredType::NATIVE_DOUBLE, &tdc_freq);
 
       // Missing TDC correction enabled
-      H5::Attribute corr_attr = root.createAttribute(
-          "missing_tdc_correction_enabled", H5::PredType::NATIVE_HBOOL,
-          attr_space);
+      H5::Attribute corr_attr =
+          root.createAttribute("missing_tdc_correction_enabled",
+                               H5::PredType::NATIVE_HBOOL, attr_space);
       bool corr_enabled = m_MissingTdcCorrectionEnabled;
       corr_attr.write(H5::PredType::NATIVE_HBOOL, &corr_enabled);
     }
@@ -579,8 +578,7 @@ size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
     extend_and_write("timestamp", timestamp_data, H5::PredType::NATIVE_UINT32);
     extend_and_write("tot", tot_data, H5::PredType::NATIVE_UINT16);
     extend_and_write("chip_id", chip_id_data, H5::PredType::NATIVE_UINT8);
-    extend_and_write("cluster_id", cluster_id_data,
-                     H5::PredType::NATIVE_INT32);
+    extend_and_write("cluster_id", cluster_id_data, H5::PredType::NATIVE_INT32);
 
     file.close();
     return new_size;
@@ -716,7 +714,8 @@ TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
           auto section_hits = processSection(mapped_file->data(), section);
           chunk_hits.insert(chunk_hits.end(), section_hits.begin(),
                             section_hits.end());
-          result.total_packets += (section.end_offset - section.start_offset) / 8;
+          result.total_packets +=
+              (section.end_offset - section.start_offset) / 8;
         }
       }
 

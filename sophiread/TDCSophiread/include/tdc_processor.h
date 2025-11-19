@@ -109,12 +109,12 @@ class TDCProcessor {
    * @brief Result structure for streaming HDF5 processing
    */
   struct StreamingResult {
-    size_t total_hits = 0;           // Total number of hits processed
-    size_t total_packets = 0;        // Total number of packets processed
-    double processing_time_ms = 0.0; // Processing time in milliseconds
-    double hits_per_second = 0.0;    // Processing rate
-    std::string error_message;       // Error message if processing failed
-    bool success = true;             // Whether processing succeeded
+    size_t total_hits = 0;            // Total number of hits processed
+    size_t total_packets = 0;         // Total number of packets processed
+    double processing_time_ms = 0.0;  // Processing time in milliseconds
+    double hits_per_second = 0.0;     // Processing rate
+    std::string error_message;        // Error message if processing failed
+    bool success = true;              // Whether processing succeeded
   };
 
   /**
@@ -122,7 +122,8 @@ class TDCProcessor {
    * @param file_path Path to TPX3 file to process
    * @param output_h5_path Path to output HDF5 file
    * @param chunk_size_mb Chunk size in megabytes (default: 512MB)
-   * @param parallel Enable TBB parallelization for chunk processing (default: false)
+   * @param parallel Enable TBB parallelization for chunk processing (default:
+   * false)
    * @param num_threads Number of TBB threads (0 = auto-detect, default: 0)
    * @return StreamingResult with processing statistics
    * @throws std::runtime_error if file cannot be read or HDF5 operations fail
