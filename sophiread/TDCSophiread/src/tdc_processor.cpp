@@ -460,22 +460,35 @@ size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
   }
 
   try {
-    // Open or create HDF5 file
+    // Open or create HDF5 file - avoid race condition by trying to open first
     H5::H5File file;
-    bool file_exists = std::filesystem::exists(h5_path);
+    bool need_create_datasets = false;
 
-    if (file_exists) {
+    try {
+      // Try to open existing file
       file = H5::H5File(h5_path, H5F_ACC_RDWR);
-    } else {
+
+      // Check if datasets exist by trying to open one
+      try {
+        H5::DataSet test_ds = file.openDataSet("tof");
+        test_ds.close();
+        need_create_datasets = false;
+      } catch (const H5::Exception&) {
+        // Dataset doesn't exist, need to create
+        need_create_datasets = true;
+      }
+    } catch (const H5::Exception&) {
+      // File doesn't exist, create it
       file = H5::H5File(h5_path, H5F_ACC_TRUNC);
+      need_create_datasets = true;
     }
 
     // Dataset names for each field
     const std::vector<std::string> field_names = {
         "tof", "x", "y", "timestamp", "tot", "chip_id", "cluster_id"};
 
-    // Check if this is the first write (need to create datasets)
-    if (current_offset == 0) {
+    // Create datasets only if they don't exist
+    if (need_create_datasets) {
       // Create datasets with chunking for efficient appending
       hsize_t initial_dims[1] = {0};
       hsize_t max_dims[1] = {H5S_UNLIMITED};
