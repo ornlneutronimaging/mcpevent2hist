@@ -539,7 +539,7 @@ tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming -v
 tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
 ```
 
-**⚠️ Important:** Always use the correct TDC frequency matching your SNS chopper setting. Using the wrong frequency will result in incorrect TOF calculations and values > the period will be wrongly corrected.
+**⚠️ Important:** Always use the correct TDC frequency matching your SNS chopper setting. Using the wrong frequency will result in incorrect TOF calculations and values > the period will be incorrectly corrected.
 
 #### Example Configuration Files
 
