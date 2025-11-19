@@ -541,6 +541,34 @@ tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
 
 **⚠️ Important:** Always use the correct TDC frequency matching your SNS chopper setting. Using the wrong frequency will result in incorrect TOF calculations and values > the period will be wrongly corrected.
 
+#### Example Configuration Files
+
+Pre-configured files for common SNS operation modes:
+
+| File | Frequency | TOF Range | Description |
+|------|-----------|-----------|-------------|
+| `config_30hz.json` | 30 Hz | 0-33.33 ms | Maximum TOF range for slow neutrons |
+| `config_45hz.json` | 45 Hz | 0-22.22 ms | Extended TOF range |
+| (default) | 60 Hz | 0-16.67 ms | Standard SNS operation |
+
+**Usage:**
+
+```bash
+# Use 30 Hz configuration
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming -v
+
+# Use 45 Hz configuration
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_45hz.json --streaming -v
+
+# Use default 60 Hz (no config file needed)
+tdcsophiread -i data.tpx3 -o hits.h5 --streaming -v
+```
+
+**When to use each:**
+- **30 Hz**: Slow neutron experiments requiring maximum TOF range
+- **45 Hz**: Balance between TOF range and temporal resolution
+- **60 Hz**: Standard operation with highest temporal resolution
+
 ## 🔬 Scientific Context
 
 ### TPX3 Data Constraints
@@ -613,9 +641,30 @@ print(f"Found {len(neutrons):,} neutrons from {len(hits):,} hits")
 
 ### Memory Efficiency
 
-- **Before optimization**: 48GB peak memory
-- **After optimization**: 20GB peak memory (**58% reduction**)
-- **Current streaming**: 512MB chunks for any file size
+**Processing Modes Comparison:**
+
+| Mode | Memory Usage | File Size Limit | Use Case |
+|------|--------------|-----------------|----------|
+| **Traditional** (`process_tpx3()`) | `num_hits × 40-60 bytes` | < 10GB | Random access to all hits needed |
+| **Streaming** (`process_tpx3_to_hdf5()`) | Constant ~512MB | Unlimited | Large files, production pipelines |
+
+**Examples:**
+
+```python
+# 500GB file with 12 billion hits:
+# Traditional mode: ~600GB RAM required ❌
+# Streaming mode:   ~512MB RAM required ✅
+
+# 10GB file with 240 million hits:
+# Traditional mode: ~14GB RAM required ⚠️
+# Streaming mode:   ~512MB RAM required ✅
+
+# 1GB file with 24 million hits:
+# Traditional mode: ~1.4GB RAM required ✅
+# Streaming mode:   ~512MB RAM required ✅
+```
+
+**Performance Note:** Both modes achieve the same hit processing rate (96M+ hits/sec). Streaming mode has NO performance penalty while providing bounded memory usage.
 
 ## 🤝 Contributing
 
