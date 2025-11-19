@@ -142,6 +142,62 @@ config.clustering.algorithm = "dbscan"  # or "abs", "graph", "grid"
 neutrons = tdcsophiread.process_hits_to_neutrons(hits, config)
 ```
 
+### CLI Usage
+
+Process TPX3 files from command line:
+
+```bash
+# Basic usage - extract hits to HDF5
+tdcsophiread -i data.tpx3 -o hits.h5
+
+# Enable parallel processing (recommended)
+tdcsophiread -i data.tpx3 -o hits.h5 --parallel
+
+# Bounded-memory streaming for large files (>10GB)
+tdcsophiread -i large_file.tpx3 -o hits.h5 --streaming --parallel -v
+
+# Custom TDC frequency for SNS chopper operation
+tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
+
+# Use custom configuration file
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming
+
+# Show all options
+tdcsophiread --help
+```
+
+**Key CLI Flags:**
+- `--streaming`: Enable bounded-memory mode (~512MB constant memory)
+- `--parallel`: Use all CPU cores for processing
+- `-v, --verbose`: Show processing details including TDC frequency
+- `-c CONFIG`: Load detector configuration from JSON file
+- `--tdc-frequency HZ`: Override TDC frequency (e.g., 30, 45, 60)
+
+**Memory Modes:**
+- **Without `--streaming`**: Loads all hits in memory (use for files <10GB)
+- **With `--streaming`**: Constant ~512MB memory (use for files >10GB)
+
+### Large File Processing
+
+For files >10GB, always use `--streaming` mode:
+
+```bash
+# Process 500GB file with constant memory
+tdcsophiread -i 500GB_file.tpx3 -o output.h5 --streaming --parallel -v
+```
+
+**Python equivalent:**
+```python
+# Bounded-memory streaming (constant ~512MB memory)
+result = tdcsophiread.process_tpx3_to_hdf5(
+    "500GB_file.tpx3",
+    "output.h5",
+    parallel=True,
+    num_threads=0  # Auto-detect
+)
+print(f"Processed {result.total_hits:,} hits")
+```
+
 ### Performance Monitoring
 
 ```python
