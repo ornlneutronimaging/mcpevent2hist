@@ -1,17 +1,5 @@
 #!/bin/bash
-### Analyze one file########
-# Discription
-# run this file in /Users/fumiaki/Desktop/Detector_test_sta/HFIR/NOWG/IPTS-31333/Analysis/
-# how to use it
-# ./auto_run_ver_2.sh
-#  This program keep checking HFIR/NOWG/IPTS-31333/raw/ folder and prduce h5 and png file if it finds a new folder.
 
-########
-
-###### Bag ##########
-## This program skips a files that is saved when sophiread is working...
-#-> The Bag is fixed. This program keeps checking if all Run h5 files exit in H5 folder. If h5 files are missing, it produces them.
-###
 
 
 ######### how to run this script ############
@@ -21,6 +9,12 @@
 # 
 # with this command we know where the log file is and the PID of the process so we can stop it later if needed. 
 ####
+
+### how to kill the process  ########## 
+# 1. you need go to the same node where the process is running, you can check it in the running_jobs.log file, which is saved in sftp://uff@analysis.sns.gov/gpfs/neutronsfs/instruments-hfir/CG4B/IPTS-31333/shared/Analyzed_DATA/LOGS/running_jobs.log
+# 2. do top grep|uff to find the PID of the process,    
+# 3. then you can use the command: kill -9 PID
+# ######################################
 
 
 # Load pixie dust
@@ -35,7 +29,7 @@ IMG_DIR="/HFIR/CG4B/IPTS-31333/shared/Analyzed_DATA/IMG/"
 IMAG_CSV_DIR="/HFIR/CG4B/IPTS-31333/shared/Analyzed_DATA/CSV/"
 TOF_IMAG_DIR="/HFIR/CG4B/IPTS-31333/shared/Analyzed_DATA/TOF_IMG/"
 TOF_CSV_DIR="/HFIR/CG4B/IPTS-31333/shared/Analyzed_DATA/TOF_CSV/"
-Search_run=41676
+Search_run=41676 ### Only process runs with run number greater than this value ###
 
 # File to track processed runs
 PROCESSED_RUNS_FILE="processed_runs.txt"
