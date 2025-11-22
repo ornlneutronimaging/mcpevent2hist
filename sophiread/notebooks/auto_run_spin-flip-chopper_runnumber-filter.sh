@@ -14,6 +14,18 @@
 ###
 
 
+######### how to run this script ############
+# LOGDIR=/gpfs/neutronsfs/instruments-hfir/CG4B/IPTS-31333/shared/Analyzed_DATA/LOGS
+#
+# nohup ./auto_run_spin-flip-chopper_runnumber-filter.sh > $LOGDIR/auto_run.log 2>&1 & echo "$(date): Started PID=$! on $(hostname)" >> $LOGDIR/running_jobs.log
+# 
+# with this command we know where the log file is and the PID of the process so we can stop it later if needed. 
+####
+
+
+# Load pixie dust
+eval "$(pixi shell-hook)"
+
 # RUM_NUM="000002"
 Refreshtime=5  # The time that we wait for renew the data
 DSCALE="2" # Number of pixels in one axis =256*DSCALE

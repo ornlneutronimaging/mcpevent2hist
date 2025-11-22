@@ -165,7 +165,9 @@ print(f"✅ Image saved: {img_filename}")
 print("=== TOF Analysis ===")
 
 neutrons_tof_ms = neutrons["tof"] * 25 / 1e6
-tof_bins = np.linspace(0, 16.7, 1670)
+######## Tof bins from 0 to 16.7 ms with 0.001 ms width #########
+tof_bins = np.linspace(0, 16.7, 16700)
+#################################################################
 
 hist_neutrons_tof, edges_neutrons = np.histogram(neutrons_tof_ms, bins=tof_bins)
 centers_neutrons = (edges_neutrons[:-1] + edges_neutrons[1:]) / 2
