@@ -2,7 +2,7 @@
 
 
 
-######### how to run this script ############
+######### How to run this script ############
 # LOGDIR=/gpfs/neutronsfs/instruments-hfir/CG4B/IPTS-31333/shared/Analyzed_DATA/LOGS
 #
 # nohup ./auto_run_spin-flip-chopper_runnumber-filter.sh > $LOGDIR/auto_run.log 2>&1 & echo "$(date): Started PID=$! on $(hostname)" >> $LOGDIR/running_jobs.log
@@ -10,7 +10,7 @@
 # with this command we know where the log file is and the PID of the process so we can stop it later if needed. 
 ####
 
-### how to kill the process  ########## 
+### How to kill the process  ########## 
 # 1. you need go to the same node where the process is running, you can check it in the running_jobs.log file, which is saved in sftp://uff@analysis.sns.gov/gpfs/neutronsfs/instruments-hfir/CG4B/IPTS-31333/shared/Analyzed_DATA/LOGS/running_jobs.log
 # 2. do top grep|uff to find the PID of the process,    
 # 3. then you can use the command: kill -9 PID
