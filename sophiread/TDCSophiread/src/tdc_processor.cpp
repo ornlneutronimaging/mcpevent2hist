@@ -460,7 +460,9 @@ size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
   }
 
   try {
-    // Open or create HDF5 file - avoid race condition by trying to open first
+    // Open or create HDF5 file
+    // NOTE: File locking is not used - do not call this method concurrently
+    // from multiple threads/processes with the same output file path
     H5::H5File file;
     bool need_create_datasets = false;
 
@@ -634,7 +636,8 @@ TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
     size_t current_offset = 0;
     size_t hdf5_offset = 0;  // Track position in HDF5 file
 
-    // Delete output file if it exists (start fresh)
+    // Delete output file if it exists to ensure clean start
+    // WARNING: This will permanently delete any existing file at this path
     if (std::filesystem::exists(output_h5_path)) {
       std::filesystem::remove(output_h5_path);
     }
@@ -708,6 +711,9 @@ TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
         section.end_offset += current_offset;
       }
 
+      // Store the next chunk start offset before we modify section offsets
+      size_t next_chunk_start = chunk_sections.back().start_offset;
+
       // Process sections (parallel or sequential)
       std::vector<TDCHit> chunk_hits;
 
@@ -742,7 +748,7 @@ TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
       if (current_offset + current_chunk_size >= file_size) {
         break;
       } else {
-        current_offset = chunk_sections.back().start_offset;
+        current_offset = next_chunk_start;
       }
     }
 
