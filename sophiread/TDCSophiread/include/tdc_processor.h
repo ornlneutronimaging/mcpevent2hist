@@ -272,6 +272,10 @@ class TDCProcessor {
    * @throws std::runtime_error if HDF5 operations fail
    *
    * Creates HDF5 datasets on first call, appends on subsequent calls
+   *
+   * @warning This method is NOT thread-safe for concurrent writes to the same
+   * output file. Do not call this method simultaneously from multiple
+   * threads/processes with the same h5_path. HDF5 file locking is not used.
    */
   size_t writeHitsToHDF5(const std::string& h5_path,
                          const std::vector<TDCHit>& hits,
