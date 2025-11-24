@@ -639,6 +639,7 @@ TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
     // Delete output file if it exists to ensure clean start
     // WARNING: This will permanently delete any existing file at this path
     if (std::filesystem::exists(output_h5_path)) {
+      std::cerr << "Warning: Deleting existing output file at '" << output_h5_path << "'." << std::endl;
       std::filesystem::remove(output_h5_path);
     }
 
