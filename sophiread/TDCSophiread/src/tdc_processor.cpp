@@ -18,6 +18,9 @@
 #include "tdc_io.h"
 #include "tdc_packet.h"
 
+// HDF5 includes for streaming
+#include <H5Cpp.h>
+
 namespace tdcsophiread {
 
 TDCProcessor::TDCProcessor(const DetectorConfig& config)
@@ -447,6 +450,328 @@ void TDCProcessor::updateMetrics(std::chrono::microseconds processing_time,
   } else {
     m_LastHitsPerSecond = 0.0;
   }
+}
+
+size_t TDCProcessor::writeHitsToHDF5(const std::string& h5_path,
+                                     const std::vector<TDCHit>& hits,
+                                     size_t current_offset) {
+  if (hits.empty()) {
+    return current_offset;
+  }
+
+  try {
+    // Open or create HDF5 file
+    // NOTE: File locking is not used - do not call this method concurrently
+    // from multiple threads/processes with the same output file path
+    H5::H5File file;
+    bool need_create_datasets = false;
+
+    try {
+      // Try to open existing file
+      file = H5::H5File(h5_path, H5F_ACC_RDWR);
+
+      // Check if datasets exist by trying to open one
+      try {
+        H5::DataSet test_ds = file.openDataSet("tof");
+        test_ds.close();
+        need_create_datasets = false;
+      } catch (const H5::Exception&) {
+        // Dataset doesn't exist, need to create
+        need_create_datasets = true;
+      }
+    } catch (const H5::Exception&) {
+      // File doesn't exist, create it
+      file = H5::H5File(h5_path, H5F_ACC_TRUNC);
+      need_create_datasets = true;
+    }
+
+    // Dataset names for each field
+    const std::vector<std::string> field_names = {
+        "tof", "x", "y", "timestamp", "tot", "chip_id", "cluster_id"};
+
+    // Create datasets only if they don't exist
+    if (need_create_datasets) {
+      // Create datasets with chunking for efficient appending
+      hsize_t initial_dims[1] = {0};
+      hsize_t max_dims[1] = {H5S_UNLIMITED};
+      hsize_t chunk_dims[1] = {65536};  // 64K hits per chunk
+
+      H5::DataSpace dataspace(1, initial_dims, max_dims);
+
+      // Create dataset creation property list for chunking
+      H5::DSetCreatPropList prop;
+      prop.setChunk(1, chunk_dims);
+      prop.setDeflate(6);  // gzip compression level 6
+
+      // Create datasets for each field
+      file.createDataSet("tof", H5::PredType::NATIVE_UINT32, dataspace, prop);
+      file.createDataSet("x", H5::PredType::NATIVE_UINT16, dataspace, prop);
+      file.createDataSet("y", H5::PredType::NATIVE_UINT16, dataspace, prop);
+      file.createDataSet("timestamp", H5::PredType::NATIVE_UINT32, dataspace,
+                         prop);
+      file.createDataSet("tot", H5::PredType::NATIVE_UINT16, dataspace, prop);
+      file.createDataSet("chip_id", H5::PredType::NATIVE_UINT8, dataspace,
+                         prop);
+      file.createDataSet("cluster_id", H5::PredType::NATIVE_INT32, dataspace,
+                         prop);
+
+      // Add metadata attributes
+      H5::Group root = file.openGroup("/");
+      H5::DataSpace attr_space(H5S_SCALAR);
+
+      // Processor version
+      H5::StrType str_type(H5::PredType::C_S1, 64);
+      H5::Attribute attr =
+          root.createAttribute("processor", str_type, attr_space);
+      std::string processor_name = "TDCSophiread";
+      attr.write(str_type, processor_name);
+
+      // TDC frequency
+      H5::Attribute freq_attr = root.createAttribute(
+          "tdc_frequency_hz", H5::PredType::NATIVE_DOUBLE, attr_space);
+      double tdc_freq = m_Config.getTdcFrequency();
+      freq_attr.write(H5::PredType::NATIVE_DOUBLE, &tdc_freq);
+
+      // Missing TDC correction enabled
+      H5::Attribute corr_attr =
+          root.createAttribute("missing_tdc_correction_enabled",
+                               H5::PredType::NATIVE_HBOOL, attr_space);
+      bool corr_enabled = m_MissingTdcCorrectionEnabled;
+      corr_attr.write(H5::PredType::NATIVE_HBOOL, &corr_enabled);
+    }
+
+    // Prepare data buffers for each field
+    std::vector<uint32_t> tof_data(hits.size());
+    std::vector<uint16_t> x_data(hits.size());
+    std::vector<uint16_t> y_data(hits.size());
+    std::vector<uint32_t> timestamp_data(hits.size());
+    std::vector<uint16_t> tot_data(hits.size());
+    std::vector<uint8_t> chip_id_data(hits.size());
+    std::vector<int32_t> cluster_id_data(hits.size());
+
+    // Copy data from TDCHit struct to separate arrays
+    for (size_t i = 0; i < hits.size(); ++i) {
+      tof_data[i] = hits[i].tof;
+      x_data[i] = hits[i].x;
+      y_data[i] = hits[i].y;
+      timestamp_data[i] = hits[i].timestamp;
+      tot_data[i] = hits[i].tot;
+      chip_id_data[i] = hits[i].chip_id;
+      cluster_id_data[i] = hits[i].cluster_id;
+    }
+
+    // Extend and write each dataset
+    size_t new_size = current_offset + hits.size();
+
+    // Helper lambda to extend and write dataset
+    auto extend_and_write = [&](const std::string& name, auto& data,
+                                const H5::DataType& dtype) {
+      H5::DataSet dataset = file.openDataSet(name);
+
+      // Extend dataset
+      hsize_t new_dims[1] = {new_size};
+      dataset.extend(new_dims);
+
+      // Select hyperslab for new data
+      H5::DataSpace filespace = dataset.getSpace();
+      hsize_t offset[1] = {current_offset};
+      hsize_t count[1] = {hits.size()};
+      filespace.selectHyperslab(H5S_SELECT_SET, count, offset);
+
+      // Create memory dataspace
+      hsize_t mem_dims[1] = {hits.size()};
+      H5::DataSpace memspace(1, mem_dims);
+
+      // Write data
+      dataset.write(data.data(), dtype, memspace, filespace);
+    };
+
+    // Write all fields
+    extend_and_write("tof", tof_data, H5::PredType::NATIVE_UINT32);
+    extend_and_write("x", x_data, H5::PredType::NATIVE_UINT16);
+    extend_and_write("y", y_data, H5::PredType::NATIVE_UINT16);
+    extend_and_write("timestamp", timestamp_data, H5::PredType::NATIVE_UINT32);
+    extend_and_write("tot", tot_data, H5::PredType::NATIVE_UINT16);
+    extend_and_write("chip_id", chip_id_data, H5::PredType::NATIVE_UINT8);
+    extend_and_write("cluster_id", cluster_id_data, H5::PredType::NATIVE_INT32);
+
+    file.close();
+    return new_size;
+
+  } catch (const H5::Exception& e) {
+    throw std::runtime_error("HDF5 error in writeHitsToHDF5: " +
+                             std::string(e.getDetailMsg()));
+  }
+}
+
+TDCProcessor::StreamingResult TDCProcessor::processFileToHDF5(
+    const std::string& file_path, const std::string& output_h5_path,
+    size_t chunk_size_mb, bool parallel, size_t num_threads) {
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  StreamingResult result;
+
+  try {
+    // Get total file size for chunking
+    std::error_code ec;
+    auto file_size = std::filesystem::file_size(file_path, ec);
+    if (ec) {
+      result.success = false;
+      result.error_message = "Cannot determine file size: " + file_path;
+      return result;
+    }
+
+    if (file_size == 0) {
+      result.success = true;
+      return result;
+    }
+
+    // Convert chunk size to bytes
+    size_t chunk_size_bytes = chunk_size_mb * 1024 * 1024;
+
+    // Reset TDC state for this file
+    m_ChipTdcState = {0, 0, 0, 0};
+    m_ChipHasTdc = {false, false, false, false};
+
+    size_t current_offset = 0;
+    size_t hdf5_offset = 0;  // Track position in HDF5 file
+
+    // Delete output file if it exists to ensure clean start
+    // WARNING: This will permanently delete any existing file at this path
+    if (std::filesystem::exists(output_h5_path)) {
+      std::cerr << "Warning: Deleting existing output file at '"
+                << output_h5_path << "'." << std::endl;
+      std::filesystem::remove(output_h5_path);
+    }
+
+    // Process file in chunks
+    while (current_offset < file_size) {
+      // Determine chunk size (don't exceed file size)
+      size_t remaining = file_size - current_offset;
+      size_t current_chunk_size = std::min(chunk_size_bytes, remaining);
+
+      // Map current chunk
+      auto mapped_file =
+          MappedFile::open(file_path, current_offset, current_chunk_size);
+
+      // Find sections within this chunk
+      auto chunk_sections =
+          discoverSections(mapped_file->data(), mapped_file->size());
+
+      if (chunk_sections.empty()) {
+        // No sections found, advance to next chunk
+        current_offset += current_chunk_size;
+        continue;
+      }
+
+      // Adjust section offsets to be relative to file start
+      for (auto& section : chunk_sections) {
+        section.start_offset += current_offset;
+        section.end_offset += current_offset;
+      }
+
+      // Apply "always leave last section" strategy (unless we're at end of
+      // file)
+      std::vector<TDCSection> sections_to_process;
+      bool at_end_of_file = (current_offset + current_chunk_size >= file_size);
+
+      if (at_end_of_file) {
+        // At end of file - process all sections
+        sections_to_process = chunk_sections;
+      } else {
+        // Not at end - leave last section for next chunk
+        if (chunk_sections.size() > 1) {
+          sections_to_process.assign(chunk_sections.begin(),
+                                     chunk_sections.end() - 1);
+        } else {
+          // Only one section - leave it for next chunk
+          current_offset = chunk_sections[0].start_offset;
+          continue;
+        }
+      }
+
+      if (sections_to_process.empty()) {
+        current_offset += current_chunk_size;
+        continue;
+      }
+
+      // Inherit TDC state and scan for updates (same as processFile)
+      for (auto& section : sections_to_process) {
+        if (m_ChipHasTdc[section.chip_id]) {
+          section.initial_tdc_timestamp = m_ChipTdcState[section.chip_id];
+          section.has_initial_tdc = true;
+        } else {
+          section.initial_tdc_timestamp = 0;
+          section.has_initial_tdc = false;
+        }
+
+        section.start_offset -= current_offset;
+        section.end_offset -= current_offset;
+        scanSectionForTdc(mapped_file->data(), section, m_ChipTdcState,
+                          m_ChipHasTdc);
+        section.start_offset += current_offset;
+        section.end_offset += current_offset;
+      }
+
+      // Store the next chunk start offset before we modify section offsets
+      size_t next_chunk_start = chunk_sections.back().start_offset;
+
+      // Process sections (parallel or sequential)
+      std::vector<TDCHit> chunk_hits;
+
+      if (parallel && sections_to_process.size() > 1) {
+        // Adjust offsets back to chunk-relative for processing
+        for (auto& section : sections_to_process) {
+          section.start_offset -= current_offset;
+          section.end_offset -= current_offset;
+        }
+        chunk_hits = processSectionsParallel(mapped_file->data(),
+                                             sections_to_process, num_threads);
+      } else {
+        // Sequential processing
+        for (auto& section : sections_to_process) {
+          section.start_offset -= current_offset;
+          section.end_offset -= current_offset;
+          auto section_hits = processSection(mapped_file->data(), section);
+          chunk_hits.insert(chunk_hits.end(), section_hits.begin(),
+                            section_hits.end());
+          result.total_packets +=
+              (section.end_offset - section.start_offset) / 8;
+        }
+      }
+
+      // Write chunk hits to HDF5 immediately (bounded memory!)
+      hdf5_offset = writeHitsToHDF5(output_h5_path, chunk_hits, hdf5_offset);
+      result.total_hits += chunk_hits.size();
+
+      // chunk_hits goes out of scope here, freeing memory
+
+      // Move to next chunk
+      if (current_offset + current_chunk_size >= file_size) {
+        break;
+      } else {
+        current_offset = next_chunk_start;
+      }
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end_time - start_time);
+
+    result.processing_time_ms = duration.count() / 1000.0;
+    if (duration.count() > 0) {
+      result.hits_per_second = (result.total_hits * 1e6) / duration.count();
+    }
+
+    result.success = true;
+    updateMetrics(duration, result.total_hits, result.total_packets);
+
+  } catch (const std::exception& e) {
+    result.success = false;
+    result.error_message = "Processing failed: " + std::string(e.what());
+  }
+
+  return result;
 }
 
 }  // namespace tdcsophiread

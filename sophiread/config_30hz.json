@@ -1,0 +1,12 @@
+{
+  "detector": {
+    "timing": {
+      "tdc_frequency_hz": 30.0,
+      "enable_missing_tdc_correction": true
+    },
+    "chip_layout": {
+      "chip_size_x": 256,
+      "chip_size_y": 256
+    }
+  }
+}

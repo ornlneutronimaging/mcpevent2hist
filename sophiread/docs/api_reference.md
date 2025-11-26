@@ -207,16 +207,109 @@ print(f"Found {len(neutrons):,} neutrons")
 
 ### process_tpx3_stream()
 
-Memory-efficient streaming for large files.
+⚠️ **LIMITATION**: This function still loads all hits into memory despite the "stream" name. For true bounded-memory processing of large files (>100GB), use `process_tpx3_to_hdf5()` instead.
 
 ```python
+# Chunk-based file reading, but ALL hits loaded into memory
 hits = tdcsophiread.process_tpx3_stream(
-    file_path="large_file.tpx3",
-    chunk_size_mb=512,           # Process in 512MB chunks
+    file_path="file.tpx3",
+    chunk_size_mb=512,           # Read chunks, but accumulate all hits
     progress_callback=progress_callback
 )
 
-print(f"Streamed {len(hits):,} hits")
+# Memory usage: ~40-60 bytes per hit (same as process_tpx3)
+print(f"Loaded {len(hits):,} hits into memory")
+```
+
+**When to use:**
+- Files < 10GB where loading all hits in memory is acceptable
+- When you need random access to all hits after loading
+- Legacy code compatibility
+
+**For large files, use `process_tpx3_to_hdf5()` instead!**
+
+### process_tpx3_to_hdf5()
+
+**True bounded-memory streaming** for processing arbitrarily large TPX3 files (500GB+) with constant memory usage.
+
+```python
+# Process 500GB file with only ~512MB constant memory
+result = tdcsophiread.process_tpx3_to_hdf5(
+    file_path="500GB_file.tpx3",
+    output_h5_path="output.h5",
+    parallel=True,              # Use parallel processing
+    num_threads=0,              # Auto-detect cores
+    chunk_size_mb=512,          # Memory usage: ~512MB constant
+    progress_callback=progress_callback
+)
+
+# Check results (no hits in memory!)
+print(f"Success: {result.success}")
+print(f"Total hits processed: {result.total_hits:,}")
+print(f"Processing time: {result.processing_time_ms:.1f} ms")
+print(f"Hit rate: {result.hits_per_second/1e6:.1f} M hits/sec")
+
+# Read data from HDF5 file
+import h5py
+with h5py.File("output.h5", "r") as f:
+    # Access individual datasets
+    tof = f["tof"][:]
+    x = f["x"][:]
+    y = f["y"][:]
+
+    # Check metadata
+    print(f"TDC Frequency: {f.attrs['tdc_frequency_hz']} Hz")
+    print(f"Processor: {f.attrs['processor']}")
+```
+
+**HDF5 Output Structure:**
+```python
+# Separate datasets for each field:
+# - tof (uint32, 25ns units)
+# - x (uint16, global coordinates)
+# - y (uint16, global coordinates)
+# - timestamp (uint32, 25ns units)
+# - tot (uint16)
+# - chip_id (uint8)
+# - cluster_id (int32)
+
+# Metadata attributes:
+# - processor: "TDCSophiread"
+# - tdc_frequency_hz: float (e.g., 60.0 or 30.0)
+# - missing_tdc_correction_enabled: bool
+```
+
+**Memory Usage:**
+- **Constant**: ~512MB regardless of file size
+- **Traditional mode**: `num_hits × 40-60 bytes` (grows with file size)
+- **Example**: 500GB file with 12B hits:
+  - Traditional: ~600GB RAM ❌
+  - Streaming: ~512MB RAM ✅
+
+**When to use:**
+- Files > 10GB
+- Limited RAM systems (< 32GB)
+- Processing 100GB+ files
+- Production pipelines with large datasets
+
+**Performance:**
+- Same hit rate as traditional mode (96M+ hits/sec)
+- No performance penalty for bounded-memory operation
+- Supports parallel processing
+
+**Custom Configuration:**
+```python
+# Process with custom TDC frequency configuration
+config = tdcsophiread.DetectorConfig.from_file("config_30hz.json")
+processor = tdcsophiread.TDCProcessor(config)
+
+result = processor.process_file_to_hdf5(
+    "data.tpx3",
+    "output.h5",
+    chunk_size_mb=512,
+    parallel=True,
+    num_threads=0
+)
 ```
 
 ## Clustering Algorithms

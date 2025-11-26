@@ -498,6 +498,38 @@ PYBIND11_MODULE(_core, m) {
       py::arg("hits"), py::arg("config") = py::none(),
       "Process hits to neutrons using zero-copy temporal processor");
 
+  // TDCProcessor::StreamingResult structure
+  py::class_<TDCProcessor::StreamingResult>(m, "StreamingResult")
+      .def(py::init<>())
+      .def_readwrite("total_hits", &TDCProcessor::StreamingResult::total_hits,
+                     "Total number of hits processed")
+      .def_readwrite("total_packets",
+                     &TDCProcessor::StreamingResult::total_packets,
+                     "Total number of packets processed")
+      .def_readwrite("processing_time_ms",
+                     &TDCProcessor::StreamingResult::processing_time_ms,
+                     "Processing time in milliseconds")
+      .def_readwrite("hits_per_second",
+                     &TDCProcessor::StreamingResult::hits_per_second,
+                     "Processing rate in hits per second")
+      .def_readwrite("error_message",
+                     &TDCProcessor::StreamingResult::error_message,
+                     "Error message if processing failed")
+      .def_readwrite("success", &TDCProcessor::StreamingResult::success,
+                     "Whether processing succeeded")
+      .def("__repr__", [](const TDCProcessor::StreamingResult& r) {
+        std::ostringstream oss;
+        oss << "StreamingResult(success=" << (r.success ? "True" : "False");
+        if (r.success) {
+          oss << ", total_hits=" << r.total_hits
+              << ", processing_time_ms=" << r.processing_time_ms
+              << ", hits_per_second=" << r.hits_per_second << ")";
+        } else {
+          oss << ", error='" << r.error_message << "')";
+        }
+        return oss.str();
+      });
+
   // TDCProcessor class - main interface
   py::class_<TDCProcessor>(m, "TDCProcessor")
       .def(py::init<const DetectorConfig&>(), py::arg("config"),
@@ -508,6 +540,15 @@ PYBIND11_MODULE(_core, m) {
            py::arg("chunk_size_mb") = 512, py::arg("parallel") = false,
            py::arg("num_threads") = 0,
            "Process TPX3 file with chunk-based memory mapping")
+
+      // Streaming processor for bounded memory usage
+      .def("process_file_to_hdf5", &TDCProcessor::processFileToHDF5,
+           py::arg("file_path"), py::arg("output_h5_path"),
+           py::arg("chunk_size_mb") = 512, py::arg("parallel") = false,
+           py::arg("num_threads") = 0,
+           "Process TPX3 file directly to HDF5 with bounded memory usage. "
+           "Returns StreamingResult with statistics. "
+           "Memory usage: ~chunk_size_mb regardless of file size.")
 
       // Configuration
       .def("set_missing_tdc_correction_enabled",
@@ -612,6 +653,32 @@ PYBIND11_MODULE(_core, m) {
       py::arg("file_path"), py::arg("chunk_size_mb") = 512,
       py::arg("progress_callback") = py::none(),
       "Process large TPX3 files with chunk-based memory mapping");
+
+  // High-level convenience function for bounded-memory streaming to HDF5
+  m.def(
+      "process_tpx3_to_hdf5",
+      [](const std::string& file_path, const std::string& output_h5_path,
+         bool parallel = true, size_t num_threads = 0,
+         size_t chunk_size_mb = 512) {
+        try {
+          auto config = DetectorConfig::venusDefaults();
+          TDCProcessor processor(config);
+
+          auto result = processor.processFileToHDF5(
+              file_path, output_h5_path, chunk_size_mb, parallel, num_threads);
+
+          return result;
+        } catch (const std::exception& e) {
+          throw TDCProcessingError("Failed to process TPX3 file to HDF5: " +
+                                   std::string(e.what()));
+        }
+      },
+      py::arg("file_path"), py::arg("output_h5_path"),
+      py::arg("parallel") = true, py::arg("num_threads") = 0,
+      py::arg("chunk_size_mb") = 512,
+      "Process large TPX3 files directly to HDF5 with bounded memory usage. "
+      "Memory usage: ~chunk_size_mb (default 512MB) regardless of file size. "
+      "Ideal for processing arbitrarily large files (500GB+).");
 }
 
 }  // namespace tdcsophiread

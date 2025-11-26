@@ -1,6 +1,7 @@
 // TDCSophiread Processor Tests - TDD Approach
 // These tests define the expected behavior for section-aware TPX3 processing
 
+#include <H5Cpp.h>
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -545,6 +546,301 @@ TEST_F(TDCProcessorTest, ParallelProcessingAchievesTargetPerformance) {
   // Verify processor metrics are populated correctly
   EXPECT_GT(processor.getLastHitsPerSecond(), 1e6);
   EXPECT_EQ(processor.getLastHitCount(), num_sections * hits_per_section);
+}
+
+// ============================================================================
+// STREAMING MODE TESTS (processFileToHDF5)
+// ============================================================================
+
+// Test 13: Basic streaming to HDF5 functionality
+TEST_F(TDCProcessorTest, StreamingModeWritesToHDF5Successfully) {
+  // Test that streaming mode processes file and writes to HDF5
+  std::vector<uint64_t> packets = {
+      createTPX3HeaderPacket(0), createTDCPacket(1000),
+      createHitPacket(0x0408, 100, 200), createHitPacket(0x0409, 101, 201),
+      createHitPacket(0x040A, 102, 202)};
+
+  createTestTPX3File("streaming_basic.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_basic.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_basic.h5").string();
+
+  TDCProcessor processor(*config);
+  processor.setMissingTdcCorrectionEnabled(false);
+
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+
+  // Verify result
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(result.total_hits, 3);
+  EXPECT_EQ(result.error_message, "");
+  EXPECT_GT(result.processing_time_ms, 0.0);
+  EXPECT_GT(result.hits_per_second, 0.0);
+
+  // Verify HDF5 file exists
+  EXPECT_TRUE(std::filesystem::exists(h5_path));
+}
+
+// Test 14: HDF5 file structure and datasets
+TEST_F(TDCProcessorTest, StreamingModeCreatesCorrectHDF5Structure) {
+  // Test that HDF5 file has correct dataset structure
+  std::vector<uint64_t> packets = {
+      createTPX3HeaderPacket(0), createTDCPacket(1000),
+      createHitPacket(0x0408, 100, 200), createHitPacket(0x0409, 101, 201)};
+
+  createTestTPX3File("streaming_structure.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_structure.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_structure.h5").string();
+
+  TDCProcessor processor(*config);
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+  EXPECT_TRUE(result.success);
+
+  // Open HDF5 file and verify structure
+  H5::H5File file(h5_path, H5F_ACC_RDONLY);
+
+  // Check all required datasets exist
+  EXPECT_NO_THROW(file.openDataSet("tof"));
+  EXPECT_NO_THROW(file.openDataSet("x"));
+  EXPECT_NO_THROW(file.openDataSet("y"));
+  EXPECT_NO_THROW(file.openDataSet("timestamp"));
+  EXPECT_NO_THROW(file.openDataSet("tot"));
+  EXPECT_NO_THROW(file.openDataSet("chip_id"));
+  EXPECT_NO_THROW(file.openDataSet("cluster_id"));
+
+  // Verify dataset sizes
+  H5::DataSet tof_ds = file.openDataSet("tof");
+  H5::DataSpace space = tof_ds.getSpace();
+  hsize_t dims[1];
+  space.getSimpleExtentDims(dims);
+  EXPECT_EQ(dims[0], 2);  // 2 hits
+
+  file.close();
+}
+
+// Test 15: HDF5 metadata attributes
+TEST_F(TDCProcessorTest, StreamingModeWritesCorrectMetadata) {
+  // Test that HDF5 file has correct metadata attributes
+  std::vector<uint64_t> packets = {createTPX3HeaderPacket(0),
+                                   createTDCPacket(1000),
+                                   createHitPacket(0x0408, 100, 200)};
+
+  createTestTPX3File("streaming_metadata.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_metadata.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_metadata.h5").string();
+
+  TDCProcessor processor(*config);
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+  EXPECT_TRUE(result.success);
+
+  // Open HDF5 file and verify metadata
+  H5::H5File file(h5_path, H5F_ACC_RDONLY);
+  H5::Group root = file.openGroup("/");
+
+  // Check processor attribute
+  H5::Attribute processor_attr = root.openAttribute("processor");
+  H5::StrType str_type(H5::PredType::C_S1, 64);
+  std::string processor_name;
+  processor_name.resize(64);
+  processor_attr.read(str_type, &processor_name[0]);
+  // Trim null terminators and compare
+  processor_name.resize(processor_name.find('\0'));  // Truncate at first null
+  EXPECT_EQ(processor_name, "TDCSophiread");
+
+  // Check TDC frequency attribute
+  H5::Attribute freq_attr = root.openAttribute("tdc_frequency_hz");
+  double tdc_freq;
+  freq_attr.read(H5::PredType::NATIVE_DOUBLE, &tdc_freq);
+  EXPECT_DOUBLE_EQ(tdc_freq, config->getTdcFrequency());
+
+  // Check missing TDC correction attribute
+  H5::Attribute corr_attr =
+      root.openAttribute("missing_tdc_correction_enabled");
+  bool corr_enabled;
+  corr_attr.read(H5::PredType::NATIVE_HBOOL, &corr_enabled);
+  EXPECT_TRUE(corr_enabled);  // Default is true
+
+  file.close();
+}
+
+// Test 16: Streaming mode data correctness vs traditional mode
+TEST_F(TDCProcessorTest, StreamingModeProducesSameDataAsTraditionalMode) {
+  // Test that streaming mode produces identical data to traditional mode
+  std::vector<uint64_t> packets = {
+      createTPX3HeaderPacket(0),         createTDCPacket(1000),
+      createHitPacket(0x0408, 100, 200), createHitPacket(0x0409, 101, 201),
+      createTPX3HeaderPacket(1),         createTDCPacket(2000),
+      createHitPacket(0x040A, 102, 202)};
+
+  createTestTPX3File("streaming_comparison.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_comparison.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_comparison.h5").string();
+
+  TDCProcessor processor(*config);
+  processor.setMissingTdcCorrectionEnabled(false);
+
+  // Traditional mode
+  auto traditional_hits = processor.processFile(tpx3_path);
+
+  // Streaming mode
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(result.total_hits, traditional_hits.size());
+
+  // Read back HDF5 data and compare
+  H5::H5File file(h5_path, H5F_ACC_RDONLY);
+  H5::DataSet tof_ds = file.openDataSet("tof");
+  H5::DataSet x_ds = file.openDataSet("x");
+  H5::DataSet y_ds = file.openDataSet("y");
+  H5::DataSet timestamp_ds = file.openDataSet("timestamp");
+  H5::DataSet tot_ds = file.openDataSet("tot");
+  H5::DataSet chip_id_ds = file.openDataSet("chip_id");
+
+  std::vector<uint32_t> tof_data(traditional_hits.size());
+  std::vector<uint16_t> x_data(traditional_hits.size());
+  std::vector<uint16_t> y_data(traditional_hits.size());
+  std::vector<uint32_t> timestamp_data(traditional_hits.size());
+  std::vector<uint16_t> tot_data(traditional_hits.size());
+  std::vector<uint8_t> chip_id_data(traditional_hits.size());
+
+  tof_ds.read(tof_data.data(), H5::PredType::NATIVE_UINT32);
+  x_ds.read(x_data.data(), H5::PredType::NATIVE_UINT16);
+  y_ds.read(y_data.data(), H5::PredType::NATIVE_UINT16);
+  timestamp_ds.read(timestamp_data.data(), H5::PredType::NATIVE_UINT32);
+  tot_ds.read(tot_data.data(), H5::PredType::NATIVE_UINT16);
+  chip_id_ds.read(chip_id_data.data(), H5::PredType::NATIVE_UINT8);
+
+  // Compare data
+  for (size_t i = 0; i < traditional_hits.size(); ++i) {
+    EXPECT_EQ(tof_data[i], traditional_hits[i].tof);
+    EXPECT_EQ(x_data[i], traditional_hits[i].x);
+    EXPECT_EQ(y_data[i], traditional_hits[i].y);
+    EXPECT_EQ(timestamp_data[i], traditional_hits[i].timestamp);
+    EXPECT_EQ(tot_data[i], traditional_hits[i].tot);
+    EXPECT_EQ(chip_id_data[i], traditional_hits[i].chip_id);
+  }
+
+  file.close();
+}
+
+// Test 17: Custom TDC frequency in streaming mode
+TEST_F(TDCProcessorTest, StreamingModeRespectsCustomTDCFrequency) {
+  // Test that streaming mode correctly uses custom TDC frequency
+  std::vector<uint64_t> packets = {createTPX3HeaderPacket(0),
+                                   createTDCPacket(1000),
+                                   createHitPacket(0x0408, 100, 200)};
+
+  createTestTPX3File("streaming_30hz.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_30hz.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_30hz.h5").string();
+
+  // Create custom config with 30Hz
+  nlohmann::json custom_json = {
+      {"detector", {{"timing", {{"tdc_frequency_hz", 30.0}}}}}};
+  auto custom_config = DetectorConfig::fromJson(custom_json);
+
+  TDCProcessor processor(custom_config);
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+  EXPECT_TRUE(result.success);
+
+  // Verify HDF5 metadata has 30Hz frequency
+  H5::H5File file(h5_path, H5F_ACC_RDONLY);
+  H5::Group root = file.openGroup("/");
+  H5::Attribute freq_attr = root.openAttribute("tdc_frequency_hz");
+  double tdc_freq;
+  freq_attr.read(H5::PredType::NATIVE_DOUBLE, &tdc_freq);
+
+  EXPECT_DOUBLE_EQ(tdc_freq, 30.0);  // Should be 30Hz, not 60Hz default
+
+  file.close();
+}
+
+// Test 18: Streaming mode with multiple chunks
+TEST_F(TDCProcessorTest, StreamingModeHandlesMultipleChunksCorrectly) {
+  // Test that streaming mode correctly handles incremental writes
+  std::vector<uint64_t> packets;
+
+  // Create multiple sections to test chunked writing
+  for (int section = 0; section < 10; ++section) {
+    packets.push_back(createTPX3HeaderPacket(section % 4));
+    packets.push_back(createTDCPacket(1000 + section * 100));
+
+    for (int hit = 0; hit < 100; ++hit) {
+      packets.push_back(createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
+    }
+  }
+
+  createTestTPX3File("streaming_chunks.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_chunks.tpx3").string();
+  std::string h5_path = (test_dir / "streaming_chunks.h5").string();
+
+  TDCProcessor processor(*config);
+  // Use small chunk size to force multiple writes
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path, 1);  // 1MB
+
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(result.total_hits, 1000);  // 10 sections * 100 hits
+
+  // Verify all data was written
+  H5::H5File file(h5_path, H5F_ACC_RDONLY);
+  H5::DataSet tof_ds = file.openDataSet("tof");
+  H5::DataSpace space = tof_ds.getSpace();
+  hsize_t dims[1];
+  space.getSimpleExtentDims(dims);
+  EXPECT_EQ(dims[0], 1000);
+
+  file.close();
+}
+
+// Test 19: Streaming mode error handling - invalid path
+TEST_F(TDCProcessorTest, StreamingModeHandlesInvalidInputPath) {
+  // Test error handling for non-existent input file
+  std::string tpx3_path = (test_dir / "nonexistent.tpx3").string();
+  std::string h5_path = (test_dir / "output.h5").string();
+
+  TDCProcessor processor(*config);
+  auto result = processor.processFileToHDF5(tpx3_path, h5_path);
+
+  EXPECT_FALSE(result.success);
+  EXPECT_GT(result.error_message.length(), 0);
+  EXPECT_EQ(result.total_hits, 0);
+}
+
+// Test 20: Streaming mode with parallel processing
+TEST_F(TDCProcessorTest, StreamingModeWorksWithParallelProcessing) {
+  // Test that streaming mode works with parallel processing enabled
+  std::vector<uint64_t> packets;
+
+  // Create multiple sections for parallel processing
+  for (int section = 0; section < 20; ++section) {
+    packets.push_back(createTPX3HeaderPacket(section % 4));
+    packets.push_back(createTDCPacket(1000 + section * 100));
+
+    for (int hit = 0; hit < 100; ++hit) {
+      packets.push_back(createHitPacket(0x0400 + hit, 100 + hit, 200 + hit));
+    }
+  }
+
+  createTestTPX3File("streaming_parallel.tpx3", packets);
+  std::string tpx3_path = (test_dir / "streaming_parallel.tpx3").string();
+  std::string h5_seq_path = (test_dir / "streaming_seq.h5").string();
+  std::string h5_par_path = (test_dir / "streaming_par.h5").string();
+
+  TDCProcessor processor(*config);
+  processor.setMissingTdcCorrectionEnabled(false);
+
+  // Sequential
+  auto result_seq =
+      processor.processFileToHDF5(tpx3_path, h5_seq_path, 512, false, 0);
+  EXPECT_TRUE(result_seq.success);
+
+  // Parallel
+  auto result_par =
+      processor.processFileToHDF5(tpx3_path, h5_par_path, 512, true, 4);
+  EXPECT_TRUE(result_par.success);
+
+  // Both should process same number of hits
+  EXPECT_EQ(result_seq.total_hits, result_par.total_hits);
+  EXPECT_EQ(result_seq.total_hits, 2000);  // 20 sections * 100 hits
 }
 
 }  // namespace tdcsophiread

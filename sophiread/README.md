@@ -142,6 +142,62 @@ config.clustering.algorithm = "dbscan"  # or "abs", "graph", "grid"
 neutrons = tdcsophiread.process_hits_to_neutrons(hits, config)
 ```
 
+### CLI Usage
+
+Process TPX3 files from command line:
+
+```bash
+# Basic usage - extract hits to HDF5
+tdcsophiread -i data.tpx3 -o hits.h5
+
+# Enable parallel processing (recommended)
+tdcsophiread -i data.tpx3 -o hits.h5 --parallel
+
+# Bounded-memory streaming for large files (>10GB)
+tdcsophiread -i large_file.tpx3 -o hits.h5 --streaming --parallel -v
+
+# Custom TDC frequency for SNS chopper operation
+tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
+
+# Use custom configuration file
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming
+
+# Show all options
+tdcsophiread --help
+```
+
+**Key CLI Flags:**
+- `--streaming`: Enable bounded-memory mode (~512MB constant memory)
+- `--parallel`: Use all CPU cores for processing
+- `-v, --verbose`: Show processing details including TDC frequency
+- `-c CONFIG`: Load detector configuration from JSON file
+- `--tdc-frequency HZ`: Override TDC frequency (e.g., 30, 45, 60)
+
+**Memory Modes:**
+- **Without `--streaming`**: Loads all hits in memory (use for files <10GB)
+- **With `--streaming`**: Constant ~512MB memory (use for files >10GB)
+
+### Large File Processing
+
+For files >10GB, always use `--streaming` mode:
+
+```bash
+# Process 500GB file with constant memory
+tdcsophiread -i 500GB_file.tpx3 -o output.h5 --streaming --parallel -v
+```
+
+**Python equivalent:**
+```python
+# Bounded-memory streaming (constant ~512MB memory)
+result = tdcsophiread.process_tpx3_to_hdf5(
+    "500GB_file.tpx3",
+    "output.h5",
+    parallel=True,
+    num_threads=0  # Auto-detect
+)
+print(f"Processed {result.total_hits:,} hits")
+```
+
 ### Performance Monitoring
 
 ```python
@@ -412,7 +468,20 @@ pixel_y = neutrons['y'] / 8.0
 
 ### Detector Configuration
 
+#### TDC Frequency and TOF Range
+
+The TDC (Time-to-Digital Converter) frequency determines the TOF measurement range. SNS can operate at different frequencies via chopper control:
+
+| TDC Frequency | TOF Range | Use Case |
+|---------------|-----------|----------|
+| **60 Hz** (default) | 0-16.67 ms | Standard SNS operation |
+| **45 Hz** | 0-22.22 ms | Extended TOF range |
+| **30 Hz** | 0-33.33 ms | Maximum TOF range |
+
+**Configuration Examples:**
+
 ```json
+// Standard 60 Hz operation (default)
 {
   "detector": {
     "timing": {
@@ -425,7 +494,80 @@ pixel_y = neutrons['y'] / 8.0
     }
   }
 }
+
+// Extended range 30 Hz operation
+{
+  "detector": {
+    "timing": {
+      "tdc_frequency_hz": 30.0,
+      "enable_missing_tdc_correction": true
+    },
+    "chip_layout": {
+      "chip_size_x": 256,
+      "chip_size_y": 256
+    }
+  }
+}
 ```
+
+**Usage:**
+
+```python
+# Load custom TDC frequency configuration
+config = tdcsophiread.DetectorConfig.from_file("config_30hz.json")
+processor = tdcsophiread.TDCProcessor(config)
+
+# Verify frequency
+print(f"TDC Frequency: {config.get_tdc_frequency()} Hz")
+print(f"TOF Range: 0-{1000/config.get_tdc_frequency():.2f} ms")
+
+# Process with custom configuration
+result = processor.process_file_to_hdf5(
+    "data.tpx3",
+    "output.h5",
+    parallel=True
+)
+```
+
+**CLI Usage:**
+
+```bash
+# Use configuration file
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming -v
+
+# Or override frequency directly
+tdcsophiread -i data.tpx3 -o hits.h5 --tdc-frequency 30.0 --streaming -v
+```
+
+**⚠️ Important:** Always use the correct TDC frequency matching your SNS chopper setting. Using the wrong frequency will result in incorrect TOF calculations and values > the period will be incorrectly corrected.
+
+#### Example Configuration Files
+
+Pre-configured files for common SNS operation modes:
+
+| File | Frequency | TOF Range | Description |
+|------|-----------|-----------|-------------|
+| `config_30hz.json` | 30 Hz | 0-33.33 ms | Maximum TOF range for slow neutrons |
+| `config_45hz.json` | 45 Hz | 0-22.22 ms | Extended TOF range |
+| (default) | 60 Hz | 0-16.67 ms | Standard SNS operation |
+
+**Usage:**
+
+```bash
+# Use 30 Hz configuration
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_30hz.json --streaming -v
+
+# Use 45 Hz configuration
+tdcsophiread -i data.tpx3 -o hits.h5 -c config_45hz.json --streaming -v
+
+# Use default 60 Hz (no config file needed)
+tdcsophiread -i data.tpx3 -o hits.h5 --streaming -v
+```
+
+**When to use each:**
+- **30 Hz**: Slow neutron experiments requiring maximum TOF range
+- **45 Hz**: Balance between TOF range and temporal resolution
+- **60 Hz**: Standard operation with highest temporal resolution
 
 ## 🔬 Scientific Context
 
@@ -499,9 +641,30 @@ print(f"Found {len(neutrons):,} neutrons from {len(hits):,} hits")
 
 ### Memory Efficiency
 
-- **Before optimization**: 48GB peak memory
-- **After optimization**: 20GB peak memory (**58% reduction**)
-- **Current streaming**: 512MB chunks for any file size
+**Processing Modes Comparison:**
+
+| Mode | Memory Usage | File Size Limit | Use Case |
+|------|--------------|-----------------|----------|
+| **Traditional** (`process_tpx3()`) | `num_hits × 40-60 bytes` | < 10GB | Random access to all hits needed |
+| **Streaming** (`process_tpx3_to_hdf5()`) | Constant ~512MB | Unlimited | Large files, production pipelines |
+
+**Examples:**
+
+```python
+# 500GB file with 12 billion hits:
+# Traditional mode: ~600GB RAM required ❌
+# Streaming mode:   ~512MB RAM required ✅
+
+# 10GB file with 240 million hits:
+# Traditional mode: ~14GB RAM required ⚠️
+# Streaming mode:   ~512MB RAM required ✅
+
+# 1GB file with 24 million hits:
+# Traditional mode: ~1.4GB RAM required ✅
+# Streaming mode:   ~512MB RAM required ✅
+```
+
+**Performance Note:** Both modes achieve the same hit processing rate (96M+ hits/sec). Streaming mode has NO performance penalty while providing bounded memory usage.
 
 ## 🤝 Contributing
 
