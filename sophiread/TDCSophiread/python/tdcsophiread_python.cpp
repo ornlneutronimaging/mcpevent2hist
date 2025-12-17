@@ -391,7 +391,7 @@ PYBIND11_MODULE(_core, m) {
       // Main zero-copy processing interface
       .def(
           "processHits",
-          [](TemporalNeutronProcessor& self, const std::vector<TDCHit>& hits,
+          [](TemporalNeutronProcessor& self, std::vector<TDCHit> hits,
              size_t start_offset = 0, size_t end_offset = SIZE_MAX) {
             auto neutrons = self.processHits(hits, start_offset, end_offset);
             return TDCNeutronView(std::move(neutrons));
@@ -451,6 +451,12 @@ PYBIND11_MODULE(_core, m) {
 
           // Convert input hits data (similar to legacy code but simpler)
           std::vector<TDCHit> hits;
+          // Track whether the input was a structured numpy array so we can
+          // copy back mutated hit data (e.g. cluster_id) into the original
+          // numpy buffer before returning.
+          TDCHit* hit_ptr = nullptr;
+          size_t n_hits = 0;
+          bool input_was_structured_array = false;
           if (py::isinstance<std::vector<TDCHit>>(hits_data)) {
             hits = hits_data.cast<std::vector<TDCHit>>();
           } else if (py::isinstance<TDCHitView>(hits_data)) {
@@ -468,10 +474,11 @@ PYBIND11_MODULE(_core, m) {
               }
 
               // Cast buffer data to TDCHit array
-              TDCHit* hit_ptr = static_cast<TDCHit*>(buf.ptr);
-              size_t n_hits = buf.size;
+              hit_ptr = static_cast<TDCHit*>(buf.ptr);
+              n_hits = buf.size;
+              input_was_structured_array = true;
 
-              // Use direct memory copy instead of loop
+              // Use direct memory copy instead of loop to make a working copy
               hits.resize(n_hits);
               std::memcpy(hits.data(), hit_ptr, n_hits * sizeof(TDCHit));
             } else {
@@ -488,6 +495,15 @@ PYBIND11_MODULE(_core, m) {
           // Process using zero-copy interface
           TemporalNeutronProcessor processor(config);
           auto neutrons = processor.processHits(hits);
+
+          // If the original input was a structured numpy array, copy any
+          // mutated hit data (for example cluster_id) back into the
+          // original numpy buffer so Python-visible `hits['cluster_id']`
+          // is updated.
+          if (input_was_structured_array && hit_ptr != nullptr && n_hits > 0) {
+            std::memcpy(hit_ptr, hits.data(), n_hits * sizeof(TDCHit));
+          }
+
           auto result = TDCNeutronView(std::move(neutrons));
           return result;
         } catch (const std::exception& e) {

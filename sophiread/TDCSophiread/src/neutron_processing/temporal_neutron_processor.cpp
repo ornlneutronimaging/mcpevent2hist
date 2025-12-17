@@ -65,7 +65,7 @@ void TemporalNeutronProcessor::initializeAlgorithmPool() {
 }
 
 std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
-    const std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
+  std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
   auto start_time = std::chrono::high_resolution_clock::now();
 
   // Validate and adjust offsets
@@ -107,6 +107,22 @@ std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
 
   // Process batches in parallel
   processBatchesParallel(batches);
+
+  // Map cluster labels back into the original hits vector so callers
+  // (and the Python bindings) can observe per-hit cluster_id values.
+  for (const auto& batch : batches) {
+    if (!batch.cluster_labels.empty() && batch.isValid()) {
+      const size_t base = batch.start_index;
+      for (size_t i = 0; i < batch.cluster_labels.size(); ++i) {
+        int label = batch.cluster_labels[i];
+        if (label >= 0) {
+          hits[base + i].cluster_id = label;
+        } else {
+          hits[base + i].cluster_id = -1;
+        }
+      }
+    }
+  }
 
   // Collect results
   auto neutrons = collectNeutronResults(batches);
@@ -312,9 +328,8 @@ void TemporalNeutronProcessor::updateStatistics(size_t hits_processed,
 // Interface method implementations
 
 NeutronProcessingResults TemporalNeutronProcessor::processHitsWithLabels(
-    const std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
-  // For label tracking, we need to implement a more complex result aggregation
-  // For now, just process without labels using the new zero-copy interface
+    std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
+  // Process and ensure per-hit cluster labels are written back into hits.
   auto neutrons = processHits(hits, start_offset, end_offset);
   return NeutronProcessingResults(std::move(neutrons));
 }
