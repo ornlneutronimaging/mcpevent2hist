@@ -111,7 +111,7 @@ std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
   // Map cluster labels back into the original hits vector so callers
   // (and the Python bindings) can observe per-hit cluster_id values.
   for (const auto& batch : batches) {
-    if (!batch.cluster_labels.empty() && batch.isValid()) {
+    if (batch.isValid() && !batch.cluster_labels.empty()) {
       const size_t base = batch.start_index;
       for (size_t i = 0; i < batch.cluster_labels.size(); ++i) {
         int label = batch.cluster_labels[i];
