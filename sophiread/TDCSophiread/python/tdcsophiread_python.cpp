@@ -419,12 +419,12 @@ PYBIND11_MODULE(_core, m) {
                 hits.resize(n_hits);
                 std::memcpy(hits.data(), hit_ptr, n_hits * sizeof(TDCHit));
               } else {
-                throw TDCProcessingError(
-                    "Hits must be structured numpy array");
+                throw TDCProcessingError("Hits must be structured numpy array");
               }
             } else {
               throw TDCProcessingError(
-                  "Hits must be vector<TDCHit>, TDCHitView, or structured numpy "
+                  "Hits must be vector<TDCHit>, TDCHitView, or structured "
+                  "numpy "
                   "array");
             }
 
@@ -543,8 +543,8 @@ PYBIND11_MODULE(_core, m) {
           // mutated hit data (for example cluster_id) back into the
           // original numpy buffer so Python-visible `hits['cluster_id']`
           // is updated.
-          if (input_was_structured_array && hit_ptr != nullptr &&
-              n_hits > 0 && hits.size() == n_hits) {
+          if (input_was_structured_array && hit_ptr != nullptr && n_hits > 0 &&
+              hits.size() == n_hits) {
             std::memcpy(hit_ptr, hits.data(), n_hits * sizeof(TDCHit));
           }
 
