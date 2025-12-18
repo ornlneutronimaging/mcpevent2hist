@@ -71,6 +71,7 @@ libgfortran = ">=5.0.0,<16"
 scikit-build-core = ">=0.11.4,<0.12"
 pip = ">=25.1.1,<26"
 python-build = ">=1.2.2.post1,<2"
+plotly = ">=6.5.0,<7"
 
 # Development dependencies (optional, for full dev environment)
 [feature.dev.dependencies]

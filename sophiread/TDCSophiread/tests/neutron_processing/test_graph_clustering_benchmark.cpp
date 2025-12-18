@@ -63,8 +63,9 @@ void benchmarkClustering(const std::string& algorithm_name,
   // Create processor
   auto processor = std::make_unique<TemporalNeutronProcessor>(config);
 
-  // Warm up
-  processor->processHits(hits);
+  // Warm up (make a copy since processHits takes non-const reference)
+  std::vector<TDCHit> warmup_hits = hits;
+  processor->processHits(warmup_hits);
 
   // Benchmark
   const int num_runs = 5;
@@ -72,8 +73,9 @@ void benchmarkClustering(const std::string& algorithm_name,
   size_t total_neutrons = 0;
 
   for (int run = 0; run < num_runs; ++run) {
+    std::vector<TDCHit> run_hits = hits;  // Fresh copy for each run
     auto start = std::chrono::high_resolution_clock::now();
-    auto neutrons = processor->processHits(hits);
+    auto neutrons = processor->processHits(run_hits);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration =
