@@ -409,7 +409,7 @@ PYBIND11_MODULE(_core, m) {
               auto arr = hits_data.cast<py::array>();
               if (arr.dtype().kind() == 'V') {  // Structured array
                 py::buffer_info buf =
-                    arr.request(true);  // Request writable buffer
+                    arr.request(true);  // Request writable buffer so we can write modified TDCHit fields back into the original NumPy array after processing
                 if (buf.itemsize != sizeof(TDCHit)) {
                   throw TDCProcessingError(
                       "Numpy array itemsize does not match TDCHit size");
