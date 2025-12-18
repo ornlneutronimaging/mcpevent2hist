@@ -65,7 +65,7 @@ void TemporalNeutronProcessor::initializeAlgorithmPool() {
 }
 
 std::vector<TDCNeutron> TemporalNeutronProcessor::processHits(
-  std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
+    std::vector<TDCHit>& hits, size_t start_offset, size_t end_offset) {
   auto start_time = std::chrono::high_resolution_clock::now();
 
   // Validate and adjust offsets

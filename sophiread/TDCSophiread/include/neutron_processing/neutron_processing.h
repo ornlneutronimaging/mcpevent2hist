@@ -79,9 +79,9 @@ class INeutronProcessor {
    * @note Implementation should leverage TOF periodicity for batching
    * @note Zero-copy design: no data copying, works directly with input vector
    */
-    virtual std::vector<TDCNeutron> processHits(std::vector<TDCHit>& hits,
-                                                                                            size_t start_offset = 0,
-                                                                                            size_t end_offset = SIZE_MAX) = 0;
+  virtual std::vector<TDCNeutron> processHits(std::vector<TDCHit>& hits,
+                                              size_t start_offset = 0,
+                                              size_t end_offset = SIZE_MAX) = 0;
 
   /**
    * @brief Process hits with cluster label tracking (diagnostics path)
