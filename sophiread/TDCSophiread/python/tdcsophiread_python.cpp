@@ -391,9 +391,51 @@ PYBIND11_MODULE(_core, m) {
       // Main zero-copy processing interface
       .def(
           "processHits",
-          [](TemporalNeutronProcessor& self, std::vector<TDCHit> hits,
+          [](TemporalNeutronProcessor& self, py::object hits_data,
              size_t start_offset = 0, size_t end_offset = SIZE_MAX) {
+            // Convert input hits data and track if we need to copy back
+            std::vector<TDCHit> hits;
+            TDCHit* hit_ptr = nullptr;
+            size_t n_hits = 0;
+            bool input_was_structured_array = false;
+
+            if (py::isinstance<std::vector<TDCHit>>(hits_data)) {
+              hits = hits_data.cast<std::vector<TDCHit>>();
+            } else if (py::isinstance<TDCHitView>(hits_data)) {
+              auto hit_view = hits_data.cast<TDCHitView>();
+              hits = hit_view.data;
+            } else if (py::isinstance<py::array>(hits_data)) {
+              // Handle structured numpy array
+              auto arr = hits_data.cast<py::array>();
+              if (arr.dtype().kind() == 'V') {  // Structured array
+                py::buffer_info buf = arr.request();
+                if (buf.itemsize != sizeof(TDCHit)) {
+                  throw TDCProcessingError(
+                      "Numpy array itemsize does not match TDCHit size");
+                }
+                hit_ptr = static_cast<TDCHit*>(buf.ptr);
+                n_hits = buf.size;
+                input_was_structured_array = true;
+                hits.resize(n_hits);
+                std::memcpy(hits.data(), hit_ptr, n_hits * sizeof(TDCHit));
+              } else {
+                throw TDCProcessingError(
+                    "Hits must be structured numpy array");
+              }
+            } else {
+              throw TDCProcessingError(
+                  "Hits must be vector<TDCHit>, TDCHitView, or structured numpy "
+                  "array");
+            }
+
+            // Process hits (modifies hits vector)
             auto neutrons = self.processHits(hits, start_offset, end_offset);
+
+            // Copy modified hits back to original numpy buffer
+            if (input_was_structured_array && hit_ptr != nullptr && n_hits > 0) {
+              std::memcpy(hit_ptr, hits.data(), n_hits * sizeof(TDCHit));
+            }
+
             return TDCNeutronView(std::move(neutrons));
           },
           py::arg("hits"), py::arg("start_offset") = 0,
