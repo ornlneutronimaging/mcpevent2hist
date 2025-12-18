@@ -432,7 +432,7 @@ PYBIND11_MODULE(_core, m) {
             auto neutrons = self.processHits(hits, start_offset, end_offset);
 
             // Copy modified hits back to original numpy buffer
-            if (input_was_structured_array && hit_ptr != nullptr && 
+            if (input_was_structured_array && hit_ptr != nullptr &&
                 n_hits > 0 && hits.size() == n_hits) {
               std::memcpy(hit_ptr, hits.data(), n_hits * sizeof(TDCHit));
             }
@@ -543,7 +543,7 @@ PYBIND11_MODULE(_core, m) {
           // mutated hit data (for example cluster_id) back into the
           // original numpy buffer so Python-visible `hits['cluster_id']`
           // is updated.
-          if (input_was_structured_array && hit_ptr != nullptr && 
+          if (input_was_structured_array && hit_ptr != nullptr &&
               n_hits > 0 && hits.size() == n_hits) {
             std::memcpy(hit_ptr, hits.data(), n_hits * sizeof(TDCHit));
           }
