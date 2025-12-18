@@ -408,7 +408,8 @@ PYBIND11_MODULE(_core, m) {
               // Handle structured numpy array
               auto arr = hits_data.cast<py::array>();
               if (arr.dtype().kind() == 'V') {  // Structured array
-                py::buffer_info buf = arr.request(true);  // Request writable buffer
+                py::buffer_info buf =
+                    arr.request(true);  // Request writable buffer
                 if (buf.itemsize != sizeof(TDCHit)) {
                   throw TDCProcessingError(
                       "Numpy array itemsize does not match TDCHit size");
@@ -510,7 +511,8 @@ PYBIND11_MODULE(_core, m) {
             auto arr = hits_data.cast<py::array>();
             if (arr.dtype().kind() == 'V') {  // Structured array
               // Get the buffer info to access raw data
-              py::buffer_info buf = arr.request(true);  // Request writable buffer
+              py::buffer_info buf =
+                  arr.request(true);  // Request writable buffer
               if (buf.itemsize != sizeof(TDCHit)) {
                 throw TDCProcessingError(
                     "Numpy array itemsize does not match TDCHit size");
