@@ -61,24 +61,24 @@ def validate_config_file(config_path: str) -> Dict[str, Any]:
         sys.exit(1)
 
 
-def save_hits_to_hdf5(hits: Dict[str, np.ndarray], output_path: str,
+def save_hits_to_hdf5(hits: np.ndarray, output_path: str,
                       metadata: Optional[Dict] = None) -> None:
     """
     Save hits to HDF5 file format
 
     Args:
-        hits: Dictionary of numpy arrays with hit data
+        hits: Structured numpy array with hit data
         output_path: Output HDF5 file path
         metadata: Optional metadata to include
     """
-    print(f"💾 Saving {len(hits['x']):,} hits to {output_path}")
+    print(f"💾 Saving {len(hits):,} hits to {output_path}")
 
     with h5py.File(output_path, 'w') as f:
         # Create hits dataset
         hits_group = f.create_group('hits')
 
-        for field, data in hits.items():
-            hits_group.create_dataset(field, data=data, compression='gzip')
+        for field in hits.dtype.names:
+            hits_group.create_dataset(field, data=hits[field], compression='gzip')
 
         # Add metadata
         if metadata:
@@ -117,7 +117,7 @@ def create_tof_spectrum(hits: Dict[str, np.ndarray], tof_range_ms: tuple = (0, 2
     return bin_centers, counts
 
 
-def print_processing_summary(hits: Dict[str, np.ndarray],
+def print_processing_summary(hits: np.ndarray,
                            processing_time: float,
                            input_file: str) -> None:
     """Print summary of processing results"""
@@ -125,11 +125,11 @@ def print_processing_summary(hits: Dict[str, np.ndarray],
     print(f"{'='*50}")
     print(f"Input file: {input_file}")
     print(f"File size: {os.path.getsize(input_file) / 1024 / 1024:.1f} MB")
-    print(f"Total hits: {len(hits['x']):,}")
+    print(f"Total hits: {len(hits):,}")
     print(f"Processing time: {processing_time:.3f} seconds")
-    print(f"Processing rate: {len(hits['x']) / processing_time / 1e6:.1f} M hits/sec")
+    print(f"Processing rate: {len(hits) / processing_time / 1e6:.1f} M hits/sec")
 
-    if len(hits['x']) > 0:
+    if len(hits) > 0:
         print(f"\n🎯 Hit Statistics:")
         print(f"X range: {hits['x'].min()} - {hits['x'].max()}")
         print(f"Y range: {hits['y'].min()} - {hits['y'].max()}")
@@ -317,11 +317,11 @@ Examples:
         sys.exit(1)
 
     # Print summary
-    if args.verbose or len(hits['x']) == 0:
+    if args.verbose or len(hits) == 0:
         print_processing_summary(hits, processing_time, args.input)
     else:
-        print(f"✅ Processed {len(hits['x']):,} hits in {processing_time:.3f}s "
-              f"({len(hits['x']) / processing_time / 1e6:.1f} M hits/sec)")
+        print(f"✅ Processed {len(hits):,} hits in {processing_time:.3f}s "
+              f"({len(hits) / processing_time / 1e6:.1f} M hits/sec)")
 
     if not args.benchmark:
         # Save to HDF5
@@ -341,7 +341,7 @@ Examples:
         print(f"🏁 Benchmark complete - skipped file writing")
 
     # Generate TOF spectrum if requested (skip in benchmark mode)
-    if args.tof_spectrum and len(hits['x']) > 0 and not args.benchmark:
+    if args.tof_spectrum and len(hits) > 0 and not args.benchmark:
         print(f"📈 Generating TOF spectrum...")
         bin_centers, counts = create_tof_spectrum(hits,
                                                  tuple(args.tof_range),
